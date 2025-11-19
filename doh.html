@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTTPDNS 高级验证工具 (可配置版)</title>
+    <title>HTTPDNS 全能验证工具</title>
     <style>
         :root {
             --primary: #2563eb;
-            --danger: #dc2626;
-            --success: #16a34a;
-            --bg: #f1f5f9;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --bg: #f8fafc;
             --card: #ffffff;
             --border: #e2e8f0;
         }
 
         body {
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: var(--bg);
             color: #334155;
             margin: 0;
@@ -23,291 +23,268 @@
             line-height: 1.5;
         }
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        h1, h2 { margin-top: 0; color: #1e293b; }
-        h2 { font-size: 1.2rem; margin-bottom: 15px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { color: #1e293b; text-align: center; margin-bottom: 30px; }
+        h2 { font-size: 1.1rem; margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
 
         .card {
             background: var(--card);
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
-        /* 配置区域样式 */
-        .server-item {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: center;
+        /* 查询栏 */
+        .query-box { display: flex; gap: 10px; margin-bottom: 10px; }
+        input[type="text"] {
+            width: 100%; padding: 10px 12px;
+            border: 1px solid var(--border); border-radius: 6px;
+            font-size: 14px; font-family: monospace;
         }
-
-        .server-input {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-family: monospace;
-        }
+        input[type="text"]:focus { outline: 2px solid var(--primary); border-color: transparent; }
 
         .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: opacity 0.2s;
+            padding: 10px 20px; border: none; border-radius: 6px;
+            font-weight: 600; cursor: pointer; white-space: nowrap;
+            transition: all 0.2s;
         }
-        .btn:hover { opacity: 0.9; }
         .btn-primary { background: var(--primary); color: white; }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-outline { background: transparent; border: 1px solid var(--border); color: #64748b; }
-        .btn-add { background: #eff6ff; color: var(--primary); width: 100%; margin-top: 5px; border: 1px dashed var(--primary); }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-danger { background: #fee2e2; color: var(--danger); padding: 6px 12px; font-size: 0.9em; }
+        .btn-danger:hover { background: #fecaca; }
 
-        /* 查询区域样式 */
-        .query-box {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .domain-input {
-            flex: 1;
-            padding: 12px;
-            font-size: 1.1rem;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-        }
+        /* 配置区 */
+        .preset-bar { display: flex; gap: 10px; margin-bottom: 15px; background: #f1f5f9; padding: 10px; border-radius: 8px; align-items: center; }
+        .preset-select { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; }
         
-        .domain-input:focus { border-color: var(--primary); outline: none; }
+        .server-list { display: flex; flex-direction: column; gap: 8px; }
+        .server-item { display: flex; gap: 8px; align-items: center; }
 
-        /* 表格样式 */
-        table { width: 100%; border-collapse: collapse; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
-        th { background: #f8fafc; font-weight: 600; color: #475569; }
+        /* 表格 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; padding: 12px; background: #f8fafc; color: #64748b; font-size: 0.9em; font-weight: 600; }
+        td { padding: 12px; border-top: 1px solid var(--border); vertical-align: middle; }
         
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.85em;
-            font-weight: 600;
+        .status-badge {
+            display: inline-flex; align-items: center; padding: 4px 8px;
+            border-radius: 99px; font-size: 12px; font-weight: 600;
         }
-        .badge-wait { background: #e2e8f0; color: #64748b; }
-        .badge-success { background: #dcfce7; color: var(--success); }
-        .badge-error { background: #fee2e2; color: var(--danger); }
+        .st-wait { background: #f1f5f9; color: #64748b; }
+        .st-ok { background: #dcfce7; color: #15803d; }
+        .st-err { background: #fee2e2; color: #b91c1c; }
+        
+        .ip-list { font-family: monospace; font-weight: bold; color: #0f172a; }
+        .meta-info { font-size: 0.85em; color: #94a3b8; margin-top: 4px; }
 
-        .ip-result { font-family: monospace; color: #0f172a; font-weight: bold; }
-        .err-msg { font-size: 0.9em; color: var(--danger); }
-        
-        .toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
+        .tips { font-size: 0.9em; color: #64748b; background: #fff7ed; padding: 15px; border-radius: 8px; border-left: 4px solid #f97316; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header style="text-align: center; margin-bottom: 30px;">
-        <h1>HTTPDNS 验证与配置工具</h1>
-    </header>
-
-    <div class="query-box">
-        <input type="text" id="domainInput" class="domain-input" value="www.baidu.com" placeholder="输入域名，例如: www.google.com">
-        <button class="btn btn-primary" style="padding: 0 30px; font-size: 1.1rem;" onclick="startQuery()" id="queryBtn">立即查询</button>
-    </div>
+    <h1>HTTPDNS 全能验证工具</h1>
 
     <div class="card">
-        <div class="toolbar">
-            <h2>HTTPDNS 服务器列表配置</h2>
-            <button class="btn btn-outline" onclick="resetDefaults()">重置为默认</button>
+        <div class="query-box">
+            <input type="text" id="domainInput" value="www.google.com" placeholder="请输入要解析的域名">
+            <button class="btn btn-primary" id="queryBtn" onclick="startQuery()">🚀 开始查询</button>
         </div>
-        <div id="serverListContainer">
-            </div>
-        <button class="btn btn-add" onclick="addEmptyServer()">+ 添加新服务器地址</button>
     </div>
 
     <div class="card">
-        <h2>查询结果对比</h2>
+        <h2>
+            <span>服务器配置</span>
+            <button class="btn" style="font-size:0.8em; color:#64748b; background:none; border:1px solid #e2e8f0;" onclick="resetServers()">↺ 重置列表</button>
+        </h2>
+        
+        <div class="preset-bar">
+            <span style="font-weight:bold; font-size:0.9em;">快速添加预设 (推荐使用):</span>
+            <select id="presetSelect" class="preset-select">
+                <option value="https://dns.google/resolve">Google (全球 - JSON API)</option>
+                <option value="https://cloudflare-dns.com/dns-query">Cloudflare (全球 - 推荐)</option>
+                <option value="https://doh.pub/dns-query">腾讯 DNSPod (国内 - 推荐)</option>
+                <option value="https://dns.alidns.com/resolve">阿里 AliDNS (国内 - JSON API)</option>
+                <option value="https://rubyfish.cn/dns-query">RubyFish (内置默认)</option>
+                <option value="https://doh.opendns.com/dns-query">OpenDNS (思科)</option>
+            </select>
+            <button class="btn btn-primary" style="padding: 8px 16px;" onclick="addPreset()">+ 添加</button>
+        </div>
+
+        <div id="serverList" class="server-list">
+            </div>
+    </div>
+
+    <div class="card">
+        <h2>查询结果</h2>
         <table id="resultTable">
             <thead>
                 <tr>
-                    <th style="width: 40%">服务器地址</th>
+                    <th style="width: 45%">服务器地址</th>
                     <th style="width: 15%">状态</th>
-                    <th style="width: 15%">耗时</th>
-                    <th style="width: 30%">解析 IP / 错误信息</th>
+                    <th style="width: 40%">解析结果 / 调试信息</th>
                 </tr>
             </thead>
             <tbody id="resultBody">
-                <tr><td colspan="4" style="text-align:center; color:#94a3b8;">点击上方“立即查询”开始测试</td></tr>
+                <tr><td colspan="3" style="text-align:center; color:#94a3b8; padding: 20px;">暂无数据，请点击开始查询</td></tr>
             </tbody>
         </table>
+    </div>
+
+    <div class="tips">
+        <strong>💡 常见问题排查：</strong>
+        <ul style="margin: 5px 0 0 20px; padding:0;">
+            <li>**Network Error?** 多数是 CORS 跨域限制或目标服务器网络不稳定导致。</li>
+            <li>**HTTP 400 错误？** 请检查地址是否正确（例如：Google/阿里必须是 `/resolve` 结尾）。</li>
+            <li>**提示**：使用域名比 IP 更稳定，且不会有证书信任问题。</li>
+        </ul>
     </div>
 </div>
 
 <script>
-    // 1. 定义默认的服务器列表 (题目要求的三个)
+    // 默认服务器列表 (全部采用域名，避免证书问题)
     const DEFAULT_SERVERS = [
-        'https://rubyfish.cn/dns-query',
-        'https://1.12.12.12/dns-query',
-        'https://120.53.53.53/dns-query'
+        'https://rubyfish.cn/dns-query', 
+        'https://dns.google/resolve',       
+        'https://doh.pub/dns-query',     // 腾讯云 DNSPod 域名地址
+        'https://cloudflare-dns.com/dns-query' 
     ];
 
-    // 当前的服务器列表 (初始化为默认)
-    let currentServers = [...DEFAULT_SERVERS];
+    let servers = [...DEFAULT_SERVERS];
 
-    // 页面加载时渲染配置列表
-    window.onload = function() {
-        renderServerConfig();
+    // 初始化
+    window.onload = () => {
+        renderServerList();
     };
 
-    // --- 功能函数：渲染配置列表 ---
-    function renderServerConfig() {
-        const container = document.getElementById('serverListContainer');
+    function renderServerList() {
+        const container = document.getElementById('serverList');
         container.innerHTML = '';
-
-        currentServers.forEach((url, index) => {
+        servers.forEach((url, index) => {
             const div = document.createElement('div');
             div.className = 'server-item';
             div.innerHTML = `
-                <input type="text" class="server-input" value="${url}" onchange="updateServer(${index}, this.value)">
-                <button class="btn btn-danger" onclick="removeServer(${index})" title="删除">×</button>
+                <input type="text" value="${url}" onchange="updateServer(${index}, this.value)">
+                <button class="btn btn-danger" onclick="removeServer(${index})">删除</button>
             `;
             container.appendChild(div);
         });
     }
 
-    // --- 功能函数：列表管理 ---
-    function addEmptyServer() {
-        currentServers.push(''); // 添加空行
-        renderServerConfig();
+    function addPreset() {
+        const select = document.getElementById('presetSelect');
+        const url = select.value;
+        if (!servers.includes(url)) {
+            servers.push(url);
+            renderServerList();
+        } else {
+            alert('该服务器已在列表中');
+        }
     }
 
     function removeServer(index) {
-        currentServers.splice(index, 1);
-        renderServerConfig();
+        servers.splice(index, 1);
+        renderServerList();
     }
 
-    function updateServer(index, value) {
-        currentServers[index] = value.trim();
+    function updateServer(index, val) {
+        servers[index] = val.trim();
     }
 
-    function resetDefaults() {
-        if(confirm('确定要重置为默认的三个服务器吗？')) {
-            currentServers = [...DEFAULT_SERVERS];
-            renderServerConfig();
+    function resetServers() {
+        if(confirm("恢复默认列表？")) {
+            servers = [...DEFAULT_SERVERS];
+            renderServerList();
         }
     }
 
-    // --- 核心功能：执行查询 ---
     async function startQuery() {
         const domain = document.getElementById('domainInput').value.trim();
-        const tbody = document.getElementById('resultBody');
+        if (!domain) return alert('请输入域名');
+
         const btn = document.getElementById('queryBtn');
-
-        if (!domain) {
-            alert("请输入域名");
-            return;
-        }
-
-        // 过滤掉空的服务器地址
-        const activeServers = currentServers.filter(s => s.length > 0);
-
-        if (activeServers.length === 0) {
-            alert("请至少配置一个有效的服务器地址");
-            return;
-        }
-
-        // 界面状态更新
+        const tbody = document.getElementById('resultBody');
+        
         btn.disabled = true;
-        btn.innerText = "查询中...";
-        tbody.innerHTML = ''; // 清空旧结果
+        btn.innerHTML = '查询中...';
+        tbody.innerHTML = '';
 
-        // 初始化表格行
+        const activeServers = servers.filter(s => s.length > 0);
+
         activeServers.forEach((server, index) => {
             const tr = document.createElement('tr');
             tr.id = `row-${index}`;
             tr.innerHTML = `
-                <td style="word-break: break-all;">${server}</td>
-                <td><span class="badge badge-wait">等待中...</span></td>
-                <td>-</td>
+                <td style="word-break:break-all;">
+                    <div>${server}</div>
+                    <div class="meta-info">等待请求...</div>
+                </td>
+                <td><span class="status-badge st-wait">Pending</span></td>
                 <td>-</td>
             `;
             tbody.appendChild(tr);
         });
 
-        // 并发请求所有服务器
-        const promises = activeServers.map((server, index) => fetchDns(server, domain, index));
-        
+        const promises = activeServers.map((server, index) => doFetch(server, domain, index));
         await Promise.all(promises);
 
         btn.disabled = false;
-        btn.innerText = "立即查询";
+        btn.innerHTML = '🚀 开始查询';
     }
 
-    // --- 核心功能：单次请求逻辑 ---
-    async function fetchDns(serverUrl, domain, index) {
+    async function doFetch(serverUrl, domain, index) {
         const row = document.getElementById(`row-${index}`);
         const statusCell = row.cells[1];
-        const timeCell = row.cells[2];
-        const resultCell = row.cells[3];
+        const resultCell = row.cells[2];
+        const metaDiv = row.cells[0].querySelector('.meta-info');
         
-        statusCell.innerHTML = '<span class="badge" style="background:#eff6ff; color:blue;">请求中</span>';
         const startTime = performance.now();
 
         try {
-            // 构造 URL: 标准 DoH 使用 ?name=域名&type=A
-            // 注意：部分 IP 直连可能需要忽略证书错误，但在浏览器端 JS 无法控制忽略证书，
-            // 用户必须先在浏览器单独访问该 IP 接受不安全证书。
             const urlObj = new URL(serverUrl);
+            
             urlObj.searchParams.set('name', domain);
             urlObj.searchParams.set('type', 'A');
 
-            const response = await fetch(urlObj.toString(), {
-                method: 'GET',
-                headers: { 'Accept': 'application/dns-json' }
-            });
+            const headers = { 'Accept': 'application/dns-json' };
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const res = await fetch(urlObj.toString(), { method: 'GET', headers });
 
-            const data = await response.json();
+            if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+            const data = await res.json();
             const endTime = performance.now();
             const duration = Math.round(endTime - startTime);
 
-            timeCell.innerText = `${duration}ms`;
+            metaDiv.textContent = `耗时: ${duration}ms`;
 
             if (data.Answer) {
-                statusCell.innerHTML = '<span class="badge badge-success">成功</span>';
-                // 提取 IP
+                statusCell.innerHTML = `<span class="status-badge st-ok">Success</span>`;
                 const ips = data.Answer
-                    .filter(r => r.type === 1) // Type 1 是 A 记录
+                    .filter(r => r.type === 1) // A 记录
                     .map(r => r.data)
                     .join(', ');
-                
-                resultCell.innerHTML = `<span class="ip-result">${ips || '无A记录'}</span>`;
+                resultCell.innerHTML = `<div class="ip-list">${ips || '无A记录'}</div>`;
+                if(!ips && data.Answer.length > 0) {
+                     // 可能是 CNAME 或其他记录
+                    resultCell.innerHTML += `<div class="meta-info">非A记录数据: ${JSON.stringify(data.Answer.map(r => ({type: r.type, data: r.data})))}</div>`;
+                }
             } else {
-                statusCell.innerHTML = '<span class="badge badge-error">无结果</span>';
-                resultCell.innerText = '未返回 Answer 数据';
+                statusCell.innerHTML = `<span class="status-badge st-ok">无结果</span>`;
+                resultCell.textContent = `Status: ${data.Status} (无 Answer 字段)`;
             }
 
-        } catch (error) {
-            const endTime = performance.now();
-            timeCell.innerText = `${Math.round(endTime - startTime)}ms`;
-            statusCell.innerHTML = '<span class="badge badge-error">失败</span>';
+        } catch (err) {
+            const duration = Math.round(performance.now() - startTime);
+            metaDiv.textContent = `耗时: ${duration}ms`;
+            statusCell.innerHTML = `<span class="status-badge st-err">Error</span>`;
             
-            let msg = error.message;
-            if (msg.includes('Failed to fetch')) {
-                msg = '连接失败 (可能是跨域/证书问题)';
+            let errorMsg = err.message;
+            if (errorMsg.includes('Failed to fetch')) {
+                errorMsg = '连接被阻断 (CORS 或 网络错误)';
             }
-            resultCell.innerHTML = `<span class="err-msg">${msg}</span>`;
+            resultCell.innerHTML = `<span style="color:#b91c1c;">${errorMsg}</span>`;
         }
     }
 </script>
