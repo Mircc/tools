@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTTPDNS 全能验证工具 </title>
+    <title>HTTPDNS 全能验证工具</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -106,7 +106,6 @@
                 <option value="https://cloudflare-dns.com/dns-query">Cloudflare (全球 - 推荐)</option>
                 <option value="https://doh.pub/dns-query">腾讯 DNSPod (国内 - 推荐)</option>
                 <option value="https://dns.alidns.com/resolve">阿里 AliDNS (国内 - JSON API)</option>
-                <option value="https://rubyfish.cn/dns-query">RubyFish (内置默认)</option>
                 <option value="https://doh.opendns.com/dns-query">OpenDNS (思科)</option>
             </select>
             <button class="btn btn-primary" style="padding: 8px 16px;" onclick="addPreset()">+ 添加</button>
@@ -137,18 +136,16 @@
         <ul style="margin: 5px 0 0 20px; padding:0;">
             <li>**Network Error?** 多数是 CORS 跨域限制或目标服务器网络不稳定导致。</li>
             <li>**HTTP 400 错误？** 请检查地址是否正确（例如：Google/阿里必须是 `/resolve` 结尾）。</li>
-            <li>**提示**：使用域名比 IP 更稳定，且不会有证书信任问题。</li>
         </ul>
     </div>
 </div>
 
 <script>
-    // 默认服务器列表 (全部采用域名，避免证书问题)
+    // 默认服务器列表 (只保留大厂的域名地址)
     const DEFAULT_SERVERS = [
-        'https://rubyfish.cn/dns-query', 
         'https://dns.google/resolve',       
-        'https://doh.pub/dns-query',     // 腾讯云 DNSPod 域名地址
-        'https://cloudflare-dns.com/dns-query' 
+        'https://cloudflare-dns.com/dns-query', 
+        'https://doh.pub/dns-query'     // 腾讯云 DNSPod 域名地址
     ];
 
     let servers = [...DEFAULT_SERVERS];
@@ -267,7 +264,6 @@
                     .join(', ');
                 resultCell.innerHTML = `<div class="ip-list">${ips || '无A记录'}</div>`;
                 if(!ips && data.Answer.length > 0) {
-                     // 可能是 CNAME 或其他记录
                     resultCell.innerHTML += `<div class="meta-info">非A记录数据: ${JSON.stringify(data.Answer.map(r => ({type: r.type, data: r.data})))}</div>`;
                 }
             } else {
