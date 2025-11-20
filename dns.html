@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTTPDNS/DNS 统一验证工具</title>
+    <title>HTTPDNS/DNS 统一验证工具 (全球丰富节点版)</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -97,7 +97,7 @@
         
         <div class="query-box-top">
             <div class="input-group domain-group">
-                <label for="domainInput">要查询的域名 (例如: google.com)</label>
+                <label for="domainInput">要查询的域名 (例如: www.baidu.com)</label>
                 <input type="text" id="domainInput" value="www.google.com" placeholder="请输入域名">
             </div>
             
@@ -107,7 +107,7 @@
         <div id="customServerWrapper" style="display: none; opacity: 0;">
             <div class="input-group">
                 <label for="customServerInput">自定义 DNS/HTTPDNS 服务器 (IP 或 URL)</label>
-                <input type="text" id="customServerInput" placeholder="例如: 8.8.8.8 或 https://doh.pub/dns-query">
+                <input type="text" id="customServerInput" placeholder="例如: 8.8.8.8 或 https://dns.digitale-gesellschaft.ch/dns-query">
             </div>
         </div>
     </div>
@@ -116,6 +116,9 @@
         <strong>⚠️ 传统 DNS 限制提示：</strong>
         <p style="margin: 5px 0 0 0;">
         由于浏览器安全模型限制，本工具无法执行传统的 UDP/TCP DNS 解析。当您输入 **IP 地址**时，系统会**自动将其转换为 `https://IP/dns-query`** 格式进行 HTTPDNS 测试。
+        </p>
+        <p style="margin: 5px 0 0 0;">
+        **内置服务器列表已更新：** 包含 Google, Cloudflare, AliDNS, AdGuard, OpenDNS 以及 **德国和瑞士** 的注重隐私的欧洲节点，覆盖全球主要区域。
         </p>
     </div>
 
@@ -137,12 +140,16 @@
 </div>
 
 <script>
-    // 默认服务器列表 (大厂域名精简版 + 阿里DNS)
+    // 默认服务器列表 (覆盖全球，新增德国和瑞士的欧洲节点)
     const DEFAULT_SERVERS = [
-        'https://dns.google/resolve',       
-        'https://cloudflare-dns.com/dns-query', 
-        'https://doh.pub/dns-query',        // 腾讯云 DNSPod
-        'https://dns.alidns.com/resolve'    // 阿里巴巴 
+        'https://dns.google/resolve',        // Google (全球)
+        'https://cloudflare-dns.com/dns-query', // Cloudflare (全球)
+        'https://dns.alidns.com/resolve',    // 阿里巴巴 (国内/亚洲)
+        'https://dns.adguard-dns.com/dns-query', // AdGuard (全球/专业过滤)
+        'https://doh.opendns.com/dns-query',     // OpenDNS/Cisco (欧洲/全球)
+        'https://public.dns.iij.jp/dns-query',    // IIJ Public DNS (日本/亚洲)
+        'https://doh.ffmuc.net/dns-query',       // Freifunk/Digitalcourage (德国)
+        'https://dns.digitale-gesellschaft.ch/dns-query' // Digital Society (瑞士)
     ];
 
     // IPv4 正则表达式（用于判断是否为传统 IP 输入）
