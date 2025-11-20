@@ -241,18 +241,20 @@
                 <button class="tab-btn active" data-tab="headers">Headers</button>
                 <button class="tab-btn" data-tab="auth">认证 (Auth)</button>
                 <button class="tab-btn" data-tab="body">Body (主体)</button>
+                <button class="tab-btn" data-tab="import">导入 JSON</button>
             </div>
             
             <div class="tab-content active" id="tab-headers">
+                <div class="input-group">
+                    <label for="customUAInput">User-Agent</label>
+                    <input type="text" placeholder="Value (例如: custom-ua-client)" id="customUAInput" value="REST-API-Client/1.0 (Web Debugger)">
+                </div>
+
+                <h4 style="font-size: 1em; margin-top: 1rem; margin-bottom: 0.5rem;">自定义 Headers</h4>
                 <div class="key-value-actions">
                     <button class="btn-secondary" id="addHeaderBtn">添加 Header</button>
                 </div>
                 <div id="headersContainer">
-                    <div class="key-value-row">
-                        <input type="text" placeholder="Key (例如: Content-Type)" value="User-Agent" disabled>
-                        <input type="text" placeholder="Value (例如: custom-ua-client)" id="customUAInput" value="REST-API-Client/1.0 (Web Debugger)">
-                        <button class="btn-danger" disabled>移除</button>
-                    </div>
                     </div>
             </div>
 
@@ -298,6 +300,15 @@
                     <textarea id="requestBodyTextarea" placeholder='{"key": "value", "id": 1}'></textarea>
                 </div>
             </div>
+            
+            <div class="tab-content" id="tab-import">
+                <div class="input-group">
+                    <label for="importJsonTextarea">粘贴 HTTPie/Postman JSON 请求配置</label>
+                    <textarea id="importJsonTextarea" placeholder="请粘贴完整的 HTTPie/Postman 导出 JSON 文本到此处..."></textarea>
+                </div>
+                <button class="btn-primary" id="loadJsonBtn" style="width: 100%;">导入并应用配置</button>
+                <p id="importStatus" style="margin-top: 10px; color: #f97316; font-size: 0.9em;">支持 HTTPie 1.0.0 格式。</p>
+            </div>
 
         </div>
 
@@ -329,6 +340,7 @@
     const methodSelect = document.getElementById('methodSelect');
     const headersContainer = document.getElementById('headersContainer');
     const addHeaderBtn = document.getElementById('addHeaderBtn');
+    const customUAInput = document.getElementById('customUAInput'); // 专用 UA 输入框
 
     const authTypeSelect = document.getElementById('authTypeSelect');
     const bearerTokenGroup = document.getElementById('bearerTokenGroup');
@@ -340,12 +352,16 @@
     const bodyTypeSelect = document.getElementById('bodyTypeSelect');
     const requestBodyTextarea = document.getElementById('requestBodyTextarea');
     const bodyTextareaGroup = document.getElementById('bodyTextareaGroup');
-    const customUAInput = document.getElementById('customUAInput');
 
     const statusDisplay = document.getElementById('statusDisplay');
     const responseHeaders = document.getElementById('responseHeaders');
     const responseBody = document.getElementById('responseBody');
     const requestTabs = document.getElementById('requestTabs');
+    
+    // Import elements
+    const importJsonTextarea = document.getElementById('importJsonTextarea');
+    const loadJsonBtn = document.getElementById('loadJsonBtn');
+    const importStatus = document.getElementById('importStatus');
 
     // --- 初始化和事件监听 ---
 
@@ -367,7 +383,10 @@
         // 5. 选项卡切换事件
         requestTabs.addEventListener('click', handleTabSwitch);
         
-        // 初始 Header 行
+        // 6. 导入 JSON 按钮事件
+        loadJsonBtn.addEventListener('click', handleImportJson);
+
+        // 初始 Header：添加 Accept
         addHeaderRow('Accept', 'application/json, text/plain, */*');
     }
     
@@ -385,6 +404,12 @@
         // 激活选中的按钮和内容
         e.target.classList.add('active');
         document.getElementById(`tab-${targetTab}`).classList.add('active');
+        
+        // 如果切换到导入Tab，清空状态
+        if (targetTab === 'import') {
+            importStatus.textContent = '支持 HTTPie 1.0.0 格式。';
+            importStatus.style.color = '#f97316';
+        }
     }
 
     // --- 动态 Header 逻辑 ---
@@ -393,7 +418,7 @@
         const row = document.createElement('div');
         row.className = 'key-value-row';
         row.innerHTML = `
-            <input type="text" placeholder="Key (例如: Authorization)" value="${key}">
+            <input type="text" placeholder="Key (例如: Content-Type)" value="${key}">
             <input type="text" placeholder="Value" value="${value}">
             <button class="btn-danger">移除</button>
         `;
@@ -404,9 +429,22 @@
 
         headersContainer.appendChild(row);
     }
+    
+    function clearDynamicHeaders() {
+        // 移除所有动态添加的 Header 行
+        headersContainer.innerHTML = ''; 
+    }
 
     function getCustomHeaders() {
         const headers = {};
+        
+        // 1. 获取 User-Agent
+        const ua = customUAInput.value.trim();
+        if (ua) {
+            headers['User-Agent'] = ua;
+        }
+
+        // 2. 获取自定义 Headers
         const rows = headersContainer.querySelectorAll('.key-value-row');
         
         rows.forEach(row => {
@@ -417,10 +455,6 @@
             const value = valueInput.value.trim();
 
             if (key && value) {
-                // User-Agent 特殊处理：使用自定义 UA，但如果为空则不发送
-                if (key.toLowerCase() === 'user-agent' && !value) {
-                    return; 
-                }
                 headers[key] = value;
             }
         });
@@ -448,23 +482,99 @@
         } else {
             bodyTextareaGroup.style.display = 'block';
         }
-        
-        // 根据 Body 类型设置默认 Content-Type (用户可以在 Headers 中覆盖)
-        const contentTypeHeader = {
-            'json': 'application/json',
-            'text': 'text/plain',
-            'form': 'application/x-www-form-urlencoded',
-        }[bodyType] || '';
+    }
 
-        // 尝试自动设置或更新 Content-Type Header
-        // 实际操作复杂，为了简化，我们让用户在 Headers 标签页中自己管理 Content-Type 
-        // 除非 Body Type 是 'none'，否则需要 Body
+
+    // --- 导入 JSON 核心逻辑 (New) ---
+
+    function handleImportJson() {
+        const jsonString = importJsonTextarea.value.trim();
+        if (!jsonString) {
+            importStatus.textContent = '❌ 请粘贴 HTTPie/Postman JSON 文本。';
+            importStatus.style.color = '#dc2626';
+            return;
+        }
         
-        // 仅在 POST/PUT/PATCH 且 Body Type 非 'none' 时，提示用户检查 Content-Type
-        if (['POST', 'PUT', 'PATCH'].includes(methodSelect.value) && bodyType !== 'none') {
-             requestBodyTextarea.placeholder = `请确保 Headers 中设置了 Content-Type: ${contentTypeHeader}`;
-        } else {
-             requestBodyTextarea.placeholder = '';
+        try {
+            const data = JSON.parse(jsonString);
+            loadRequestFromHttpieJson(data);
+            
+            importStatus.textContent = '✅ 配置导入成功！请检查 Headers 和 Body 标签页。';
+            importStatus.style.color = '#166534';
+            
+            // 自动切换到 Headers 标签页进行检查
+            document.querySelector('.tab-btn[data-tab="headers"]').click();
+
+        } catch (e) {
+            importStatus.textContent = `❌ JSON 解析失败，请检查格式。错误: ${e.message}`;
+            importStatus.style.color = '#dc2626';
+        }
+    }
+    
+    function loadRequestFromHttpieJson(data) {
+        const entry = data.entry;
+        if (!entry) throw new Error('JSON 格式错误：缺少 "entry" 字段。');
+
+        // 1. URL 和 Method
+        urlInput.value = entry.url || '';
+        methodSelect.value = entry.method.toUpperCase() || 'GET';
+        
+        // 2. Headers
+        clearDynamicHeaders();
+        // 重置 User-Agent 为默认（或保留用户上次的输入）
+        // customUAInput.value = 'REST-API-Client/1.0 (Web Debugger)'; 
+        
+        if (entry.headers && Array.isArray(entry.headers)) {
+            entry.headers.forEach(header => {
+                // HTTPie format has { "name": "...", "value": "..." }
+                addHeaderRow(header.name, header.value);
+            });
+        }
+        
+        // 3. Auth
+        if (entry.auth && entry.auth.type) {
+            const type = entry.auth.type.toLowerCase();
+            if (type === 'bearer' && entry.auth.token) {
+                authTypeSelect.value = 'bearer';
+                bearerTokenInput.value = entry.auth.token;
+            } else if (type === 'basic' && entry.auth.username) {
+                authTypeSelect.value = 'basic';
+                basicAuthUsername.value = entry.auth.username || '';
+                basicAuthPassword.value = entry.auth.password || '';
+            } else {
+                authTypeSelect.value = 'none';
+            }
+            updateAuthFields();
+        }
+
+
+        // 4. Body
+        const body = entry.body;
+        if (body) {
+            if (body.type === 'text' && body.text && body.text.value) {
+                // 检查 format，如果是 JSON，则自动选择 JSON 类型
+                const format = (body.text.format || '').toLowerCase();
+                if (format.includes('json')) {
+                    bodyTypeSelect.value = 'json';
+                } else if (format.includes('text')) {
+                    bodyTypeSelect.value = 'text';
+                } else {
+                    bodyTypeSelect.value = 'none';
+                }
+                
+                requestBodyTextarea.value = body.text.value;
+                
+            } else if (body.type === 'form' && body.form && body.form.fields.length > 0) {
+                 // 简单的 Form 字段，用户需手动转换，但我们可以设置 Body 类型为 form
+                 bodyTypeSelect.value = 'form';
+                 requestBodyTextarea.value = JSON.stringify(body.form.fields, null, 2);
+                 alert('Body 包含 Form 字段，已将其 JSON 格式内容填充到 Body 文本区。请确保 Headers 中的 Content-Type 正确。');
+
+            } else {
+                bodyTypeSelect.value = 'none';
+                requestBodyTextarea.value = '';
+            }
+            updateBodyFields();
         }
     }
 
@@ -486,7 +596,8 @@
             headers: getCustomHeaders(),
         };
 
-        // 2. 处理认证 (Auth)
+        // 2. 处理认证 (Auth) (已在 getCustomHeaders 中包含 Bearer/Basic)
+        // 注意：此处是旧代码遗留，Bearer/Basic Auth 逻辑应在 sendRequest 中处理，因为它会修改 headers 对象。
         const authType = authTypeSelect.value;
         if (authType === 'bearer') {
             const token = bearerTokenInput.value.trim();
@@ -501,13 +612,13 @@
                 requestOptions.headers['Authorization'] = `Basic ${encoded}`;
             }
         }
-
+        
         // 3. 处理 Body
         const bodyType = bodyTypeSelect.value;
         const bodyContent = requestBodyTextarea.value;
         
-        if (['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none') {
-            // GET/HEAD/DELETE通常不需要body，除非API特殊要求
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && bodyType !== 'none') {
+            // DELETE 有时也带 body
             requestOptions.body = bodyContent;
         }
 
