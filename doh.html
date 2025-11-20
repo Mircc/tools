@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTTPDNS 全能验证工具</title>
+    <title>HTTPDNS/DNS 统一验证工具 (精简版)</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -24,8 +24,8 @@
         }
 
         .container { max-width: 1000px; margin: 0 auto; }
-        h1 { color: #1e293b; text-align: center; margin-bottom: 30px; }
-        h2 { font-size: 1.1rem; margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+        h1 { color: #1e293b; text-align: center; margin-bottom: 20px; }
+        h2 { font-size: 1.1rem; margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; }
 
         .card {
             background: var(--card);
@@ -35,12 +35,15 @@
             margin-bottom: 20px;
         }
 
-        /* 查询栏 */
-        .query-box { display: flex; gap: 10px; margin-bottom: 10px; }
+        /* 输入与查询栏 */
+        .query-box { display: flex; gap: 10px; margin-bottom: 15px; }
+        .input-group { width: 50%; }
+        .input-group label { display: block; font-size: 0.9em; font-weight: 600; margin-bottom: 5px; color: #475569; }
+
         input[type="text"] {
             width: 100%; padding: 10px 12px;
             border: 1px solid var(--border); border-radius: 6px;
-            font-size: 14px; font-family: monospace;
+            font-size: 14px; font-family: monospace; box-sizing: border-box;
         }
         input[type="text"]:focus { outline: 2px solid var(--primary); border-color: transparent; }
 
@@ -48,21 +51,14 @@
             padding: 10px 20px; border: none; border-radius: 6px;
             font-weight: 600; cursor: pointer; white-space: nowrap;
             transition: all 0.2s;
+            margin-top: 25px; /* 匹配 label 高度 */
+            height: 40px;
         }
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
-        .btn-danger { background: #fee2e2; color: var(--danger); padding: 6px 12px; font-size: 0.9em; }
-        .btn-danger:hover { background: #fecaca; }
 
-        /* 配置区 */
-        .preset-bar { display: flex; gap: 10px; margin-bottom: 15px; background: #f1f5f9; padding: 10px; border-radius: 8px; align-items: center; }
-        .preset-select { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; }
-        
-        .server-list { display: flex; flex-direction: column; gap: 8px; }
-        .server-item { display: flex; gap: 8px; align-items: center; }
-
-        /* 表格 */
+        /* 表格样式保持不变 */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; padding: 12px; background: #f8fafc; color: #64748b; font-size: 0.9em; font-weight: 600; }
         td { padding: 12px; border-top: 1px solid var(--border); vertical-align: middle; }
@@ -84,35 +80,29 @@
 <body>
 
 <div class="container">
-    <h1>HTTPDNS 全能验证工具</h1>
+    <h1>HTTPDNS/DNS 统一验证工具</h1>
 
     <div class="card">
         <div class="query-box">
-            <input type="text" id="domainInput" value="www.google.com" placeholder="请输入要解析的域名">
+            <div class="input-group">
+                <label for="domainInput">要查询的域名 (例如: www.baidu.com)</label>
+                <input type="text" id="domainInput" value="www.google.com" placeholder="请输入域名">
+            </div>
+            
+            <div class="input-group">
+                <label for="customServerInput">自定义 DNS/HTTPDNS 服务器 (IP 或 URL)</label>
+                <input type="text" id="customServerInput" placeholder="例如: 8.8.8.8 或 https://doh.pub/dns-query">
+            </div>
+            
             <button class="btn btn-primary" id="queryBtn" onclick="startQuery()">🚀 开始查询</button>
         </div>
     </div>
-
-    <div class="card">
-        <h2>
-            <span>服务器配置</span>
-            <button class="btn" style="font-size:0.8em; color:#64748b; background:none; border:1px solid #e2e8f0;" onclick="resetServers()">↺ 重置列表</button>
-        </h2>
-        
-        <div class="preset-bar">
-            <span style="font-weight:bold; font-size:0.9em;">快速添加预设 (推荐使用):</span>
-            <select id="presetSelect" class="preset-select">
-                <option value="https://dns.google/resolve">Google (全球 - JSON API)</option>
-                <option value="https://cloudflare-dns.com/dns-query">Cloudflare (全球 - 推荐)</option>
-                <option value="https://doh.pub/dns-query">腾讯 DNSPod (国内 - 推荐)</option>
-                <option value="https://dns.alidns.com/resolve">阿里 AliDNS (国内 - JSON API)</option>
-                <option value="https://doh.opendns.com/dns-query">OpenDNS (思科)</option>
-            </select>
-            <button class="btn btn-primary" style="padding: 8px 16px;" onclick="addPreset()">+ 添加</button>
-        </div>
-
-        <div id="serverList" class="server-list">
-            </div>
+    
+    <div class="tips">
+        <strong>⚠️ 传统 DNS 限制提示：</strong>
+        <p style="margin: 5px 0 0 0;">
+        由于浏览器安全模型限制，本工具无法执行传统的 UDP/TCP DNS 解析。当您输入 **IP 地址**时，系统会**自动将其转换为 `https://IP/dns-query`** 格式进行 HTTPDNS 测试。
+        </p>
     </div>
 
     <div class="card">
@@ -130,75 +120,55 @@
             </tbody>
         </table>
     </div>
-
-    <div class="tips">
-        <strong>💡 常见问题排查：</strong>
-        <ul style="margin: 5px 0 0 20px; padding:0;">
-            <li>**Network Error?** 多数是 CORS 跨域限制或目标服务器网络不稳定导致。</li>
-            <li>**HTTP 400 错误？** 请检查地址是否正确（例如：Google/阿里必须是 `/resolve` 结尾）。</li>
-        </ul>
-    </div>
 </div>
 
 <script>
-    // 默认服务器列表 (只保留大厂的域名地址)
+    // 默认服务器列表 (大厂域名精简版 + 阿里DNS)
     const DEFAULT_SERVERS = [
         'https://dns.google/resolve',       
         'https://cloudflare-dns.com/dns-query', 
-        'https://doh.pub/dns-query'     // 腾讯云 DNSPod 域名地址
+        'https://doh.pub/dns-query',        // 腾讯云 DNSPod
+        'https://dns.alidns.com/resolve'    // 阿里巴巴 (新增)
     ];
 
-    let servers = [...DEFAULT_SERVERS];
+    // IPv4 正则表达式（用于判断是否为传统 IP 输入）
+    const IPV4_REGEX = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
 
-    // 初始化
-    window.onload = () => {
-        renderServerList();
-    };
+    /**
+     * 根据用户输入，智能生成要查询的服务器列表
+     * @returns {string[]} 包含所有要查询的 URL 列表
+     */
+    function prepareServers() {
+        const customServerInput = document.getElementById('customServerInput').value.trim();
+        let serversToQuery = [...DEFAULT_SERVERS];
+        let customServerUrl = '';
 
-    function renderServerList() {
-        const container = document.getElementById('serverList');
-        container.innerHTML = '';
-        servers.forEach((url, index) => {
-            const div = document.createElement('div');
-            div.className = 'server-item';
-            div.innerHTML = `
-                <input type="text" value="${url}" onchange="updateServer(${index}, this.value)">
-                <button class="btn btn-danger" onclick="removeServer(${index})">删除</button>
-            `;
-            container.appendChild(div);
-        });
-    }
-
-    function addPreset() {
-        const select = document.getElementById('presetSelect');
-        const url = select.value;
-        if (!servers.includes(url)) {
-            servers.push(url);
-            renderServerList();
-        } else {
-            alert('该服务器已在列表中');
+        if (customServerInput) {
+            if (IPV4_REGEX.test(customServerInput)) {
+                // 传统 DNS IP 输入，自动转换为 HTTPDNS (https + /dns-query)
+                customServerUrl = `https://${customServerInput}/dns-query`;
+                console.warn(`[DNS IP 转换]: IP地址 ${customServerInput} 已转换为 DoH URL: ${customServerUrl}`);
+            } else if (!customServerInput.startsWith('http')) {
+                // 域名输入但缺少协议头，假设为 HTTPS
+                customServerUrl = `https://${customServerInput}`;
+            } else {
+                // 完整的 HTTP/HTTPS URL
+                customServerUrl = customServerInput;
+            }
+            serversToQuery.push(customServerUrl);
         }
-    }
 
-    function removeServer(index) {
-        servers.splice(index, 1);
-        renderServerList();
-    }
-
-    function updateServer(index, val) {
-        servers[index] = val.trim();
-    }
-
-    function resetServers() {
-        if(confirm("恢复默认列表？")) {
-            servers = [...DEFAULT_SERVERS];
-            renderServerList();
-        }
+        // 移除重复项并确保非空
+        serversToQuery = Array.from(new Set(serversToQuery)).filter(s => s.length > 0);
+        
+        return serversToQuery;
     }
 
     async function startQuery() {
         const domain = document.getElementById('domainInput').value.trim();
         if (!domain) return alert('请输入域名');
+
+        const serversToQuery = prepareServers();
 
         const btn = document.getElementById('queryBtn');
         const tbody = document.getElementById('resultBody');
@@ -207,14 +177,19 @@
         btn.innerHTML = '查询中...';
         tbody.innerHTML = '';
 
-        const activeServers = servers.filter(s => s.length > 0);
-
-        activeServers.forEach((server, index) => {
+        serversToQuery.forEach((server, index) => {
             const tr = document.createElement('tr');
             tr.id = `row-${index}`;
+            let displayUrl = server;
+            
+            // 优化显示：如果是自动转换的 IP 地址，进行提示
+            if (server.includes('/dns-query') && IPV4_REGEX.test(server.replace('https://', '').replace('/dns-query', ''))) {
+                displayUrl = `<span style="font-weight: bold; color: #f97316;">(自定义 IP 转换)</span> ${server}`;
+            }
+
             tr.innerHTML = `
                 <td style="word-break:break-all;">
-                    <div>${server}</div>
+                    <div>${displayUrl}</div>
                     <div class="meta-info">等待请求...</div>
                 </td>
                 <td><span class="status-badge st-wait">Pending</span></td>
@@ -223,7 +198,7 @@
             tbody.appendChild(tr);
         });
 
-        const promises = activeServers.map((server, index) => doFetch(server, domain, index));
+        const promises = serversToQuery.map((server, index) => doFetch(server, domain, index));
         await Promise.all(promises);
 
         btn.disabled = false;
@@ -241,6 +216,7 @@
         try {
             const urlObj = new URL(serverUrl);
             
+            // 标准参数
             urlObj.searchParams.set('name', domain);
             urlObj.searchParams.set('type', 'A');
 
@@ -278,7 +254,7 @@
             
             let errorMsg = err.message;
             if (errorMsg.includes('Failed to fetch')) {
-                errorMsg = '连接被阻断 (CORS 或 网络错误)';
+                errorMsg = '连接被阻断 (CORS、网络或证书错误)';
             }
             resultCell.innerHTML = `<span style="color:#b91c1c;">${errorMsg}</span>`;
         }
