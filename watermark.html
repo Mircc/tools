@@ -91,18 +91,28 @@
         .btn-download { background: #0294a7; color: white; }
         .btn-download:hover { background: #017887; }
 
-        /* 图片和 Canvas 区域 */
+        /* --- 大图优化区域 --- */
         .image-display {
             text-align: center;
             position: relative;
             padding: 10px 0;
             min-height: 200px;
+            
+            /* 限制显示容器的最大高度，避免页面被拉伸 */
+            max-height: 650px; 
+            overflow-y: auto; 
         }
         
-        #pic {
-            max-width: 100%;
+        #pic, #myCanvas {
+            max-width: 100%; /* 保证不会超出父容器宽度 (900px) */
+            max-height: 600px; /* 限制显示元素的最大高度 */
+            height: auto;    /* 维持纵横比 */
             display: block;
             margin: 0 auto;
+        }
+        /* ------------------ */
+        
+        #pic {
             /* 初始图片隐藏，直到上传 */
             display: none; 
         }
@@ -269,7 +279,6 @@
 
     window.onload = function() {
         // 1. 上传图片按钮点击 -> 触发文件选择
-        // 检查：确保 uploadFile 和 uploadImgBtn 正确绑定
         if (uploadImgBtn && uploadFile) {
             uploadImgBtn.addEventListener('click', () => {
                 uploadFile.click();
@@ -285,10 +294,9 @@
         // 4. 下载水印图片按钮
         saveWatermarkBtn.addEventListener('click', downloadWatermark);
         
-        // 5. 监听 Canvas 双击/长按 (移动端备用复制/保存)
+        // 5. 监听 Canvas 双击/长按 (移动端备用保存)
         myCanvas.addEventListener('dblclick', function() {
-            // 在移动端，双击可能无法触发长按，但可以作为额外的保存尝试
-            downloadWatermark(true); 
+             downloadWatermark(true); 
         });
 
         // 6. 回车键响应 '生成水印'
@@ -321,7 +329,7 @@
         reader.onload = function (event) {
             pic.src = event.target.result;
             pic.onload = function() {
-                // 在图片加载完成后，设置 Canvas 尺寸
+                // 设置 Canvas 内部尺寸为图片的自然尺寸（高分辨率）
                 myCanvas.width = pic.naturalWidth;
                 myCanvas.height = pic.naturalHeight;
                 
@@ -359,7 +367,7 @@
 
     function refresh_watermark(){
         const image = pic;
-        // 使用原图的 natural 尺寸作为 Canvas 尺寸，确保清晰度
+        // 使用 Canvas 的内部尺寸（图片原尺寸）进行绘图
         const wi = myCanvas.width;
         const he = myCanvas.height;
 
@@ -381,14 +389,14 @@
         
         const ctx = myCanvas.getContext("2d");
         
-        // 2. 绘制原图到 Canvas (使用原图的 natural 尺寸)
+        // 2. 绘制原图到 Canvas 
         ctx.drawImage(image, 0, 0, wi, he); 
         
         // 3. 准备水印文字设置
         ctx.fillStyle = rgba;
         ctx.font = `${size}px ${family}`;
         
-        // 4. 测量水印文本宽度
+        // 4. 测量水印文本宽度 (在原图分辨率下)
         const textMetrics = ctx.measureText(text);
         const textWidth = textMetrics.width;
         const textHeight = size; 
@@ -436,15 +444,13 @@
         if (rotate) {
             ctx.save();
             if (place === 'rxcenter') {
-                // 采用一个固定的偏移和斜角变换，实现斜角居中效果
                 ctx.setTransform(1, 0.5, -0.5, 1, wi * 0.2, he * 0.1); 
                 x = (wi / 2);
                 y = (he / 2);
             } else {
-                 // 对于非居中斜角，我们使用45度旋转
-                ctx.translate(wi / 2, he / 2); // 移动到中心
+                ctx.translate(wi / 2, he / 2); 
                 ctx.rotate(-45 * Math.PI / 180); 
-                ctx.translate(-wi / 2, -he / 2); // 移回原点
+                ctx.translate(-wi / 2, -he / 2); 
             }
         }
         
@@ -466,7 +472,7 @@
 
         const dataURL = myCanvas.toDataURL("image/png");
         
-        // **桌面端下载逻辑 (在移动端可能无效)**
+        // 桌面端下载逻辑 (移动端可能无效)
         const a = document.createElement('a');
         document.body.appendChild(a);
         a.href = dataURL;
@@ -474,15 +480,12 @@
         a.click();
         document.body.removeChild(a);
         
-        // 提示用户如何操作
         imageStatus.textContent = '✅ 水印图片下载尝试已开始。';
     }
 
 
     /**
      * 将十六进制颜色值转换为 RGB() 格式
-     * @param {string} sColor - 十六进制颜色字符串 (e.g., #000, #000000)
-     * @returns {string} - RGB(r,g,b) 格式字符串
      */
     function colorRgb(sColor) {
         sColor = sColor.toLowerCase().trim();
