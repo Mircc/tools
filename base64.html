@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Base64 编/解码工具</title>
+    <title>Base64 编/解码工具 (简约版)</title>
     <style>
         /* 沿用并优化自上一个工具的简约风格 */
         :root {
@@ -54,6 +54,9 @@
             font-size: 14px; font-family: monospace; box-sizing: border-box;
             resize: vertical;
         }
+        /* 添加一个 visual hint */
+        #outputText { cursor: copy; } 
+        
         textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
 
         select {
@@ -74,6 +77,17 @@
         .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
         
         .error-message { color: var(--danger); font-size: 0.9em; margin-top: 5px; }
+        
+        /* 提示信息样式 */
+        .tips { 
+            font-size: 0.9em; 
+            color: #64748b; 
+            background: #eff6ff; 
+            padding: 10px 15px; 
+            border-radius: 8px; 
+            border-left: 4px solid var(--primary); 
+            margin-bottom: 15px;
+        }
 
     </style>
 </head>
@@ -106,6 +120,9 @@
     </div>
 
     <div class="card">
+        <div class="tips">
+            💡 **提示：** 双击下方的文本框内容，可以快速复制结果到剪切板。
+        </div>
         <div class="input-group">
             <label for="outputText">输出结果 (解码或编码)</label>
             <textarea id="outputText" readonly placeholder="结果将显示在这里..."></textarea>
@@ -120,25 +137,63 @@
     const encodingSelect = document.getElementById('encodingSelect');
     const statusMessage = document.getElementById('statusMessage');
 
-    // Base64 字符集的简单正则检查 (不包括换行符)
+    // Base64 字符集的简单正则检查
     const BASE64_REGEX = /^[A-Za-z0-9+/=]*$/;
 
     window.onload = function() {
         // 监听回车键，触发查询
         document.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                e.preventDefault(); // 阻止默认的表单提交行为
+                e.preventDefault(); 
                 b64Action();
             }
         });
         
-        // 可选：实时输入监听，但为了保持简洁和性能，我们主要依赖按钮和回车
-        // inputText.addEventListener('input', b64Action);
+        // 监听双击事件，复制到剪切板
+        outputText.addEventListener('dblclick', function() {
+            copyToClipboard(outputText.value);
+        });
     }
 
     /**
+     * 将文本复制到剪切板，并给出反馈
+     * @param {string} text 
+     */
+    async function copyToClipboard(text) {
+        if (!text) {
+            statusMessage.textContent = '❌ 剪切板复制失败：输出框内容为空。';
+            return;
+        }
+        
+        try {
+            // 使用现代 Clipboard API
+            await navigator.clipboard.writeText(text);
+            
+            // 成功反馈
+            const originalStatus = statusMessage.textContent;
+            statusMessage.style.color = 'var(--success)';
+            statusMessage.textContent = '📋 复制成功！内容已存入剪切板。';
+            
+            // 几秒后恢复原状
+            setTimeout(() => {
+                statusMessage.style.color = 'var(--danger)';
+                statusMessage.textContent = originalStatus;
+            }, 3000);
+
+        } catch (err) {
+            // 失败反馈
+            statusMessage.textContent = '❌ 剪切板复制失败，请手动选择复制。';
+            console.error('Copy failed: ', err);
+            
+            // 尝试旧方法（选中内容并复制）作为备用
+            outputText.select();
+            document.execCommand('copy');
+        }
+    }
+
+
+    /**
      * 检查字符串是否可能是有效的 Base64 编码
-     * 规则：只包含 Base64 字符，且长度是 4 的倍数 (允许 0-2 个等号作为填充)
      * @param {string} str 
      * @returns {boolean}
      */
@@ -153,18 +208,6 @@
         // 2. 检查长度是否是 4 的倍数
         if (str.length % 4 !== 0) {
             return false;
-        }
-
-        // 3. 检查填充 ('=') 是否出现在末尾且数量正确 (0, 1, 或 2)
-        let padding = (str.match(/=/g) || []).length;
-        let nonPaddingLength = str.length - padding;
-        
-        // 非填充字符长度必须是 3 的倍数 (因为 3字节明文 -> 4字节Base64)
-        if (nonPaddingLength % 4 === 0) { 
-             // 如果 nonPaddingLength 是 4 的倍数，那么原始 Base64 长度就是 4k。
-             // 原始字节数是 3k。这不完全正确。
-             // 更简单的判断：Base64 长度 L % 4 必须是 0。
-             return true;
         }
         
         return true; 
@@ -192,28 +235,22 @@
         
         if (action === 'Decode') {
             try {
-                // 1. Base64 解码 (使用 atob)
                 const binaryString = atob(input);
                 
-                // 2. 将 Base64 的字节串转换为字节数组
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
                 }
                 
-                // 3. 使用 TextDecoder 和用户选择的编码转换成字符串
                 const decoder = new TextDecoder(encoding);
                 outputText.value = decoder.decode(bytes);
                 statusMessage.textContent = `✅ 成功：已按 ${encoding} 编码进行 Base64 解码。`;
 
             } catch (e) {
-                // 如果解码失败，可能是输入不是 Base64，或者 Base64 格式错误。
-                // 此时执行编码操作作为备选。
                 statusMessage.textContent = `⚠️ 解码失败 (${e.message})，尝试编码...`;
                 encodeInput(input, encoding);
             }
         } else {
-            // 执行编码
             encodeInput(input, encoding);
         }
     }
@@ -225,17 +262,14 @@
      */
     function encodeInput(input, encoding) {
         try {
-            // 1. 使用 TextEncoder 和用户选择的编码将字符串转换为字节数组
             const encoder = new TextEncoder(encoding);
             const bytes = encoder.encode(input);
             
-            // 2. 将字节数组转换为 Base64 (需要先转回 "binary" string)
             let binaryString = '';
             for (let i = 0; i < bytes.length; i++) {
                 binaryString += String.fromCharCode(bytes[i]);
             }
             
-            // 3. Base64 编码
             outputText.value = btoa(binaryString);
             statusMessage.textContent = `✅ 成功：已按 ${encoding} 编码进行 Base64 编码。`;
 
