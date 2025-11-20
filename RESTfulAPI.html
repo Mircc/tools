@@ -59,7 +59,7 @@
             color: #475569; 
         }
 
-        input[type="text"], textarea, select {
+        input[type="text"], textarea, select, input[type="password"] {
             width: 100%; 
             padding: 10px 12px;
             border: 1px solid var(--border); 
@@ -206,6 +206,15 @@
         .tab-content.active {
             display: block;
         }
+        
+        /* 缓存状态提示 */
+        #cacheStatus {
+            font-size: 0.8em;
+            color: #64748b;
+            text-align: right;
+            margin-top: -10px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -216,10 +225,11 @@
     <div style="padding: 10px 15px; background: #fffbe7; border: 1px solid #fcd34d; border-radius: 6px; margin-bottom: 20px; font-size: 0.9em; color: #92400e;">
         ⚠️ **重要提示：** 此工具纯本地运行。若请求其他域名的 API，可能因浏览器 **CORS** 策略被阻止。如遇请求失败，请尝试在本地服务器环境中运行，或请求支持 CORS 的 API。
     </div>
+    
+    <p id="cacheStatus">配置已启用本地缓存，输入时自动保存。</p>
 
     <div class="main-grid">
-        <div class="card">
-            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #1e293b;">请求配置</h2>
+        <div class="card" id="requestConfigCard"> <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #1e293b;">请求配置</h2>
 
             <div style="margin-bottom: 1.5rem;">
                 <label for="urlInput">URL 地址</label>
@@ -232,7 +242,7 @@
                         <option value="PATCH">PATCH</option>
                         <option value="HEAD">HEAD</option>
                     </select>
-                    <input id="urlInput" type="text" placeholder="请输入 API URL (例如: https://jsonplaceholder.typicode.com/posts/1)" value="https://jsonplaceholder.typicode.com/posts/1">
+                    <input id="urlInput" type="text" placeholder="请输入 API URL (例如: https://jsonplaceholder.typicode.com/posts/1)" value="">
                     <button class="btn-primary" id="sendBtn">发送请求</button>
                 </div>
             </div>
@@ -247,7 +257,7 @@
             <div class="tab-content active" id="tab-headers">
                 <div class="input-group">
                     <label for="customUAInput">User-Agent</label>
-                    <input type="text" placeholder="Value (例如: custom-ua-client)" id="customUAInput" value="REST-API-Client/1.0 (Web Debugger)">
+                    <input type="text" placeholder="Value (例如: custom-ua-client)" id="customUAInput" value="">
                 </div>
 
                 <h4 style="font-size: 1em; margin-top: 1rem; margin-bottom: 0.5rem;">自定义 Headers</h4>
@@ -334,13 +344,16 @@
 </div>
 
 <script>
-    // --- DOM 元素引用 ---
+    // --- 常量与 DOM 元素引用 ---
+    const STORAGE_KEY = 'apiDebuggerConfig'; // localStorage 键名
+    const requestConfigCard = document.getElementById('requestConfigCard'); // 用于监听所有输入
+
     const sendBtn = document.getElementById('sendBtn');
     const urlInput = document.getElementById('urlInput');
     const methodSelect = document.getElementById('methodSelect');
     const headersContainer = document.getElementById('headersContainer');
     const addHeaderBtn = document.getElementById('addHeaderBtn');
-    const customUAInput = document.getElementById('customUAInput'); // 专用 UA 输入框
+    const customUAInput = document.getElementById('customUAInput');
 
     const authTypeSelect = document.getElementById('authTypeSelect');
     const bearerTokenGroup = document.getElementById('bearerTokenGroup');
@@ -363,56 +376,185 @@
     const loadJsonBtn = document.getElementById('loadJsonBtn');
     const importStatus = document.getElementById('importStatus');
 
-    // --- 初始化和事件监听 ---
+    // --- 辅助函数：去抖动 (Debounce) ---
+    // 防止频繁的输入事件导致过度写入 localStorage
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            const context = this;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), delay);
+        };
+    }
 
-    window.onload = function() {
-        // 1. 发送按钮点击事件
-        sendBtn.addEventListener('click', sendRequest);
-        
-        // 2. 动态 Header 管理
-        addHeaderBtn.addEventListener('click', () => addHeaderRow());
-        
-        // 3. 认证类型切换事件
-        authTypeSelect.addEventListener('change', updateAuthFields);
-        updateAuthFields(); // 初始调用一次
+    // --- 配置保存/加载核心逻辑 (New) ---
 
-        // 4. Body 类型切换事件
-        bodyTypeSelect.addEventListener('change', updateBodyFields);
-        updateBodyFields(); // 初始调用一次
-        
-        // 5. 选项卡切换事件
-        requestTabs.addEventListener('click', handleTabSwitch);
-        
-        // 6. 导入 JSON 按钮事件
-        loadJsonBtn.addEventListener('click', handleImportJson);
+    /**
+     * 收集所有配置项并保存到 localStorage。
+     */
+    function saveConfiguration() {
+        // 1. 收集动态 Header
+        const dynamicHeaders = [];
+        const rows = headersContainer.querySelectorAll('.key-value-row');
+        rows.forEach(row => {
+            const keyInput = row.children[0];
+            const valueInput = row.children[1];
+            dynamicHeaders.push({
+                key: keyInput.value,
+                value: valueInput.value
+            });
+        });
 
-        // 初始 Header：添加 Accept
-        addHeaderRow('Accept', 'application/json, text/plain, */*');
+        // 2. 收集所有配置数据
+        const config = {
+            url: urlInput.value,
+            method: methodSelect.value,
+            customUA: customUAInput.value,
+            dynamicHeaders: dynamicHeaders,
+            
+            authType: authTypeSelect.value,
+            bearerToken: bearerTokenInput.value,
+            basicUsername: basicAuthUsername.value,
+            // 注意：出于安全考虑，密码通常不应保存在 localStorage 中。
+            // 但为了实现用户的要求，此处仅在本地保存，并提示用户。
+            basicPassword: basicAuthPassword.value, 
+            
+            bodyType: bodyTypeSelect.value,
+            requestBody: requestBodyTextarea.value
+        };
+
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+        } catch (e) {
+            console.error('无法保存配置到本地缓存:', e);
+        }
+    }
+
+    /**
+     * 从 localStorage 加载配置并应用到表单。
+     */
+    function loadConfiguration() {
+        try {
+            const savedConfig = localStorage.getItem(STORAGE_KEY);
+            if (!savedConfig) {
+                // 如果没有保存的配置，则应用默认配置
+                applyDefaultConfiguration();
+                return;
+            }
+
+            const config = JSON.parse(savedConfig);
+
+            // 1. 应用 URL 和 Method
+            urlInput.value = config.url || '';
+            methodSelect.value = config.method || 'GET';
+            
+            // 2. 应用 Headers
+            customUAInput.value = config.customUA || '';
+            clearDynamicHeaders();
+            if (config.dynamicHeaders && Array.isArray(config.dynamicHeaders)) {
+                config.dynamicHeaders.forEach(header => {
+                    addHeaderRow(header.key, header.value);
+                });
+            } else {
+                // 确保默认 Header 存在
+                addHeaderRow('Accept', 'application/json, text/plain, */*');
+            }
+
+            // 3. 应用 Auth
+            authTypeSelect.value = config.authType || 'none';
+            bearerTokenInput.value = config.bearerToken || '';
+            basicAuthUsername.value = config.basicUsername || '';
+            basicAuthPassword.value = config.basicPassword || ''; // 再次提醒：注意本地密码存储的风险
+            updateAuthFields();
+
+            // 4. 应用 Body
+            bodyTypeSelect.value = config.bodyType || 'none';
+            requestBodyTextarea.value = config.requestBody || '';
+            updateBodyFields();
+
+        } catch (e) {
+            console.error('加载本地配置失败:', e);
+            localStorage.removeItem(STORAGE_KEY); // 清除损坏的配置
+            applyDefaultConfiguration();
+        }
     }
     
-    // --- 选项卡切换逻辑 ---
+    function applyDefaultConfiguration() {
+        // 设置默认值
+        urlInput.value = 'https://jsonplaceholder.typicode.com/posts/1';
+        methodSelect.value = 'GET';
+        customUAInput.value = 'REST-API-Client/1.0 (Web Debugger)';
+        authTypeSelect.value = 'none';
+        bodyTypeSelect.value = 'none';
+        
+        clearDynamicHeaders();
+        addHeaderRow('Accept', 'application/json, text/plain, */*');
+        
+        updateAuthFields();
+        updateBodyFields();
+    }
+
+
+    // --- 初始化和事件监听 ---
+
+    // 使用去抖动包装保存函数，延迟 500ms 执行
+    const debouncedSaveConfiguration = debounce(saveConfiguration, 500);
+
+    window.onload = function() {
+        // 1. 页面加载时：尝试加载配置
+        loadConfiguration();
+
+        // 2. 监听所有配置输入变化，自动保存
+        // 'input' 适用于文本和范围；'change' 适用于 select 和 checkbox
+        requestConfigCard.addEventListener('input', debouncedSaveConfiguration);
+        requestConfigCard.addEventListener('change', debouncedSaveConfiguration);
+        
+        // 3. 发送按钮点击事件
+        sendBtn.addEventListener('click', sendRequest);
+        
+        // 4. 动态 Header 管理 (添加/移除时需要重新保存配置)
+        addHeaderBtn.addEventListener('click', () => {
+            addHeaderRow();
+            saveConfiguration(); // 立即保存新的 Header 结构
+        });
+        
+        // 5. 认证类型切换事件
+        authTypeSelect.addEventListener('change', updateAuthFields);
+        updateAuthFields(); 
+
+        // 6. Body 类型切换事件
+        bodyTypeSelect.addEventListener('change', updateBodyFields);
+        updateBodyFields(); 
+        
+        // 7. 选项卡切换事件
+        requestTabs.addEventListener('click', handleTabSwitch);
+        
+        // 8. 导入 JSON 按钮事件
+        loadJsonBtn.addEventListener('click', () => {
+            handleImportJson();
+            saveConfiguration(); // 导入成功后立即保存配置
+        });
+        
+    }
+    
+    // --- 选项卡切换逻辑 (不变) ---
     function handleTabSwitch(e) {
         if (!e.target.classList.contains('tab-btn')) return;
 
         const targetTab = e.target.dataset.tab;
-
-        // 移除所有按钮的 active 类
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        // 移除所有内容的 active 类
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-        // 激活选中的按钮和内容
         e.target.classList.add('active');
         document.getElementById(`tab-${targetTab}`).classList.add('active');
         
-        // 如果切换到导入Tab，清空状态
         if (targetTab === 'import') {
             importStatus.textContent = '支持 HTTPie 1.0.0 格式。';
             importStatus.style.color = '#f97316';
         }
     }
 
-    // --- 动态 Header 逻辑 ---
+    // --- 动态 Header 逻辑 (略有修改：添加移除时需调用 saveConfiguration) ---
 
     function addHeaderRow(key = '', value = '') {
         const row = document.createElement('div');
@@ -425,13 +567,20 @@
         
         // 移除按钮事件
         const removeBtn = row.querySelector('.btn-danger');
-        removeBtn.addEventListener('click', () => row.remove());
+        removeBtn.addEventListener('click', () => {
+            row.remove();
+            saveConfiguration(); // 移除后立即保存
+        });
+        
+        // 监听新增行的输入变化
+        row.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', debouncedSaveConfiguration);
+        });
 
         headersContainer.appendChild(row);
     }
     
     function clearDynamicHeaders() {
-        // 移除所有动态添加的 Header 行
         headersContainer.innerHTML = ''; 
     }
 
@@ -461,7 +610,7 @@
         return headers;
     }
     
-    // --- 认证字段切换逻辑 ---
+    // --- 认证字段切换逻辑 (不变) ---
     function updateAuthFields() {
         const authType = authTypeSelect.value;
         bearerTokenGroup.style.display = 'none';
@@ -474,7 +623,7 @@
         }
     }
     
-    // --- Body 字段切换逻辑 ---
+    // --- Body 字段切换逻辑 (不变) ---
     function updateBodyFields() {
         const bodyType = bodyTypeSelect.value;
         if (bodyType === 'none') {
@@ -485,8 +634,7 @@
     }
 
 
-    // --- 导入 JSON 核心逻辑 (New) ---
-
+    // --- 导入 JSON 核心逻辑 (不变) ---
     function handleImportJson() {
         const jsonString = importJsonTextarea.value.trim();
         if (!jsonString) {
@@ -502,7 +650,6 @@
             importStatus.textContent = '✅ 配置导入成功！请检查 Headers 和 Body 标签页。';
             importStatus.style.color = '#166534';
             
-            // 自动切换到 Headers 标签页进行检查
             document.querySelector('.tab-btn[data-tab="headers"]').click();
 
         } catch (e) {
@@ -515,29 +662,30 @@
         const entry = data.entry;
         if (!entry) throw new Error('JSON 格式错误：缺少 "entry" 字段。');
 
-        // 1. URL 和 Method
         urlInput.value = entry.url || '';
         methodSelect.value = entry.method.toUpperCase() || 'GET';
         
-        // 2. Headers
+        // Headers
         clearDynamicHeaders();
-        // 重置 User-Agent 为默认（或保留用户上次的输入）
-        // customUAInput.value = 'REST-API-Client/1.0 (Web Debugger)'; 
+        // 导入时，优先使用导入的 User-Agent，如果没有则保留当前或使用默认
+        customUAInput.value = getHeaderValue(entry.headers, 'User-Agent') || customUAInput.value;
         
         if (entry.headers && Array.isArray(entry.headers)) {
             entry.headers.forEach(header => {
-                // HTTPie format has { "name": "...", "value": "..." }
-                addHeaderRow(header.name, header.value);
+                // 排除 User-Agent，因为它有专门的输入框
+                if (header.name.toLowerCase() !== 'user-agent') {
+                    addHeaderRow(header.name, header.value);
+                }
             });
         }
         
-        // 3. Auth
+        // Auth
         if (entry.auth && entry.auth.type) {
             const type = entry.auth.type.toLowerCase();
             if (type === 'bearer' && entry.auth.token) {
                 authTypeSelect.value = 'bearer';
                 bearerTokenInput.value = entry.auth.token;
-            } else if (type === 'basic' && entry.auth.username) {
+            } else if (type === 'basic' && (entry.auth.username || entry.auth.password)) {
                 authTypeSelect.value = 'basic';
                 basicAuthUsername.value = entry.auth.username || '';
                 basicAuthPassword.value = entry.auth.password || '';
@@ -548,11 +696,10 @@
         }
 
 
-        // 4. Body
+        // Body
         const body = entry.body;
         if (body) {
             if (body.type === 'text' && body.text && body.text.value) {
-                // 检查 format，如果是 JSON，则自动选择 JSON 类型
                 const format = (body.text.format || '').toLowerCase();
                 if (format.includes('json')) {
                     bodyTypeSelect.value = 'json';
@@ -565,7 +712,6 @@
                 requestBodyTextarea.value = body.text.value;
                 
             } else if (body.type === 'form' && body.form && body.form.fields.length > 0) {
-                 // 简单的 Form 字段，用户需手动转换，但我们可以设置 Body 类型为 form
                  bodyTypeSelect.value = 'form';
                  requestBodyTextarea.value = JSON.stringify(body.form.fields, null, 2);
                  alert('Body 包含 Form 字段，已将其 JSON 格式内容填充到 Body 文本区。请确保 Headers 中的 Content-Type 正确。');
@@ -577,9 +723,15 @@
             updateBodyFields();
         }
     }
+    
+    function getHeaderValue(headersArray, key) {
+        if (!Array.isArray(headersArray)) return null;
+        const found = headersArray.find(h => h.name.toLowerCase() === key.toLowerCase());
+        return found ? found.value : null;
+    }
 
 
-    // --- 核心请求逻辑 ---
+    // --- 核心请求逻辑 (不变) ---
 
     async function sendRequest() {
         const url = urlInput.value.trim();
@@ -596,8 +748,7 @@
             headers: getCustomHeaders(),
         };
 
-        // 2. 处理认证 (Auth) (已在 getCustomHeaders 中包含 Bearer/Basic)
-        // 注意：此处是旧代码遗留，Bearer/Basic Auth 逻辑应在 sendRequest 中处理，因为它会修改 headers 对象。
+        // 2. 处理认证 (Auth)
         const authType = authTypeSelect.value;
         if (authType === 'bearer') {
             const token = bearerTokenInput.value.trim();
@@ -618,7 +769,6 @@
         const bodyContent = requestBodyTextarea.value;
         
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && bodyType !== 'none') {
-            // DELETE 有时也带 body
             requestOptions.body = bodyContent;
         }
 
@@ -629,7 +779,6 @@
         sendBtn.disabled = true;
 
         try {
-            // --- 执行 Fetch 请求 ---
             const response = await fetch(url, requestOptions);
             
             // 5. 处理状态码
@@ -647,24 +796,20 @@
             const contentType = response.headers.get('content-type');
             
             if (contentType && contentType.includes('application/json')) {
-                // 尝试解析 JSON 并格式化
                 try {
                     const json = await response.json();
                     bodyText = JSON.stringify(json, null, 2);
                 } catch (e) {
-                    // JSON 解析失败，作为纯文本处理
                     bodyText = await response.text();
                     bodyText = `JSON 解析失败。原始内容:\n${bodyText}`;
                 }
             } else {
-                // 其他类型或无 Content-Type，作为纯文本处理
                 bodyText = await response.text();
             }
 
             responseBody.textContent = bodyText || '(无响应主体)';
 
         } catch (error) {
-            // 8. 捕获网络错误或 CORS 错误
             console.error('Fetch Error:', error);
             updateStatus('ERR', 'Network Error');
             responseHeaders.textContent = '无法获取 Headers。';
@@ -675,10 +820,10 @@
         }
     }
 
-    // --- 辅助函数：更新状态显示 ---
+    // --- 辅助函数：更新状态显示 (不变) ---
     function updateStatus(status, statusText) {
         statusDisplay.textContent = `${status}${statusText ? ' ' + statusText : ''}`;
-        statusDisplay.className = ''; // 重置样式
+        statusDisplay.className = ''; 
         
         if (status === 'ERR') {
             statusDisplay.classList.add('status-5xx');
