@@ -9,7 +9,7 @@
         :root {
             --primary: #2563eb;
             --danger: #ef4444;
-            --success: #22c55e;
+            --success: #22c55e; /* 新增用于隐私保护提示的绿色 */
             --bg: #f8fafc;
             --card: #ffffff;
             --border: #e2e8f0;
@@ -93,7 +93,6 @@
         .range-container {
             margin-bottom: 1rem;
         }
-        /* 移除数字显示后，保留 label 和滑块 */
         .range-input {
             width: 100%;
             height: 8px; 
@@ -155,98 +154,4 @@
             align-items: center;
             justify-content: center;
             overflow: hidden; /* 关键：裁剪大图 */
-            max-height: 80vh; 
-            margin-top: 10px;
-            position: relative; /* 用于 Canvas 叠加 */
-        }
-        
-        /* Canvas 和 Image 样式 */
-        #myCanvas {
-            max-width: 100%;
-            max-height: 100%; 
-            height: auto;
-            width: auto;
-            display: none;
-            cursor: pointer;
-        }
-        
-        /* 底部声明 */
-        .g-ft { text-align: center; margin-top: 20px; }
-        .message { text-align: center; color: #64748b; padding: 10px 0; font-size: 0.95em; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <div class="g-hd">
-        <h1>在线图像水印工具</h1>
-        <p class="message" style="color: var(--primary); font-weight: 600;">
-            本页面为纯前端服务(代码可审计)不会对上传的内容进行保存，可放心使用。
-        </p>
-    </div>
-
-    <div class="main-grid">
-        <div class="card">
-            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: var(--header-color);">水印设置</h2>
-
-            <div class="input-group">
-                <label>图片上传 (100% 本地处理)</label>
-                <div class="upload-area">
-                    <input id="imageFile" type="file" accept="image/png,image/jpeg,image/gif">
-                    <div class="upload-placeholder" id="uploadPlaceholder">
-                        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 2rem; height: 2rem; margin: 0 auto 0.5rem; color: #9ca3af;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <p style="font-weight: 600; color: var(--header-color);">点击选择或拖放图片到此区域</p>
-                        <p class="message" id="imageStatus" style="font-size: 0.8em; padding: 0;">等待图片加载...</p>
-                    </div>
-                </div>
-            </div>
-
-            <h3 style="font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.8rem; color: var(--header-color);">参数调整</h3>
-
-            <div class="input-group">
-                <label for="watermarkText">水印文字</label>
-                <input id="watermarkText" type="text" value="请勿用于其他用途">
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div class="input-group" style="margin-bottom: 0;">
-                    <label for="fontColorText">颜色 (Hex)</label>
-                    <div class="color-input-container">
-                        <input type="text" id="fontColorText" value="#0000FF" maxlength="7" style="padding: 0.75rem 0.5rem;">
-                        <input type="color" id="fontColorPicker" value="#0000FF">
-                    </div>
-                </div>
-                <div class="range-container" style="margin-bottom: 0;">
-                    <label for="alphaRange">透明度</label>
-                    <input class="range-input" id="alphaRange" type="range" min="0.05" max="1" step="0.05" value="0.15">
-                </div>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" class="mt-4">
-                <div class="range-container" style="margin-bottom: 0;">
-                    <label for="angleRange">旋转角度</label>
-                    <input class="range-input" id="angleRange" type="range" min="-90" max="90" step="3" value="45">
-                </div>
-                <div class="range-container" style="margin-bottom: 0;">
-                    <label for="spaceRange">平铺间距</label>
-                    <input class="range-input" id="spaceRange" type="range" min="1" max="8" step="0.2" value="4">
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" class="mt-4">
-                <div class="range-container" style="margin-bottom: 0;">
-                    <label for="sizeRange">字体大小</label>
-                    <input class="range-input" id="sizeRange" type="range" min="0.5" max="3" step="0.05" value="1">
-                </div>
-                <div class="input-group" style="margin-bottom: 0;">
-                    <label for="formatSelect">输出格式</label>
-                    <select id="formatSelect">
-                        <option value="png">PNG (无损/推荐)</option>
-                        <option value="jpeg">JPG (文件更小)</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <label style="display: flex; align-items: center; gap: 5px; font
+            max-
