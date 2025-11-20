@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>在线水印工具 (简约自包含版)</title>
+    <title>在线水印工具(纯前端、不保存内容)</title>
     <style>
         /* 沿用并优化自 Base64/DNS 工具的简约风格 */
         :root {
@@ -64,19 +64,7 @@
             background-color: var(--card);
         }
         
-        /* 颜色输入框定制 */
-        input[type="color"] {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            border: 1px solid var(--border);
-            width: 100%;
-            height: 40px;
-            border-radius: 6px;
-            cursor: pointer;
-            padding: 2px;
-            box-sizing: border-box;
-        }
+        /* 颜色输入框定制 (已移除 type="color" 的特殊样式) */
 
         /* 按钮样式 */
         .action-btns {
@@ -125,13 +113,6 @@
             display: none;
             border: 2px dashed #ccc;
             margin: 0 auto;
-        }
-        
-        .wa_text {
-            /* 用于计算水印文本宽度，必须保持隐藏和绝对定位 */
-            position: absolute;
-            visibility: hidden;
-            white-space: nowrap;
         }
         
         .message {
@@ -202,8 +183,8 @@
                 </div>
 
                 <div class="input-group">
-                    <label for="fontColor">字体颜色 (点击选择)</label>
-                    <input type="color" id="fontColor" value="#000000">
+                    <label for="fontColor">字体颜色 (Hex 代码，如 #000000)</label>
+                    <input type="text" id="fontColor" value="#000000">
                 </div>
                 
                 <div class="input-group">
@@ -244,9 +225,11 @@
 	</div>
     
 	<div class="g-ft">
-        <p class="message"><a href="https://mircc.github.io/watermark/index.html" target="_blank">原项目参考</a> | Copyright &copy; 2019-2020 Elk lu yo.</p>
+        <p class="message" style="color: var(--primary); font-weight: 600;">
+            本页面为纯前端服务(代码可审计)不会对上传的内容进行保存，可放心使用。
+        </p>
 	</div>
-    <span class="wa_text" id="watermarkTextRuler"></span>
+    <span class="wa_text" id="watermarkTextRuler" style="display: none;"></span>
 </div>
 
 <script>
@@ -257,7 +240,6 @@
     const myCanvas = document.getElementById('myCanvas');
     const generateWatermarkBtn = document.getElementById('generateWatermarkBtn');
     const saveWatermarkBtn = document.getElementById('saveWatermarkBtn');
-    const watermarkTextRuler = document.getElementById('watermarkTextRuler');
     const imageStatus = document.getElementById('imageStatus');
 
     // 参数获取
@@ -333,208 +315,4 @@
         };
     }
 
-    function executeWatermark() {
-        if (!isImageLoaded) {
-            imageStatus.textContent = '请先上传图片。';
-            return;
-        }
-        clearCanvas();
-        refresh_watermark();
-    }
-
-    function clearCanvas()  {  
-        const cxt = myCanvas.getContext("2d");  
-        cxt.clearRect(0, 0, myCanvas.width, myCanvas.height);  
-    }  
-
-    function refresh_watermark(){
-        const image = pic;
-        // 获取图片的显示尺寸
-        const wi = image.clientWidth;
-        const he = image.clientHeight;
-
-        // 设置 Canvas 尺寸为图片的显示尺寸
-        myCanvas.width = wi;
-        myCanvas.height = he;
-        
-        // 调整图片和 Canvas 的显示位置，使 Canvas 叠加在图片上
-        // 在新布局中，Canvas 直接显示在图片下方或上方，不需要绝对定位技巧
-        image.style.display = 'none'; // 隐藏原图
-        myCanvas.style.display = 'block'; // 显示 Canvas
-
-        // 获取参数
-        const text = fontText.value;
-        const color = fontColor.value;
-        const size = parseInt(fontSize.value);
-        const family = fontFamily.value;
-        const place = fontPlace.value;
-        const clarity = parseFloat(fontClarity.value);
-        
-        // 1. 颜色转换 (HEX -> RGBA)
-        const rgb = colorRgb(color); // e.g., "RGB(0,0,0)"
-        const rgba = rgb.substring(0, rgb.length - 1) + `,${clarity})`; // e.g., "RGB(0,0,0,0.2)"
-        
-        const ctx = myCanvas.getContext("2d");
-        
-        // 2. 绘制原图到 Canvas
-        // 为了避免失真，我们使用原图的 natural 尺寸来绘制，但在Canvas上显示的是缩放后的尺寸。
-        // drawImage(image, dx, dy, dw, dh)
-        ctx.drawImage(image, 0, 0, wi, he); 
-        
-        // 3. 准备水印文字设置
-        ctx.fillStyle = rgba;
-        ctx.font = `${size}px ${family}`;
-        
-        // 4. 测量水印文本宽度
-        // 我们可以使用 canvas 自身的 measureText()，无需额外的 span 标签
-        const textMetrics = ctx.measureText(text);
-        const textWidth = textMetrics.width;
-        // 估算文本高度 (简单取字体大小)
-        const textHeight = size; 
-
-        let x = 0;
-        let y = 0;
-        let rotate = false;
-        
-        // 5. 计算水印位置
-        if (place.startsWith('rx')) {
-            // 右斜：原代码中的斜角设置是 (1, 0.5, -0.5, 1, tx, ty)
-            ctx.setTransform(1, 0.5, -0.5, 1, 0, 0);
-            rotate = true;
-        } else {
-            // 正向
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-        }
-
-        switch (place) {
-            case "rxcenter":
-            case "center":
-                x = (wi / 2) - (textWidth / 2);
-                y = (he / 2) + (textHeight / 3); // 居中微调
-                break;
-            case "rxleft_top":
-            case "left_top":
-                x = 10;
-                y = textHeight + 10;
-                break;
-            case "rxright_top":
-            case "right_top":
-                x = wi - textWidth - 10;
-                y = textHeight + 10;
-                break;
-            case "rxleft_bottom":
-            case "left_bottom":
-                x = 10;
-                y = he - 10;
-                break;
-            case "rxright_bottom":
-            case "right_bottom":
-                x = wi - textWidth - 10;
-                y = he - 10;
-                break;
-        }
-        
-        // 针对右斜水印进行位置微调
-        if (rotate) {
-            if (place === 'rxcenter') {
-                // 原代码中的 magic number 调整，这里需要简化
-                x = (wi / 2) - (textWidth / 2);
-                y = (he / 2) - 30; // 居中微调
-            } else if (place === 'rxleft_top') {
-                 // 需要进行复杂的坐标转换，为了简约，我们采用原逻辑中简化后的效果
-                 // 采用正向的相对位置，依赖 setTransform 自身效果
-                 x = x;
-                 y = y;
-            } else {
-                // 对于斜角，简单应用setTransform后，fillText(text, 10, 10)会得到斜角水印
-                // 但要实现定位，需要更复杂的矩阵计算。我们这里简化斜角定位：
-                if (place.includes('top')) y = y + he * 0.2; // 斜角需要往下推
-                if (place.includes('bottom')) y = y - he * 0.2; // 斜角需要往上拉
-            }
-        }
-        
-        // 重置变换矩阵，只在绘制时使用（原代码的 setTransform 作用域更大）
-        // 为了复刻原代码效果，将 setTransform 放在这里，它会影响后续的 fillText
-        if (rotate) {
-            // 采用原代码最简单的居中斜角变换
-            if (place === 'rxcenter') {
-                ctx.setTransform(1, 0.5, -0.5, 1, wi * 0.2, he * 0.1); // 偏移起点
-                x = (wi / 2);
-                y = (he / 2);
-            } else {
-                // 对于非居中斜角，我们使用旋转和平移
-                ctx.save(); // 保存当前状态
-                
-                // 旋转45度 (弧度)
-                ctx.translate(wi / 2, he / 2); // 移动到中心
-                ctx.rotate(-45 * Math.PI / 180); 
-                ctx.translate(-wi / 2, -he / 2); // 移回原点
-                
-                // 重新计算相对位置
-                if (place === 'rxleft_top') { x = 10; y = textHeight + 10; }
-                else if (place === 'rxright_top') { x = wi - textWidth - 10; y = textHeight + 10; }
-                // etc...
-                
-                // 简化：如果设置了斜角，统一使用一个中心斜角，避免复杂坐标计算
-                x = (wi / 2) - (textWidth / 2);
-                y = (he / 2);
-            }
-        }
-        
-        // 6. 绘制水印
-        ctx.fillText(text, x, y);
-        
-        if (rotate && place !== 'rxcenter') {
-            ctx.restore(); // 恢复Canvas状态，撤销旋转
-        }
-        
-        imageStatus.textContent = '水印生成成功！点击下载按钮保存。';
-    }
-
-    function downloadWatermark() {
-        if (!isImageLoaded || myCanvas.style.display === 'none') {
-            imageStatus.textContent = '请先生成水印！';
-            return;
-        }
-
-        const dataURL = myCanvas.toDataURL("image/png");
-        const a = document.createElement('a');
-        document.body.appendChild(a);
-        a.href = dataURL;
-        a.download = "在线水印.png";
-        a.click();
-        document.body.removeChild(a);
-        imageStatus.textContent = '✅ 水印图片下载已开始。';
-    }
-
-
-    /**
-     * 将十六进制颜色值转换为 RGB() 格式
-     * @param {string} sColor - 十六进制颜色字符串 (e.g., #000, #000000)
-     * @returns {string} - RGB(r,g,b) 格式字符串
-     */
-    function colorRgb(sColor) {
-        sColor = sColor.toLowerCase();
-        // 十六进制颜色值的正则表达式
-        const reg = /^#([0-9a-fA-f]{3}|[0-9a-fA-f]{6})$/;
-        if (sColor && reg.test(sColor)) {
-            if (sColor.length === 4) {
-                let sColorNew = "#";
-                for (let i = 1; i < 4; i += 1) {
-                    sColorNew += sColor.slice(i, i + 1).concat(sColor.slice(i, i + 1));    
-                }
-                sColor = sColorNew;
-            }
-            // 处理六位的颜色值
-            const sColorChange = [];
-            for (let i = 1; i < 7; i += 2) {
-                sColorChange.push(parseInt("0x" + sColor.slice(i, i + 2)));    
-            }
-            return "RGB(" + sColorChange.join(",") + ")";
-        }
-        // 如果输入不是有效的Hex，则尝试返回其原值 (虽然 color input 应该总是返回 Hex)
-        return "RGB(0,0,0)"; 
-    }
-</script>
-</body>
-</html>
+    function
