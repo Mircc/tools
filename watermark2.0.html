@@ -3,106 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>图像水印工具 - 隐私安全文档保护</title>
+    <title>在线图像水印工具 - 隐私安全文档保护</title>
     <style>
+        /* 沿用并优化自 Base64/DNS 工具的简约风格 */
         :root {
-            --primary-500: #3b82f6; /* Blue */
-            --primary-600: #2563eb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-500: #6b7280;
-            --gray-800: #1f2937;
-            --green-100: #dcfce7;
-            --green-800: #166534;
-            --white: #ffffff;
-            --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            --primary: #2563eb;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-color: #334155;
+            --header-color: #1e293b;
         }
 
         body {
-            font-family: ui-sans-serif, system-ui, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-color);
             margin: 0;
+            padding: 20px;
             line-height: 1.5;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* gradient-bg */
-            padding: 2rem 0;
         }
 
-        .container { 
-            width: 100%; 
-            max-width: 1024px; /* max-w-6xl */
-            margin-left: auto;
-            margin-right: auto;
-            padding-left: 1rem;
-            padding-right: 1rem;
-        }
+        .container { max-width: 1100px; margin: 0 auto; }
+        h1 { color: var(--header-color); text-align: center; margin-bottom: 20px; }
 
-        /* Header Styles */
-        .header { text-align: center; margin-bottom: 3rem; }
-        .header h1 { 
-            font-size: 3rem; /* text-5xl */
-            font-weight: 700; 
-            color: var(--white); 
-            margin-bottom: 1rem;
-            letter-spacing: -0.025em;
-        }
-        .header p { 
-            font-size: 1.25rem; /* text-xl */
-            color: rgba(255, 255, 255, 0.9); 
-            max-width: 42rem; /* max-w-2xl */
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* Card Styles */
         .card {
-            background: var(--white);
-            border-radius: 1rem; /* rounded-2xl */
-            box-shadow: var(--shadow-2xl);
-            padding: 2rem;
-            margin-bottom: 2rem;
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
-
-        /* Layout Grid */
+        
+        /* 核心：两栏布局 (Controls and Preview) */
         .main-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 2rem;
+            gap: 20px;
         }
-        @media (min-width: 1024px) {
+        @media (min-width: 768px) {
             .main-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr)); /* lg:grid-cols-2 */
+                grid-template-columns: 1fr 1fr;
             }
         }
-
-        /* Input Styles */
-        .input-group label {
-            display: block;
-            font-size: 0.875rem; /* text-sm */
-            font-weight: 500;
-            color: var(--gray-700);
-            margin-bottom: 0.5rem;
+        
+        .input-group { width: 100%; margin-bottom: 1rem; }
+        
+        .input-group label { 
+            display: block; 
+            font-size: 0.9em; 
+            font-weight: 600; 
+            margin-bottom: 5px; 
+            color: #475569; 
         }
 
         input[type="text"], select {
-            width: 100%;
-            padding: 0.75rem 1rem; /* px-4 py-3 */
-            border: 1px solid var(--gray-300);
-            border-radius: 0.5rem; /* rounded-lg */
-            font-size: 1rem;
+            width: 100%; 
+            height: 40px; 
+            padding: 10px 12px;
+            border: 1px solid var(--border); 
+            border-radius: 6px;
+            font-size: 14px; 
             box-sizing: border-box;
-            transition: all 0.15s;
-        }
-        input[type="text"]:focus, select:focus {
-            outline: none;
-            border-color: transparent;
-            box-shadow: 0 0 0 2px var(--primary-500); /* focus:ring-2 focus:ring-blue-500 */
+            background-color: var(--card);
         }
         
-        /* Custom Upload Area */
-        .upload-area {
-            position: relative;
+        /* 颜色输入定制 */
+        .color-input-container {
+            display: flex;
+            gap: 10px;
         }
+        #fontColorPicker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border: 1px solid var(--border);
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            cursor: pointer;
+            padding: 2px;
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        /* Range Slider 定制 */
+        .range-container {
+            margin-bottom: 1rem;
+        }
+        .range-container .flex-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .range-input {
+            width: 100%;
+            height: 8px; 
+            background: var(--border);
+            border-radius: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        
+        /* 按钮样式 */
+        .btn-primary { 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 6px;
+            font-weight: 600; 
+            cursor: pointer; 
+            white-space: nowrap;
+            transition: all 0.2s;
+            height: 40px;
+            background: var(--primary); 
+            color: white; 
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 上传区域 */
+        .upload-placeholder {
+            border: 2px dashed var(--border);
+            border-radius: 6px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upload-placeholder:hover {
+            border-color: var(--primary);
+            background-color: #f0f7ff;
+        }
+        .upload-area { position: relative; }
         .upload-area input[type="file"] {
             position: absolute;
             inset: 0;
@@ -110,161 +146,442 @@
             height: 100%;
             opacity: 0;
             cursor: pointer;
-        }
-        .upload-placeholder {
-            border: 2px dashed var(--gray-300); /* border-dashed border-gray-300 */
-            border-radius: 0.5rem;
-            padding: 2rem;
-            text-align: center;
-            transition: all 0.15s;
-        }
-        .upload-placeholder:hover {
-            border-color: var(--primary-500); /* hover:border-blue-500 */
-            background-color: #eff6ff; /* hover:bg-blue-50 */
-        }
-
-        /* Dual Color Input */
-        .color-input-container {
-            display: flex;
-            gap: 0.5rem;
-        }
-        #fontColorPicker {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            border: 1px solid var(--gray-300);
-            width: 3rem; /* w-12 */
-            height: 3rem; /* h-12 */
-            border-radius: 0.5rem;
-            cursor: pointer;
-            padding: 2px;
-            box-sizing: border-box;
-            background: var(--white);
+            z-index: 10; /* 确保能点击 */
         }
         
-        /* Range Slider Styles */
-        .range-container {
-            margin-bottom: 1rem;
-        }
-        .range-input {
-            width: 100%;
-            height: 0.5rem; /* h-2 */
-            background: var(--gray-200);
-            border-radius: 0.5rem;
-            -webkit-appearance: none;
-            appearance: none;
-            cursor: pointer;
-            margin-top: 0.5rem;
-        }
-
-        /* Preview Panel */
+        /* 预览区域 */
         .preview-area {
-            min-height: 24rem; /* min-h-96 */
-            border: 2px dashed var(--gray-300);
-            border-radius: 0.5rem;
+            min-height: 250px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #e9ecef;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--gray-50);
-            overflow-y: auto; /* For Big Image Optimization */
-            max-height: 80vh; /* Constraint the view height */
-            margin-top: 1rem;
+            overflow: hidden; /* 关键：裁剪大图 */
+            max-height: 80vh; 
+            margin-top: 10px;
+            position: relative; /* 用于 Canvas 叠加 */
         }
         
-        /* Canvas Display */
+        /* Canvas 和 Image 样式 */
         #myCanvas {
             max-width: 100%;
+            max-height: 100%; 
             height: auto;
+            width: auto;
             display: none;
             cursor: pointer;
-            transition: transform 0.3s ease;
         }
-        #myCanvas:hover {
-            transform: scale(1.02);
-        }
-
-        /* Button Styles */
-        .btn-primary {
-            padding: 0.5rem 1rem;
-            background: var(--primary-500);
-            color: var(--white);
-            border: none;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-        .btn-primary:hover { background: var(--primary-600); }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* Utility Classes (Mimicking Tailwind) */
-        .mb-4 { margin-bottom: 1rem; }
-        .mb-8 { margin-bottom: 2rem; }
-        .mt-4 { margin-top: 1rem; }
-        .mt-8 { margin-top: 2rem; }
-        .flex { display: flex; }
-        .items-center { align-items: center; }
-        .gap-3 { gap: 0.75rem; }
-        .text-gray-700 { color: var(--gray-700); }
-        .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
-        .font-semibold { font-weight: 600; }
-        .hidden { display: none; }
+        /* 底部声明 */
+        .g-ft { text-align: center; margin-top: 20px; }
+        .message { text-align: center; color: #64748b; padding: 10px 0; font-size: 0.95em; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header class="header">
-        <h1>MarkImg (仿制)</h1>
-        <p class="text-xl text-white/90 mb-6 max-w-2xl mx-auto">安全图像水印工具 - 完全隐私保护的敏感文档水印处理</p>
-        <div style="display: flex; justify-content: center;">
-            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--green-100); color: var(--green-800); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500;">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 1rem; height: 1rem;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                100% 隐私保护 (本地处理)
-            </div>
-        </div>
-    </header>
+    <div class="g-hd">
+        <h1>在线图像水印工具</h1>
+        <p class="message" style="color: var(--primary); font-weight: 600;">
+            本页面为纯前端服务(代码可审计)不会对上传的内容进行保存，可放心使用。
+        </p>
+    </div>
 
     <div class="main-grid">
         <div class="card">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-6">水印设置</h2>
-            
-            <div class="mb-8">
-                <div class="flex items-center gap-3 mb-4">
-                    <div style="width: 2rem; height: 2rem; background: var(--primary-500); color: var(--white); border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: 600;">1</div>
-                    <h3 class="text-lg font-semibold text-gray-800">选择本地图片</h3>
-                </div>
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: var(--header-color);">水印设置</h2>
+
+            <div class="input-group">
+                <label>图片上传 (100% 本地处理)</label>
                 <div class="upload-area">
                     <input id="imageFile" type="file" accept="image/png,image/jpeg,image/gif">
-                    <div class="upload-placeholder">
-                        <svg class="w-12 h-12 text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 3rem; height: 3rem; margin: 0 auto 1rem;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <p class="text-gray-700 font-semibold">点击选择设备中的图片</p>
-                        <p class="text-gray-500 text-sm mt-1" id="imageStatus">支持 PNG、JPG、GIF - 本地处理</p>
+                    <div class="upload-placeholder" id="uploadPlaceholder">
+                        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 2rem; height: 2rem; margin: 0 auto 0.5rem; color: #9ca3af;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <p style="font-weight: 600; color: var(--header-color);">点击选择或拖放图片到此区域</p>
+                        <p class="message" id="imageStatus" style="font-size: 0.8em; padding: 0;">等待图片加载...</p>
                     </div>
                 </div>
             </div>
 
-            <div class="mb-8">
-                <div class="flex items-center gap-3 mb-4">
-                    <div style="width: 2rem; height: 2rem; background: var(--primary-500); color: var(--white); border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: 600;">2</div>
-                    <h3 class="text-lg font-semibold text-gray-800">水印参数</h3>
-                </div>
+            <h3 style="font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.8rem; color: var(--header-color);">参数调整</h3>
 
-                <div class="input-group mb-4">
-                    <label for="watermarkText">水印文字</label>
-                    <input id="watermarkText" type="text" value="请勿用于其他用途">
-                </div>
+            <div class="input-group">
+                <label for="watermarkText">水印文字</label>
+                <input id="watermarkText" type="text" value="请勿用于其他用途">
+            </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
-                    <div class="input-group">
-                        <label for="fontColorText">颜色 (Hex)</label>
-                        <div class="color-input-container">
-                            <input type="text" id="fontColorText" value="#000000" maxlength="7" style="padding: 0.75rem 0.5rem;">
-                            <input type="color" id="fontColorPicker" value="#000000">
-                        </div>
-                    </div>
-                    <div class="range-container">
-                        <label for="alphaRange">透明度 (当前: <span id="alphaValue">0.15</span>)</label>
-                        <input class="range-input" id="alphaRange" type="range" min="0.05" max="1" step="0.05" value="0.15">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label for="fontColorText">颜色 (Hex)</label>
+                    <div class="color-input-container">
+                        <input type="text" id="fontColorText" value="#000000" maxlength="7" style="padding: 0.75rem 0.5rem;">
+                        <input type="color" id="fontColorPicker" value="#000000">
                     </div>
                 </div>
+                <div class="range-container" style="margin-bottom: 0;">
+                    <label for="alphaRange">透明度</label>
+                    <div class="flex-row">
+                        <span>5%</span>
+                        <span id="alphaValue">0.20</span>
+                        <span>100%</span>
+                    </div>
+                    <input class="range-input" id="alphaRange" type="range" min="0.05" max="1" step="0.05" value="0.20">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" class="mt-4">
+                <div class="range-container" style="margin-bottom: 0;">
+                    <label for="angleRange">旋转角度</label>
+                    <div class="flex-row">
+                        <span>-90°</span>
+                        <span id="angleValue">45°</span>
+                        <span>90°</span>
+                    </div>
+                    <input class="range-input" id="angleRange" type="range" min="-90" max="90" step="1" value="45">
+                </div>
+                <div class="range-container" style="margin-bottom: 0;">
+                    <label for="spaceRange">平铺间距</label>
+                    <div class="flex-row">
+                        <span>1.0x</span>
+                        <span id="spaceValue">4.0x</span>
+                        <span>8.0x</span>
+                    </div>
+                    <input class="range-input" id="spaceRange" type="range" min="1" max="8" step="0.5" value="4">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" class="mt-4">
+                <div class="range-container" style="margin-bottom: 0;">
+                    <label for="sizeRange">字体大小</label>
+                    <div class="flex-row">
+                        <span>0.5x</span>
+                        <span id="sizeValue">1.0x</span>
+                        <span>3.0x</span>
+                    </div>
+                    <input class="range-input" id="sizeRange" type="range" min="0.5" max="3" step="0.1" value="1">
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label for="formatSelect">输出格式</label>
+                    <select id="formatSelect">
+                        <option value="png">PNG (无损/推荐)</option>
+                        <option value="jpeg">JPG (文件更小)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 5px; font-weight: normal; cursor: pointer;">
+                        <input id="autoRefresh" type="checkbox" checked="" style="width: 14px; height: 14px;">
+                        <span>自动刷新预览</span>
+                    </label>
+                    <button class="btn-primary" id="refreshBtn" disabled="">手动刷新</button>
+                </div>
+                
+                <button class="btn-primary" id="downloadBtn" disabled style="width: 100%; margin-top: 10px; background: #0294a7;">
+                    ⬇️ 下载已添加水印的图片 (<span id="downloadFormat">PNG</span>)
+                </button>
+                <p id="mobileTip" class="message" style="color: #f97316; margin-top: 10px; display: none;">
+                    ⚠️ **移动设备提示：** 下载按钮可能无效，请长按预览图选择“存储图像”。
+                </p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: var(--header-color);">实时预览</h2>
+            <div class="preview-area" id="graph">
+                <p id="previewPlaceholder" style="color: #9ca3af;">图片预览区域</p>
+                
+                <img id="sourceImage" style="display: none;" src="" alt="上传的图片">
+                <canvas id="myCanvas" style="display: none;"></canvas>
+            </div>
+            <p id="downloadHint" class="message" style="display: none;">点击预览区域的图片即可下载</p>
+        </div>
+    </div>
+    
+	<div class="g-ft">
+        </div>
+</div>
+
+<script>
+    // --- 元素和参数获取 ---
+    const imageFile = document.getElementById('imageFile');
+    const sourceImage = document.getElementById('sourceImage');
+    const myCanvas = document.getElementById('myCanvas');
+    const graphDiv = document.getElementById('graph');
+    const imageStatus = document.getElementById('imageStatus');
+    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const previewPlaceholder = document.getElementById('previewPlaceholder');
+
+    // Controls
+    const watermarkText = document.getElementById('watermarkText');
+    const fontColorText = document.getElementById('fontColorText');
+    const fontColorPicker = document.getElementById('fontColorPicker');
+    const alphaRange = document.getElementById('alphaRange');
+    const alphaValue = document.getElementById('alphaValue');
+    const angleRange = document.getElementById('angleRange');
+    const angleValue = document.getElementById('angleValue');
+    const spaceRange = document.getElementById('spaceRange');
+    const spaceValue = document.getElementById('spaceValue');
+    const sizeRange = document.getElementById('sizeRange');
+    const sizeValue = document.getElementById('sizeValue');
+    const formatSelect = document.getElementById('formatSelect');
+    const downloadFormat = document.getElementById('downloadFormat');
+
+    // Actions
+    const refreshBtn = document.getElementById('refreshBtn');
+    const autoRefresh = document.getElementById('autoRefresh');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const downloadHint = document.getElementById('downloadHint');
+    const mobileTip = document.getElementById('mobileTip');
+    
+    // 状态
+    let isImageLoaded = false;
+    const BASE_FONT_SIZE_PX = 60; // 基础字体大小，所有缩放基于此
+
+    // --- 事件监听器 ---
+    window.onload = function() {
+        // 1. 文件选择变化 -> 加载图片 (修复上传无响应问题，使用标准 change 事件)
+        imageFile.addEventListener('change', handleFileChange);
+        
+        // 2. 参数变化 -> 自动或手动刷新
+        const inputControls = [
+            watermarkText, fontColorText, fontColorPicker, formatSelect,
+            alphaRange, angleRange, spaceRange, sizeRange
+        ];
+
+        inputControls.forEach(control => {
+            control.addEventListener('input', function() {
+                // 更新范围滑块的显示值
+                if (control === alphaRange) alphaValue.textContent = parseFloat(control.value).toFixed(2);
+                if (control === angleRange) angleValue.textContent = control.value + '°';
+                if (control === spaceRange) spaceValue.textContent = parseFloat(control.value).toFixed(1) + 'x';
+                if (control === sizeRange) sizeValue.textContent = parseFloat(control.value).toFixed(1) + 'x';
+                if (control === formatSelect) downloadFormat.textContent = control.value.toUpperCase();
+
+                // 同步颜色选择器
+                if (control === fontColorPicker) {
+                    fontColorText.value = fontColorPicker.value.toUpperCase();
+                } else if (control === fontColorText) {
+                    let hex = fontColorText.value.trim().toUpperCase();
+                    // 简单修正输入，支持无 # 号
+                    if (!hex.startsWith('#') && (hex.length === 3 || hex.length === 6)) {
+                        hex = '#' + hex;
+                    }
+                    const reg = /^#([0-9A-F]{3}|[0-9A-F]{6})$/;
+                    if (reg.test(hex)) {
+                        fontColorPicker.value = hex;
+                        fontColorText.value = hex; 
+                    }
+                }
+                
+                // 触发水印生成
+                if (autoRefresh.checked) {
+                    executeWatermark();
+                }
+            });
+        });
+
+        // 3. 自动刷新开关/手动刷新
+        autoRefresh.addEventListener('change', function() {
+            refreshBtn.disabled = this.checked;
+            if (this.checked && isImageLoaded) {
+                executeWatermark();
+            }
+        });
+
+        refreshBtn.addEventListener('click', executeWatermark);
+        
+        // 4. 下载逻辑 (点击 Canvas 或下载按钮)
+        myCanvas.addEventListener('click', downloadWatermark);
+        downloadBtn.addEventListener('click', downloadWatermark);
+        
+        // 初始状态
+        refreshBtn.disabled = autoRefresh.checked;
+        
+        // 简单判断是否为移动设备显示提示
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            mobileTip.style.display = 'block';
+        }
+    }
+
+    // --- 核心逻辑函数 ---
+
+    function handleFileChange(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        isImageLoaded = false;
+        myCanvas.style.display = 'none';
+        sourceImage.style.display = 'none';
+        previewPlaceholder.style.display = 'block';
+        downloadBtn.disabled = true;
+        downloadHint.style.display = 'none';
+        
+        imageStatus.textContent = '正在加载图片...';
+        
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        
+        reader.onload = function (event) {
+            sourceImage.src = event.target.result;
+            sourceImage.onload = function() {
+                // 1. 设置 Canvas 内部尺寸为图片的自然尺寸（高分辨率）
+                myCanvas.width = sourceImage.naturalWidth;
+                myCanvas.height = sourceImage.naturalHeight;
+                
+                // 2. 更新状态
+                isImageLoaded = true;
+                imageStatus.textContent = `图片加载成功 (${sourceImage.naturalWidth} x ${sourceImage.naturalHeight})`;
+                downloadBtn.disabled = false;
+                
+                // 3. 自动生成水印
+                executeWatermark();
+            }
+            sourceImage.onerror = function() {
+                imageStatus.textContent = '❌ 图片加载失败，请检查文件格式。';
+                isImageLoaded = false;
+            }
+        };
+    }
+
+    function executeWatermark() {
+        if (!isImageLoaded) {
+            imageStatus.textContent = '请先上传图片。';
+            return;
+        }
+        
+        previewPlaceholder.style.display = 'none'; // 隐藏占位符
+        myCanvas.style.display = 'block'; // 显示 Canvas
+        sourceImage.style.display = 'none';
+        downloadHint.style.display = 'block';
+        
+        refreshWatermark();
+    }
+
+    function refreshWatermark(){
+        const ctx = myCanvas.getContext("2d");
+        const wi = myCanvas.width;
+        const he = myCanvas.height;
+        
+        // 1. 清空并绘制原图
+        ctx.clearRect(0, 0, wi, he);
+        ctx.drawImage(sourceImage, 0, 0, wi, he); 
+        
+        // 2. 获取水印参数
+        const text = watermarkText.value;
+        const color = fontColorText.value;
+        const alpha = parseFloat(alphaRange.value);
+        const angle = parseFloat(angleRange.value);
+        const sizeFactor = parseFloat(sizeRange.value);
+        const spaceFactor = parseFloat(spaceRange.value);
+        
+        // 3. 准备水印文字设置
+        const fontSizePx = BASE_FONT_SIZE_PX * sizeFactor;
+        const rgba = hexToRgba(color, alpha);
+        
+        ctx.fillStyle = rgba;
+        ctx.font = `${fontSizePx}px Arial, "Microsoft YaHei", sans-serif`; 
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // 4. 测量文本宽度 (MarkImg 核心平铺逻辑)
+        const textMetrics = ctx.measureText(text);
+        const textWidth = textMetrics.width;
+
+        // 5. 计算间距 (基于文本宽度)
+        const effectiveWidth = textWidth + (wi * 0.05); // 确保文字之间有一定距离
+        const gap = effectiveWidth * spaceFactor; // 间距倍数
+        
+        // 6. 应用旋转
+        ctx.save();
+        ctx.rotate(angle * Math.PI / 180); 
+        
+        // 7. 绘制平铺水印
+        // 扩大循环范围以覆盖画布 (MarkImg 风格)
+        // 计算旋转后的画布对角线长度，用于设置安全边界
+        const diagonal = Math.sqrt(wi * wi + he * he); 
+        const maxOffset = diagonal / 2;
+
+        // 调整循环起点和终点，使水印覆盖整个画布
+        // 从左上角 (0, 0) 开始，沿着旋转后的轴线平铺
+        
+        // 为了简化和稳定性，我们使用一个覆盖所有旋转情况的包围盒来循环
+        const numRows = Math.ceil(diagonal / gap);
+        const numCols = Math.ceil(diagonal / gap);
+        
+        // 起始偏移量
+        const startX = -maxOffset;
+        const startY = -maxOffset;
+
+        for (let i = 0; i < numRows; i++) {
+            for (let j = 0; j < numCols; j++) {
+                let x = startX + j * gap;
+                let y = startY + i * gap;
+                
+                // 绘制
+                ctx.fillText(text, x, y);
+            }
+        }
+        
+        ctx.restore(); // 恢复Canvas状态，撤销变换
+        
+        imageStatus.textContent = `水印生成成功！格式: ${formatSelect.value.toUpperCase()}。`;
+    }
+
+    function downloadWatermark() {
+        if (!isImageLoaded || myCanvas.style.display === 'none') {
+            alert('请先上传图片并生成水印！');
+            return;
+        }
+
+        const format = formatSelect.value;
+        let mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+        let quality = format === 'jpeg' ? 0.9 : 1.0; // JPG质量
+
+        const dataURL = myCanvas.toDataURL(mimeType, quality);
+        
+        const filename = `Watermark_${new Date().getTime().toString()}.${format}`;
+
+        // 使用 a 标签触发下载
+        const a = document.createElement('a');
+        document.body.appendChild(a);
+        a.href = dataURL;
+        a.download = filename;
+        a.click();
+        document.body.removeChild(a);
+        
+        imageStatus.textContent = `✅ 水印图片下载 (${format.toUpperCase()}) 尝试已开始。`;
+    }
+
+
+    /**
+     * 将十六进制颜色值转换为 RGBA 格式
+     */
+    function hexToRgba(hex, alpha) {
+        let r, g, b;
+
+        // 清理和校验 Hex
+        hex = hex.trim().toUpperCase();
+        if (hex.length === 4) { // #RGB
+            r = parseInt(hex[1] + hex[1], 16);
+            g = parseInt(hex[2] + hex[2], 16);
+            b = parseInt(hex[3] + hex[3], 16);
+        }
+        else if (hex.length === 7) { // #RRGGBB
+            r = parseInt(hex.slice(1, 3), 16);
+            g = parseInt(hex.slice(3, 5), 16);
+            b = parseInt(hex.slice(5, 7), 16);
+        }
+        else {
+            // 默认黑色
+            return `rgba(0, 0, 0, ${alpha})`;
+        }
+
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+</script>
+</body>
+</html>
