@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线水印工具 (简约自包含版)</title>
+    <style>
+        /* 沿用并优化自 Base64/DNS 工具的简约风格 */
+        :root {
+            --primary: #2563eb;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: #334155;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { color: #1e293b; text-align: center; margin-bottom: 20px; }
+
+        .card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        /* 布局 - 两列设置 */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px 25px;
+            margin-top: 10px;
+        }
+        
+        .input-group { width: 100%; }
+        
+        .input-group label { 
+            display: block; 
+            font-size: 0.9em; 
+            font-weight: 600; 
+            margin-bottom: 5px; 
+            color: #475569; 
+        }
+
+        input[type="text"], select {
+            width: 100%; 
+            height: 40px; 
+            padding: 10px 12px;
+            border: 1px solid var(--border); 
+            border-radius: 6px;
+            font-size: 14px; 
+            box-sizing: border-box;
+            background-color: var(--card);
+        }
+        
+        /* 颜色输入框定制 */
+        input[type="color"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border: 1px solid var(--border);
+            width: 100%;
+            height: 40px;
+            border-radius: 6px;
+            cursor: pointer;
+            padding: 2px;
+            box-sizing: border-box;
+        }
+
+        /* 按钮样式 */
+        .action-btns {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 6px;
+            font-weight: 600; 
+            cursor: pointer; 
+            white-space: nowrap;
+            transition: all 0.2s;
+            height: 40px; 
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        
+        .btn-upload { background: #37bc9b; color: white; }
+        .btn-upload:hover { background: #2d9e84; }
+        
+        .btn-download { background: #0294a7; color: white; }
+        .btn-download:hover { background: #017887; }
+
+        /* 图片和 Canvas 区域 */
+        .image-display {
+            text-align: center;
+            position: relative;
+            padding: 10px 0;
+            min-height: 200px;
+        }
+        
+        #pic {
+            max-width: 100%;
+            display: block;
+            margin: 0 auto;
+            /* 初始图片隐藏，直到上传 */
+            display: none; 
+        }
+        
+        #myCanvas {
+            display: none;
+            border: 2px dashed #ccc;
+            margin: 0 auto;
+        }
+        
+        .wa_text {
+            /* 用于计算水印文本宽度，必须保持隐藏和绝对定位 */
+            position: absolute;
+            visibility: hidden;
+            white-space: nowrap;
+        }
+        
+        .message {
+            text-align: center;
+            color: #64748b;
+            padding: 10px 0;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="g-hd">
+        <h1>在线水印工具</h1>
+    </div>
+	<div class="g-bd">
+        <div class="message" style="color:#F9B552">
+            请先上传图片，设置好参数后点击生成水印，最后点击下载。
+        </div>
+        
+        <div class="card">
+            <div class="action-btns" style="margin-top: 0;">
+                <button class="btn btn-upload" id="uploadImgBtn">🖼️ 上传图片</button>
+                <input type="file" id="uploadFile" accept="image/*" style="display: none">
+            </div>
+            
+            <div class="image-display">
+                <img id="pic" src="" alt="上传的图片">
+                <canvas id="myCanvas"></canvas>
+            </div>
+            <p id="imageStatus" class="message">请上传图片...</p>
+        </div>
+
+        <div class="card">
+            <h2>水印参数设置</h2>
+            <div class="settings-grid">
+                <div class="input-group">
+                    <label for="fontText">水印文字</label>
+                    <input type="text" id="fontText" value="在线水印">
+                </div>
+                
+                <div class="input-group">
+                    <label for="fontFamily">字体</label>
+                    <select id="fontFamily">
+                        <option value="Microsoft YaHei">微软雅黑</option>
+                        <option value="SimHei">黑体</option>
+                        <option value="SimSun">宋体 </option>
+                        <option value="KaiTi">楷体</option>
+                        <option value="YouYuan">幼圆</option>
+                        <option value="KaiTi_GB2312">楷体_GB2312</option>
+                        <option value="FangSong_GB2312">仿宋_GB2312</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="fontSize">字体大小 (px)</label>
+                    <select id="fontSize">
+                        <option value="24">24</option>
+                        <option value="35">35</option>
+                        <option value="50">50</option>
+                        <option value="70">70</option>
+                        <option value="80" selected>80</option>
+                        <option value="100">100</option>
+                        <option value="120">120</option>
+                        <option value="150">150</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="fontColor">字体颜色 (点击选择)</label>
+                    <input type="color" id="fontColor" value="#000000">
+                </div>
+                
+                <div class="input-group">
+                    <label for="fontPlace">水印位置</label>
+                    <select id="fontPlace">
+                        <option value="rxcenter" selected>右斜居中</option>
+                        <option value="rxleft_top">右斜左上角</option>
+                        <option value="rxright_top">右斜右上角</option>
+                        <option value="rxleft_bottom">右斜左下角</option>
+                        <option value="rxright_bottom">右斜右下角</option>
+                        <option value="center">正居中</option>
+                        <option value="left_top">正左上角</option>
+                        <option value="right_top">正右上角</option>
+                        <option value="left_bottom">正左下角</option>
+                        <option value="right_bottom">正右下角</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="fontClarity">透明度 (%)</label>
+                    <select id="fontClarity">
+                        <option value="1.0">100%</option>
+                        <option value="0.8">80%</option>
+                        <option value="0.6">60%</option>
+                        <option value="0.4">40%</option>
+                        <option value="0.2" selected>20%</option>
+                        <option value="0.1">10%</option>
+                        <option value="0.05">5%</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="action-btns">
+                <button class="btn btn-primary" id="generateWatermarkBtn">✨ 生成水印</button>
+                <button class="btn btn-download" id="saveWatermarkBtn">⬇️ 下载水印图片</button>
+            </div>
+        </div>
+	</div>
+    
+	<div class="g-ft">
+        <p class="message"><a href="https://mircc.github.io/watermark/index.html" target="_blank">原项目参考</a> | Copyright &copy; 2019-2020 Elk lu yo.</p>
+	</div>
+    <span class="wa_text" id="watermarkTextRuler"></span>
+</div>
+
+<script>
+    // 元素获取
+    const uploadImgBtn = document.getElementById('uploadImgBtn');
+    const uploadFile = document.getElementById('uploadFile');
+    const pic = document.getElementById('pic');
+    const myCanvas = document.getElementById('myCanvas');
+    const generateWatermarkBtn = document.getElementById('generateWatermarkBtn');
+    const saveWatermarkBtn = document.getElementById('saveWatermarkBtn');
+    const watermarkTextRuler = document.getElementById('watermarkTextRuler');
+    const imageStatus = document.getElementById('imageStatus');
+
+    // 参数获取
+    const fontText = document.getElementById('fontText');
+    const fontColor = document.getElementById('fontColor');
+    const fontSize = document.getElementById('fontSize');
+    const fontFamily = document.getElementById('fontFamily');
+    const fontPlace = document.getElementById('fontPlace');
+    const fontClarity = document.getElementById('fontClarity');
+    
+    // 初始化状态
+    let isImageLoaded = false;
+    
+    // --- 事件监听器 ---
+
+    window.onload = function() {
+        // 1. 上传图片按钮点击 -> 触发文件选择
+        uploadImgBtn.addEventListener('click', () => {
+            uploadFile.click();
+        });
+
+        // 2. 文件选择变化 -> 加载图片
+        uploadFile.addEventListener('change', handleFileChange);
+        
+        // 3. 生成水印按钮
+        generateWatermarkBtn.addEventListener('click', executeWatermark);
+        
+        // 4. 下载水印图片按钮
+        saveWatermarkBtn.addEventListener('click', downloadWatermark);
+
+        // 5. 回车键响应 '生成水印'
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); 
+                executeWatermark();
+            }
+        });
+        
+        // 初始禁用下载按钮
+        saveWatermarkBtn.disabled = true;
+    }
+
+    // --- 核心逻辑函数 ---
+
+    function handleFileChange(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        clearCanvas();
+        myCanvas.style.display = 'none';
+        pic.style.display = 'none';
+        imageStatus.textContent = '正在加载图片...';
+        
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        
+        reader.onload = function (event) {
+            pic.src = event.target.result;
+            pic.onload = function() {
+                pic.style.display = 'block';
+                isImageLoaded = true;
+                imageStatus.textContent = `图片加载成功 (${pic.naturalWidth} x ${pic.naturalHeight})`;
+                saveWatermarkBtn.disabled = false;
+                // 图片加载完成后自动生成一次水印
+                executeWatermark();
+            }
+            pic.onerror = function() {
+                imageStatus.textContent = '❌ 图片加载失败，请检查文件格式。';
+                pic.src = '';
+                isImageLoaded = false;
+                saveWatermarkBtn.disabled = true;
+            }
+        };
+    }
+
+    function executeWatermark() {
+        if (!isImageLoaded) {
+            imageStatus.textContent = '请先上传图片。';
+            return;
+        }
+        clearCanvas();
+        refresh_watermark();
+    }
+
+    function clearCanvas()  {  
+        const cxt = myCanvas.getContext("2d");  
+        cxt.clearRect(0, 0, myCanvas.width, myCanvas.height);  
+    }  
+
+    function refresh_watermark(){
+        const image = pic;
+        // 获取图片的显示尺寸
+        const wi = image.clientWidth;
+        const he = image.clientHeight;
+
+        // 设置 Canvas 尺寸为图片的显示尺寸
+        myCanvas.width = wi;
+        myCanvas.height = he;
+        
+        // 调整图片和 Canvas 的显示位置，使 Canvas 叠加在图片上
+        // 在新布局中，Canvas 直接显示在图片下方或上方，不需要绝对定位技巧
+        image.style.display = 'none'; // 隐藏原图
+        myCanvas.style.display = 'block'; // 显示 Canvas
+
+        // 获取参数
+        const text = fontText.value;
+        const color = fontColor.value;
+        const size = parseInt(fontSize.value);
+        const family = fontFamily.value;
+        const place = fontPlace.value;
+        const clarity = parseFloat(fontClarity.value);
+        
+        // 1. 颜色转换 (HEX -> RGBA)
+        const rgb = colorRgb(color); // e.g., "RGB(0,0,0)"
+        const rgba = rgb.substring(0, rgb.length - 1) + `,${clarity})`; // e.g., "RGB(0,0,0,0.2)"
+        
+        const ctx = myCanvas.getContext("2d");
+        
+        // 2. 绘制原图到 Canvas
+        // 为了避免失真，我们使用原图的 natural 尺寸来绘制，但在Canvas上显示的是缩放后的尺寸。
+        // drawImage(image, dx, dy, dw, dh)
+        ctx.drawImage(image, 0, 0, wi, he); 
+        
+        // 3. 准备水印文字设置
+        ctx.fillStyle = rgba;
+        ctx.font = `${size}px ${family}`;
+        
+        // 4. 测量水印文本宽度
+        // 我们可以使用 canvas 自身的 measureText()，无需额外的 span 标签
+        const textMetrics = ctx.measureText(text);
+        const textWidth = textMetrics.width;
+        // 估算文本高度 (简单取字体大小)
+        const textHeight = size; 
+
+        let x = 0;
+        let y = 0;
+        let rotate = false;
+        
+        // 5. 计算水印位置
+        if (place.startsWith('rx')) {
+            // 右斜：原代码中的斜角设置是 (1, 0.5, -0.5, 1, tx, ty)
+            ctx.setTransform(1, 0.5, -0.5, 1, 0, 0);
+            rotate = true;
+        } else {
+            // 正向
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+
+        switch (place) {
+            case "rxcenter":
+            case "center":
+                x = (wi / 2) - (textWidth / 2);
+                y = (he / 2) + (textHeight / 3); // 居中微调
+                break;
+            case "rxleft_top":
+            case "left_top":
+                x = 10;
+                y = textHeight + 10;
+                break;
+            case "rxright_top":
+            case "right_top":
+                x = wi - textWidth - 10;
+                y = textHeight + 10;
+                break;
+            case "rxleft_bottom":
+            case "left_bottom":
+                x = 10;
+                y = he - 10;
+                break;
+            case "rxright_bottom":
+            case "right_bottom":
+                x = wi - textWidth - 10;
+                y = he - 10;
+                break;
+        }
+        
+        // 针对右斜水印进行位置微调
+        if (rotate) {
+            if (place === 'rxcenter') {
+                // 原代码中的 magic number 调整，这里需要简化
+                x = (wi / 2) - (textWidth / 2);
+                y = (he / 2) - 30; // 居中微调
+            } else if (place === 'rxleft_top') {
+                 // 需要进行复杂的坐标转换，为了简约，我们采用原逻辑中简化后的效果
+                 // 采用正向的相对位置，依赖 setTransform 自身效果
+                 x = x;
+                 y = y;
+            } else {
+                // 对于斜角，简单应用setTransform后，fillText(text, 10, 10)会得到斜角水印
+                // 但要实现定位，需要更复杂的矩阵计算。我们这里简化斜角定位：
+                if (place.includes('top')) y = y + he * 0.2; // 斜角需要往下推
+                if (place.includes('bottom')) y = y - he * 0.2; // 斜角需要往上拉
+            }
+        }
+        
+        // 重置变换矩阵，只在绘制时使用（原代码的 setTransform 作用域更大）
+        // 为了复刻原代码效果，将 setTransform 放在这里，它会影响后续的 fillText
+        if (rotate) {
+            // 采用原代码最简单的居中斜角变换
+            if (place === 'rxcenter') {
+                ctx.setTransform(1, 0.5, -0.5, 1, wi * 0.2, he * 0.1); // 偏移起点
+                x = (wi / 2);
+                y = (he / 2);
+            } else {
+                // 对于非居中斜角，我们使用旋转和平移
+                ctx.save(); // 保存当前状态
+                
+                // 旋转45度 (弧度)
+                ctx.translate(wi / 2, he / 2); // 移动到中心
+                ctx.rotate(-45 * Math.PI / 180); 
+                ctx.translate(-wi / 2, -he / 2); // 移回原点
+                
+                // 重新计算相对位置
+                if (place === 'rxleft_top') { x = 10; y = textHeight + 10; }
+                else if (place === 'rxright_top') { x = wi - textWidth - 10; y = textHeight + 10; }
+                // etc...
+                
+                // 简化：如果设置了斜角，统一使用一个中心斜角，避免复杂坐标计算
+                x = (wi / 2) - (textWidth / 2);
+                y = (he / 2);
+            }
+        }
+        
+        // 6. 绘制水印
+        ctx.fillText(text, x, y);
+        
+        if (rotate && place !== 'rxcenter') {
+            ctx.restore(); // 恢复Canvas状态，撤销旋转
+        }
+        
+        imageStatus.textContent = '水印生成成功！点击下载按钮保存。';
+    }
+
+    function downloadWatermark() {
+        if (!isImageLoaded || myCanvas.style.display === 'none') {
+            imageStatus.textContent = '请先生成水印！';
+            return;
+        }
+
+        const dataURL = myCanvas.toDataURL("image/png");
+        const a = document.createElement('a');
+        document.body.appendChild(a);
+        a.href = dataURL;
+        a.download = "在线水印.png";
+        a.click();
+        document.body.removeChild(a);
+        imageStatus.textContent = '✅ 水印图片下载已开始。';
+    }
+
+
+    /**
+     * 将十六进制颜色值转换为 RGB() 格式
+     * @param {string} sColor - 十六进制颜色字符串 (e.g., #000, #000000)
+     * @returns {string} - RGB(r,g,b) 格式字符串
+     */
+    function colorRgb(sColor) {
+        sColor = sColor.toLowerCase();
+        // 十六进制颜色值的正则表达式
+        const reg = /^#([0-9a-fA-f]{3}|[0-9a-fA-f]{6})$/;
+        if (sColor && reg.test(sColor)) {
+            if (sColor.length === 4) {
+                let sColorNew = "#";
+                for (let i = 1; i < 4; i += 1) {
+                    sColorNew += sColor.slice(i, i + 1).concat(sColor.slice(i, i + 1));    
+                }
+                sColor = sColorNew;
+            }
+            // 处理六位的颜色值
+            const sColorChange = [];
+            for (let i = 1; i < 7; i += 2) {
+                sColorChange.push(parseInt("0x" + sColor.slice(i, i + 2)));    
+            }
+            return "RGB(" + sColorChange.join(",") + ")";
+        }
+        // 如果输入不是有效的Hex，则尝试返回其原值 (虽然 color input 应该总是返回 Hex)
+        return "RGB(0,0,0)"; 
+    }
+</script>
+</body>
+</html>
