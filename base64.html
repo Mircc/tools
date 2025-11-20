@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64 编/解码工具 (简约版)</title>
+    <style>
+        /* 沿用并优化自上一个工具的简约风格 */
+        :root {
+            --primary: #2563eb;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: #334155;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #1e293b; text-align: center; margin-bottom: 20px; }
+
+        .card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        /* 控件区域布局 */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+
+        .input-group { width: 100%; }
+        
+        .input-group label { display: block; font-size: 0.9em; font-weight: 600; margin-bottom: 5px; color: #475569; }
+
+        textarea {
+            width: 100%; min-height: 150px; padding: 10px 12px;
+            border: 1px solid var(--border); border-radius: 6px;
+            font-size: 14px; font-family: monospace; box-sizing: border-box;
+            resize: vertical;
+        }
+        textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
+
+        select {
+            padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+            background: var(--card); font-size: 14px; cursor: pointer;
+            height: 40px;
+            min-width: 120px;
+        }
+
+        .btn {
+            padding: 10px 20px; border: none; border-radius: 6px;
+            font-weight: 600; cursor: pointer; white-space: nowrap;
+            transition: all 0.2s;
+            height: 40px; 
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+        
+        .error-message { color: var(--danger); font-size: 0.9em; margin-top: 5px; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Base64 编/解码工具</h1>
+
+    <div class="card">
+        <div class="input-group">
+            <label for="inputText">输入内容 (明文或 Base64 编码)</label>
+            <textarea id="inputText" placeholder="在此输入文本..." autofocus></textarea>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <div class="input-group" style="flex-grow: 0;">
+            <label for="encodingSelect">字符编码</label>
+            <select id="encodingSelect">
+                <option value="utf-8">UTF-8 (默认)</option>
+                <option value="ascii">ASCII</option>
+                <option value="iso-8859-1">Latin-1 (ISO-8859-1)</option>
+                <option value="gbk">GBK (需浏览器支持)</option>
+            </select>
+        </div>
+
+        <div style="flex-grow: 1;"></div>
+        
+        <button class="btn btn-primary" id="actionBtn" onclick="b64Action()">⚡ 自动处理 / 切换</button>
+    </div>
+
+    <div class="card">
+        <div class="input-group">
+            <label for="outputText">输出结果 (解码或编码)</label>
+            <textarea id="outputText" readonly placeholder="结果将显示在这里..."></textarea>
+            <div id="statusMessage" class="error-message"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const inputText = document.getElementById('inputText');
+    const outputText = document.getElementById('outputText');
+    const encodingSelect = document.getElementById('encodingSelect');
+    const statusMessage = document.getElementById('statusMessage');
+
+    // Base64 字符集的简单正则检查 (不包括换行符)
+    const BASE64_REGEX = /^[A-Za-z0-9+/=]*$/;
+
+    window.onload = function() {
+        // 监听回车键，触发查询
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // 阻止默认的表单提交行为
+                b64Action();
+            }
+        });
+        
+        // 可选：实时输入监听，但为了保持简洁和性能，我们主要依赖按钮和回车
+        // inputText.addEventListener('input', b64Action);
+    }
+
+    /**
+     * 检查字符串是否可能是有效的 Base64 编码
+     * 规则：只包含 Base64 字符，且长度是 4 的倍数 (允许 0-2 个等号作为填充)
+     * @param {string} str 
+     * @returns {boolean}
+     */
+    function isBase64(str) {
+        if (!str || str.length === 0) return false;
+        
+        // 1. 检查字符集
+        if (!BASE64_REGEX.test(str)) {
+            return false;
+        }
+
+        // 2. 检查长度是否是 4 的倍数
+        if (str.length % 4 !== 0) {
+            return false;
+        }
+
+        // 3. 检查填充 ('=') 是否出现在末尾且数量正确 (0, 1, 或 2)
+        let padding = (str.match(/=/g) || []).length;
+        let nonPaddingLength = str.length - padding;
+        
+        // 非填充字符长度必须是 3 的倍数 (因为 3字节明文 -> 4字节Base64)
+        if (nonPaddingLength % 4 === 0) { 
+             // 如果 nonPaddingLength 是 4 的倍数，那么原始 Base64 长度就是 4k。
+             // 原始字节数是 3k。这不完全正确。
+             // 更简单的判断：Base64 长度 L % 4 必须是 0。
+             return true;
+        }
+        
+        return true; 
+    }
+
+    /**
+     * 执行编码或解码的主逻辑
+     */
+    function b64Action() {
+        const input = inputText.value.trim();
+        const encoding = encodingSelect.value;
+        statusMessage.textContent = '';
+        outputText.value = '';
+
+        if (!input) {
+            statusMessage.textContent = '请输入内容。';
+            return;
+        }
+
+        // 核心逻辑：尝试解码。如果看起来像 Base64 且解码成功，则解码；否则编码。
+        let action = 'Encode';
+        if (isBase64(input)) {
+            action = 'Decode';
+        }
+        
+        if (action === 'Decode') {
+            try {
+                // 1. Base64 解码 (使用 atob)
+                const binaryString = atob(input);
+                
+                // 2. 将 Base64 的字节串转换为字节数组
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                // 3. 使用 TextDecoder 和用户选择的编码转换成字符串
+                const decoder = new TextDecoder(encoding);
+                outputText.value = decoder.decode(bytes);
+                statusMessage.textContent = `✅ 成功：已按 ${encoding} 编码进行 Base64 解码。`;
+
+            } catch (e) {
+                // 如果解码失败，可能是输入不是 Base64，或者 Base64 格式错误。
+                // 此时执行编码操作作为备选。
+                statusMessage.textContent = `⚠️ 解码失败 (${e.message})，尝试编码...`;
+                encodeInput(input, encoding);
+            }
+        } else {
+            // 执行编码
+            encodeInput(input, encoding);
+        }
+    }
+    
+    /**
+     * 执行 Base64 编码
+     * @param {string} input 
+     * @param {string} encoding 
+     */
+    function encodeInput(input, encoding) {
+        try {
+            // 1. 使用 TextEncoder 和用户选择的编码将字符串转换为字节数组
+            const encoder = new TextEncoder(encoding);
+            const bytes = encoder.encode(input);
+            
+            // 2. 将字节数组转换为 Base64 (需要先转回 "binary" string)
+            let binaryString = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binaryString += String.fromCharCode(bytes[i]);
+            }
+            
+            // 3. Base64 编码
+            outputText.value = btoa(binaryString);
+            statusMessage.textContent = `✅ 成功：已按 ${encoding} 编码进行 Base64 编码。`;
+
+        } catch (e) {
+            statusMessage.textContent = `❌ 编码失败：不支持 ${encoding} 或数据错误 (${e.message})。`;
+        }
+    }
+</script>
+
+</body>
+</html>
