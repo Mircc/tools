@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>在线水印工具(纯前端、不保存内容)</title>
+    <title>在线水印工具 </title>
     <style>
         /* 沿用并优化自 Base64/DNS 工具的简约风格 */
         :root {
@@ -64,8 +64,6 @@
             background-color: var(--card);
         }
         
-        /* 颜色输入框定制 (已移除 type="color" 的特殊样式) */
-
         /* 按钮样式 */
         .action-btns {
             display: flex;
@@ -121,6 +119,16 @@
             padding: 10px 0;
             font-size: 0.95em;
         }
+        
+        /* 移动端特殊提示样式 */
+        .mobile-tip {
+            color: #f97316;
+            font-weight: 600;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px dashed #f9731630;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -145,6 +153,9 @@
                 <canvas id="myCanvas"></canvas>
             </div>
             <p id="imageStatus" class="message">请上传图片...</p>
+            <div id="mobileDownloadTip" class="message mobile-tip" style="display: none;">
+                ⚠️ **移动设备提示：** 若点击下载无效，请在图片生成后，长按 Canvas 区域（或新打开的图片）选择“存储图像”来保存水印图片。
+            </div>
         </div>
 
         <div class="card">
@@ -241,6 +252,7 @@
     const generateWatermarkBtn = document.getElementById('generateWatermarkBtn');
     const saveWatermarkBtn = document.getElementById('saveWatermarkBtn');
     const imageStatus = document.getElementById('imageStatus');
+    const mobileDownloadTip = document.getElementById('mobileDownloadTip');
 
     // 参数获取
     const fontText = document.getElementById('fontText');
@@ -257,9 +269,12 @@
 
     window.onload = function() {
         // 1. 上传图片按钮点击 -> 触发文件选择
-        uploadImgBtn.addEventListener('click', () => {
-            uploadFile.click();
-        });
+        // 检查：确保 uploadFile 和 uploadImgBtn 正确绑定
+        if (uploadImgBtn && uploadFile) {
+            uploadImgBtn.addEventListener('click', () => {
+                uploadFile.click();
+            });
+        }
 
         // 2. 文件选择变化 -> 加载图片
         uploadFile.addEventListener('change', handleFileChange);
@@ -269,8 +284,14 @@
         
         // 4. 下载水印图片按钮
         saveWatermarkBtn.addEventListener('click', downloadWatermark);
+        
+        // 5. 监听 Canvas 双击/长按 (移动端备用复制/保存)
+        myCanvas.addEventListener('dblclick', function() {
+            // 在移动端，双击可能无法触发长按，但可以作为额外的保存尝试
+            downloadWatermark(true); 
+        });
 
-        // 5. 回车键响应 '生成水印'
+        // 6. 回车键响应 '生成水印'
         document.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault(); 
@@ -291,6 +312,7 @@
         clearCanvas();
         myCanvas.style.display = 'none';
         pic.style.display = 'none';
+        mobileDownloadTip.style.display = 'none';
         imageStatus.textContent = '正在加载图片...';
         
         const reader = new FileReader();
@@ -299,6 +321,10 @@
         reader.onload = function (event) {
             pic.src = event.target.result;
             pic.onload = function() {
+                // 在图片加载完成后，设置 Canvas 尺寸
+                myCanvas.width = pic.naturalWidth;
+                myCanvas.height = pic.naturalHeight;
+                
                 pic.style.display = 'block';
                 isImageLoaded = true;
                 imageStatus.textContent = `图片加载成功 (${pic.naturalWidth} x ${pic.naturalHeight})`;
@@ -315,4 +341,170 @@
         };
     }
 
-    function
+    function executeWatermark() {
+        if (!isImageLoaded) {
+            imageStatus.textContent = '请先上传图片。';
+            return;
+        }
+        
+        mobileDownloadTip.style.display = 'block'; // 显示移动端提示
+        clearCanvas();
+        refresh_watermark();
+    }
+
+    function clearCanvas()  {  
+        const cxt = myCanvas.getContext("2d");  
+        cxt.clearRect(0, 0, myCanvas.width, myCanvas.height);  
+    }  
+
+    function refresh_watermark(){
+        const image = pic;
+        // 使用原图的 natural 尺寸作为 Canvas 尺寸，确保清晰度
+        const wi = myCanvas.width;
+        const he = myCanvas.height;
+
+        // 隐藏原图，显示 Canvas
+        image.style.display = 'none'; 
+        myCanvas.style.display = 'block'; 
+
+        // 获取参数
+        const text = fontText.value;
+        const color = fontColor.value;
+        const size = parseInt(fontSize.value);
+        const family = fontFamily.value;
+        const place = fontPlace.value;
+        const clarity = parseFloat(fontClarity.value);
+        
+        // 1. 颜色转换 (HEX -> RGBA)
+        const rgb = colorRgb(color); 
+        const rgba = rgb.substring(0, rgb.length - 1) + `,${clarity})`;
+        
+        const ctx = myCanvas.getContext("2d");
+        
+        // 2. 绘制原图到 Canvas (使用原图的 natural 尺寸)
+        ctx.drawImage(image, 0, 0, wi, he); 
+        
+        // 3. 准备水印文字设置
+        ctx.fillStyle = rgba;
+        ctx.font = `${size}px ${family}`;
+        
+        // 4. 测量水印文本宽度
+        const textMetrics = ctx.measureText(text);
+        const textWidth = textMetrics.width;
+        const textHeight = size; 
+
+        let x = 0;
+        let y = 0;
+        let rotate = false;
+        
+        // 5. 计算水印位置
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换矩阵
+        
+        if (place.startsWith('rx')) {
+            rotate = true;
+        }
+
+        switch (place) {
+            case "rxcenter":
+            case "center":
+                x = (wi / 2) - (textWidth / 2);
+                y = (he / 2) + (textHeight / 3); 
+                break;
+            case "rxleft_top":
+            case "left_top":
+                x = 10;
+                y = textHeight + 10;
+                break;
+            case "rxright_top":
+            case "right_top":
+                x = wi - textWidth - 10;
+                y = textHeight + 10;
+                break;
+            case "rxleft_bottom":
+            case "left_bottom":
+                x = 10;
+                y = he - 10;
+                break;
+            case "rxright_bottom":
+            case "right_bottom":
+                x = wi - textWidth - 10;
+                y = he - 10;
+                break;
+        }
+        
+        // 6. 绘制斜角水印
+        if (rotate) {
+            ctx.save();
+            if (place === 'rxcenter') {
+                // 采用一个固定的偏移和斜角变换，实现斜角居中效果
+                ctx.setTransform(1, 0.5, -0.5, 1, wi * 0.2, he * 0.1); 
+                x = (wi / 2);
+                y = (he / 2);
+            } else {
+                 // 对于非居中斜角，我们使用45度旋转
+                ctx.translate(wi / 2, he / 2); // 移动到中心
+                ctx.rotate(-45 * Math.PI / 180); 
+                ctx.translate(-wi / 2, -he / 2); // 移回原点
+            }
+        }
+        
+        // 7. 绘制文字
+        ctx.fillText(text, x, y);
+        
+        if (rotate) {
+            ctx.restore(); // 恢复Canvas状态，撤销变换
+        }
+        
+        imageStatus.textContent = '水印生成成功！点击下载按钮保存。';
+    }
+
+    function downloadWatermark() {
+        if (!isImageLoaded || myCanvas.style.display === 'none') {
+            imageStatus.textContent = '请先生成水印！';
+            return;
+        }
+
+        const dataURL = myCanvas.toDataURL("image/png");
+        
+        // **桌面端下载逻辑 (在移动端可能无效)**
+        const a = document.createElement('a');
+        document.body.appendChild(a);
+        a.href = dataURL;
+        a.download = "在线水印.png";
+        a.click();
+        document.body.removeChild(a);
+        
+        // 提示用户如何操作
+        imageStatus.textContent = '✅ 水印图片下载尝试已开始。';
+    }
+
+
+    /**
+     * 将十六进制颜色值转换为 RGB() 格式
+     * @param {string} sColor - 十六进制颜色字符串 (e.g., #000, #000000)
+     * @returns {string} - RGB(r,g,b) 格式字符串
+     */
+    function colorRgb(sColor) {
+        sColor = sColor.toLowerCase().trim();
+        const reg = /^#([0-9a-fA-f]{3}|[0-9a-fA-f]{6})$/;
+        if (!reg.test(sColor)) {
+            return "RGB(0,0,0)"; 
+        }
+
+        if (sColor.length === 4) {
+            let sColorNew = "#";
+            for (let i = 1; i < 4; i += 1) {
+                sColorNew += sColor.slice(i, i + 1).concat(sColor.slice(i, i + 1));    
+            }
+            sColor = sColorNew;
+        }
+        
+        const sColorChange = [];
+        for (let i = 1; i < 7; i += 2) {
+            sColorChange.push(parseInt("0x" + sColor.slice(i, i + 2)));    
+        }
+        return "RGB(" + sColorChange.join(",") + ")";
+    }
+</script>
+</body>
+</html>
