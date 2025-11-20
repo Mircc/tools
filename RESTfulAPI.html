@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线 RESTful API 调试工具</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-color: #334155;
+            --header-color: #1e293b;
+            --success-bg: #dcfce7;
+            --success-text: #166534;
+            --error-color: #dc2626;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: var(--header-color); text-align: center; margin-bottom: 20px; }
+
+        .card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        /* Main Grid Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        @media (min-width: 992px) {
+            .main-grid {
+                grid-template-columns: 1fr 1.2fr; /* 结果区域稍宽 */
+            }
+        }
+        
+        .input-group { width: 100%; margin-bottom: 1rem; }
+        
+        .input-group label { 
+            display: block; 
+            font-size: 0.9em; 
+            font-weight: 600; 
+            margin-bottom: 5px; 
+            color: #475569; 
+        }
+
+        input[type="text"], textarea, select {
+            width: 100%; 
+            padding: 10px 12px;
+            border: 1px solid var(--border); 
+            border-radius: 6px;
+            font-size: 14px; 
+            box-sizing: border-box;
+            background-color: var(--card);
+            color: var(--text-color);
+            transition: border-color 0.2s;
+        }
+        
+        textarea { min-height: 150px; resize: vertical; font-family: monospace; }
+        
+        /* Method and URL Bar */
+        .request-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+        #methodSelect {
+            flex-shrink: 0;
+            width: 120px;
+            font-weight: 600;
+        }
+        #urlInput {
+            flex-grow: 1;
+        }
+
+        /* Buttons */
+        .btn-primary { 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 6px;
+            font-weight: 600; 
+            cursor: pointer; 
+            white-space: nowrap;
+            transition: all 0.2s;
+            height: 40px;
+            background: var(--primary); 
+            color: white; 
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        .btn-secondary:hover { background: #4b5563; }
+        .btn-danger {
+            background: var(--error-color);
+            color: white;
+        }
+        .btn-danger:hover { background: #b91c1c; }
+
+
+        /* Dynamic Key-Value Pairs (Headers/Auth) */
+        .key-value-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        .key-value-row input {
+            height: 40px;
+        }
+        .key-value-row input:first-child {
+            width: 35%;
+        }
+        .key-value-row input:nth-child(2) {
+            flex-grow: 1;
+        }
+        .key-value-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 10px;
+            margin-bottom: 15px;
+        }
+
+        /* Response Viewer Styling */
+        .response-section h3 {
+            font-size: 1.1em;
+            color: var(--header-color);
+            margin-top: 20px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border);
+        }
+        .response-viewer {
+            background: #1e293b; 
+            color: #e2e8f0; 
+            padding: 15px;
+            border-radius: 6px;
+            min-height: 200px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+
+        /* Status Display */
+        #statusDisplay {
+            font-weight: 700;
+            font-size: 1.2em;
+            padding: 5px 10px;
+            border-radius: 6px;
+            color: var(--card);
+            background: #6b7280;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .status-2xx { background: #10b981 !important; } /* Green */
+        .status-3xx { background: #f59e0b !important; } /* Yellow/Orange */
+        .status-4xx { background: #f97316 !important; } /* Orange */
+        .status-5xx { background: var(--error-color) !important; } /* Red */
+
+        /* Auth/Body Tabs */
+        .tab-bar {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+            transition: all 0.1s;
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+            font-weight: 600;
+        }
+        .tab-content {
+            display: none;
+            padding: 5px 0;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>在线 RESTful API 调试工具</h1>
+    
+    <div style="padding: 10px 15px; background: #fffbe7; border: 1px solid #fcd34d; border-radius: 6px; margin-bottom: 20px; font-size: 0.9em; color: #92400e;">
+        ⚠️ **重要提示：** 此工具纯本地运行。若请求其他域名的 API，可能因浏览器 **CORS** 策略被阻止。如遇请求失败，请尝试在本地服务器环境中运行，或请求支持 CORS 的 API。
+    </div>
+
+    <div class="main-grid">
+        <div class="card">
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #1e293b;">请求配置</h2>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label for="urlInput">URL 地址</label>
+                <div class="request-bar">
+                    <select id="methodSelect">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                        <option value="PATCH">PATCH</option>
+                        <option value="HEAD">HEAD</option>
+                    </select>
+                    <input id="urlInput" type="text" placeholder="请输入 API URL (例如: https://jsonplaceholder.typicode.com/posts/1)" value="https://jsonplaceholder.typicode.com/posts/1">
+                    <button class="btn-primary" id="sendBtn">发送请求</button>
+                </div>
+            </div>
+
+            <div class="tab-bar" id="requestTabs">
+                <button class="tab-btn active" data-tab="headers">Headers</button>
+                <button class="tab-btn" data-tab="auth">认证 (Auth)</button>
+                <button class="tab-btn" data-tab="body">Body (主体)</button>
+            </div>
+            
+            <div class="tab-content active" id="tab-headers">
+                <div class="key-value-actions">
+                    <button class="btn-secondary" id="addHeaderBtn">添加 Header</button>
+                </div>
+                <div id="headersContainer">
+                    <div class="key-value-row">
+                        <input type="text" placeholder="Key (例如: Content-Type)" value="User-Agent" disabled>
+                        <input type="text" placeholder="Value (例如: custom-ua-client)" id="customUAInput" value="REST-API-Client/1.0 (Web Debugger)">
+                        <button class="btn-danger" disabled>移除</button>
+                    </div>
+                    </div>
+            </div>
+
+            <div class="tab-content" id="tab-auth">
+                <div class="input-group">
+                    <label for="authTypeSelect">认证类型</label>
+                    <select id="authTypeSelect" style="height: 40px;">
+                        <option value="none">无认证</option>
+                        <option value="bearer">Bearer Token (OAuth 2.0)</option>
+                        <option value="basic">Basic Auth (用户名/密码)</option>
+                    </select>
+                </div>
+                
+                <div id="bearerTokenGroup" style="display: none;" class="input-group">
+                    <label for="bearerTokenInput">Bearer Token</label>
+                    <input type="text" id="bearerTokenInput" placeholder="请输入 Token (例如: eyJhbGciOiJIUzI1NiI...)" />
+                </div>
+                
+                <div id="basicAuthGroup" style="display: none;">
+                    <div class="input-group">
+                        <label for="basicAuthUsername">用户名</label>
+                        <input type="text" id="basicAuthUsername" placeholder="Username" />
+                    </div>
+                    <div class="input-group">
+                        <label for="basicAuthPassword">密码</label>
+                        <input type="password" id="basicAuthPassword" placeholder="Password" />
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="tab-body">
+                <div class="input-group">
+                    <label for="bodyTypeSelect">Body 类型</label>
+                    <select id="bodyTypeSelect" style="height: 40px;">
+                        <option value="none">无 Body</option>
+                        <option value="json">JSON (application/json)</option>
+                        <option value="text">纯文本 (text/plain)</option>
+                        <option value="form">URL-Encoded 表单 (不建议在此处使用)</option>
+                    </select>
+                </div>
+                <div class="input-group" id="bodyTextareaGroup">
+                    <label for="requestBodyTextarea">请求主体内容</label>
+                    <textarea id="requestBodyTextarea" placeholder='{"key": "value", "id": 1}'></textarea>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #1e293b;">响应结果</h2>
+
+            <div style="display: flex; align-items: center;">
+                <label style="font-weight: 600;">HTTP 状态码:</label>
+                <span id="statusDisplay">--</span>
+            </div>
+
+            <div class="response-section">
+                <h3>响应 Headers</h3>
+                <pre class="response-viewer" id="responseHeaders"></pre>
+            </div>
+
+            <div class="response-section">
+                <h3>响应 Body</h3>
+                <pre class="response-viewer" id="responseBody">点击 "发送请求" 查看结果...</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- DOM 元素引用 ---
+    const sendBtn = document.getElementById('sendBtn');
+    const urlInput = document.getElementById('urlInput');
+    const methodSelect = document.getElementById('methodSelect');
+    const headersContainer = document.getElementById('headersContainer');
+    const addHeaderBtn = document.getElementById('addHeaderBtn');
+
+    const authTypeSelect = document.getElementById('authTypeSelect');
+    const bearerTokenGroup = document.getElementById('bearerTokenGroup');
+    const bearerTokenInput = document.getElementById('bearerTokenInput');
+    const basicAuthGroup = document.getElementById('basicAuthGroup');
+    const basicAuthUsername = document.getElementById('basicAuthUsername');
+    const basicAuthPassword = document.getElementById('basicAuthPassword');
+    
+    const bodyTypeSelect = document.getElementById('bodyTypeSelect');
+    const requestBodyTextarea = document.getElementById('requestBodyTextarea');
+    const bodyTextareaGroup = document.getElementById('bodyTextareaGroup');
+    const customUAInput = document.getElementById('customUAInput');
+
+    const statusDisplay = document.getElementById('statusDisplay');
+    const responseHeaders = document.getElementById('responseHeaders');
+    const responseBody = document.getElementById('responseBody');
+    const requestTabs = document.getElementById('requestTabs');
+
+    // --- 初始化和事件监听 ---
+
+    window.onload = function() {
+        // 1. 发送按钮点击事件
+        sendBtn.addEventListener('click', sendRequest);
+        
+        // 2. 动态 Header 管理
+        addHeaderBtn.addEventListener('click', () => addHeaderRow());
+        
+        // 3. 认证类型切换事件
+        authTypeSelect.addEventListener('change', updateAuthFields);
+        updateAuthFields(); // 初始调用一次
+
+        // 4. Body 类型切换事件
+        bodyTypeSelect.addEventListener('change', updateBodyFields);
+        updateBodyFields(); // 初始调用一次
+        
+        // 5. 选项卡切换事件
+        requestTabs.addEventListener('click', handleTabSwitch);
+        
+        // 初始 Header 行
+        addHeaderRow('Accept', 'application/json, text/plain, */*');
+    }
+    
+    // --- 选项卡切换逻辑 ---
+    function handleTabSwitch(e) {
+        if (!e.target.classList.contains('tab-btn')) return;
+
+        const targetTab = e.target.dataset.tab;
+
+        // 移除所有按钮的 active 类
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        // 移除所有内容的 active 类
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+        // 激活选中的按钮和内容
+        e.target.classList.add('active');
+        document.getElementById(`tab-${targetTab}`).classList.add('active');
+    }
+
+    // --- 动态 Header 逻辑 ---
+
+    function addHeaderRow(key = '', value = '') {
+        const row = document.createElement('div');
+        row.className = 'key-value-row';
+        row.innerHTML = `
+            <input type="text" placeholder="Key (例如: Authorization)" value="${key}">
+            <input type="text" placeholder="Value" value="${value}">
+            <button class="btn-danger">移除</button>
+        `;
+        
+        // 移除按钮事件
+        const removeBtn = row.querySelector('.btn-danger');
+        removeBtn.addEventListener('click', () => row.remove());
+
+        headersContainer.appendChild(row);
+    }
+
+    function getCustomHeaders() {
+        const headers = {};
+        const rows = headersContainer.querySelectorAll('.key-value-row');
+        
+        rows.forEach(row => {
+            const keyInput = row.children[0];
+            const valueInput = row.children[1];
+            
+            const key = keyInput.value.trim();
+            const value = valueInput.value.trim();
+
+            if (key && value) {
+                // User-Agent 特殊处理：使用自定义 UA，但如果为空则不发送
+                if (key.toLowerCase() === 'user-agent' && !value) {
+                    return; 
+                }
+                headers[key] = value;
+            }
+        });
+        return headers;
+    }
+    
+    // --- 认证字段切换逻辑 ---
+    function updateAuthFields() {
+        const authType = authTypeSelect.value;
+        bearerTokenGroup.style.display = 'none';
+        basicAuthGroup.style.display = 'none';
+
+        if (authType === 'bearer') {
+            bearerTokenGroup.style.display = 'block';
+        } else if (authType === 'basic') {
+            basicAuthGroup.style.display = 'block';
+        }
+    }
+    
+    // --- Body 字段切换逻辑 ---
+    function updateBodyFields() {
+        const bodyType = bodyTypeSelect.value;
+        if (bodyType === 'none') {
+            bodyTextareaGroup.style.display = 'none';
+        } else {
+            bodyTextareaGroup.style.display = 'block';
+        }
+        
+        // 根据 Body 类型设置默认 Content-Type (用户可以在 Headers 中覆盖)
+        const contentTypeHeader = {
+            'json': 'application/json',
+            'text': 'text/plain',
+            'form': 'application/x-www-form-urlencoded',
+        }[bodyType] || '';
+
+        // 尝试自动设置或更新 Content-Type Header
+        // 实际操作复杂，为了简化，我们让用户在 Headers 标签页中自己管理 Content-Type 
+        // 除非 Body Type 是 'none'，否则需要 Body
+        
+        // 仅在 POST/PUT/PATCH 且 Body Type 非 'none' 时，提示用户检查 Content-Type
+        if (['POST', 'PUT', 'PATCH'].includes(methodSelect.value) && bodyType !== 'none') {
+             requestBodyTextarea.placeholder = `请确保 Headers 中设置了 Content-Type: ${contentTypeHeader}`;
+        } else {
+             requestBodyTextarea.placeholder = '';
+        }
+    }
+
+
+    // --- 核心请求逻辑 ---
+
+    async function sendRequest() {
+        const url = urlInput.value.trim();
+        const method = methodSelect.value;
+        
+        if (!url) {
+            alert('URL 不能为空！');
+            return;
+        }
+
+        // 1. 准备请求选项
+        const requestOptions = {
+            method: method,
+            headers: getCustomHeaders(),
+        };
+
+        // 2. 处理认证 (Auth)
+        const authType = authTypeSelect.value;
+        if (authType === 'bearer') {
+            const token = bearerTokenInput.value.trim();
+            if (token) {
+                requestOptions.headers['Authorization'] = `Bearer ${token}`;
+            }
+        } else if (authType === 'basic') {
+            const username = basicAuthUsername.value;
+            const password = basicAuthPassword.value;
+            if (username || password) {
+                const encoded = btoa(`${username}:${password}`);
+                requestOptions.headers['Authorization'] = `Basic ${encoded}`;
+            }
+        }
+
+        // 3. 处理 Body
+        const bodyType = bodyTypeSelect.value;
+        const bodyContent = requestBodyTextarea.value;
+        
+        if (['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none') {
+            // GET/HEAD/DELETE通常不需要body，除非API特殊要求
+            requestOptions.body = bodyContent;
+        }
+
+        // 4. 清空和更新状态
+        updateStatus('--', '');
+        responseHeaders.textContent = '正在发送请求...';
+        responseBody.textContent = '等待服务器响应...';
+        sendBtn.disabled = true;
+
+        try {
+            // --- 执行 Fetch 请求 ---
+            const response = await fetch(url, requestOptions);
+            
+            // 5. 处理状态码
+            updateStatus(response.status, response.statusText);
+
+            // 6. 处理响应 Headers
+            let headerText = '';
+            for (const [key, value] of response.headers.entries()) {
+                headerText += `${key}: ${value}\n`;
+            }
+            responseHeaders.textContent = headerText || '(无响应头部)';
+
+            // 7. 处理响应 Body
+            let bodyText;
+            const contentType = response.headers.get('content-type');
+            
+            if (contentType && contentType.includes('application/json')) {
+                // 尝试解析 JSON 并格式化
+                try {
+                    const json = await response.json();
+                    bodyText = JSON.stringify(json, null, 2);
+                } catch (e) {
+                    // JSON 解析失败，作为纯文本处理
+                    bodyText = await response.text();
+                    bodyText = `JSON 解析失败。原始内容:\n${bodyText}`;
+                }
+            } else {
+                // 其他类型或无 Content-Type，作为纯文本处理
+                bodyText = await response.text();
+            }
+
+            responseBody.textContent = bodyText || '(无响应主体)';
+
+        } catch (error) {
+            // 8. 捕获网络错误或 CORS 错误
+            console.error('Fetch Error:', error);
+            updateStatus('ERR', 'Network Error');
+            responseHeaders.textContent = '无法获取 Headers。';
+            responseBody.textContent = `请求失败：可能是网络错误、URL 错误，或最常见的原因是 **CORS 跨域策略**阻止了请求。\n\n错误信息: ${error.message}`;
+
+        } finally {
+            sendBtn.disabled = false;
+        }
+    }
+
+    // --- 辅助函数：更新状态显示 ---
+    function updateStatus(status, statusText) {
+        statusDisplay.textContent = `${status}${statusText ? ' ' + statusText : ''}`;
+        statusDisplay.className = ''; // 重置样式
+        
+        if (status === 'ERR') {
+            statusDisplay.classList.add('status-5xx');
+        } else if (typeof status === 'number') {
+            const statusClass = Math.floor(status / 100);
+            statusDisplay.classList.add(`status-${statusClass}xx`);
+        }
+    }
+</script>
+</body>
+</html>
