@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTTPDNS/DNS 统一验证工具 (全球丰富节点版)</title>
+    <title>HTTPDNS/DNS 统一验证工具</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -107,7 +107,7 @@
         <div id="customServerWrapper" style="display: none; opacity: 0;">
             <div class="input-group">
                 <label for="customServerInput">自定义 DNS/HTTPDNS 服务器 (IP 或 URL)</label>
-                <input type="text" id="customServerInput" placeholder="例如: 8.8.8.8 或 https://dns.digitale-gesellschaft.ch/dns-query">
+                <input type="text" id="customServerInput" placeholder="例如: 8.8.8.8 或 https://dns.alidns.com/resolve">
             </div>
         </div>
     </div>
@@ -118,7 +118,7 @@
         由于浏览器安全模型限制，本工具无法执行传统的 UDP/TCP DNS 解析。当您输入 **IP 地址**时，系统会**自动将其转换为 `https://IP/dns-query`** 格式进行 HTTPDNS 测试。
         </p>
         <p style="margin: 5px 0 0 0;">
-        **内置服务器列表已更新：** 包含 Google, Cloudflare, AliDNS, AdGuard, OpenDNS 以及 **德国和瑞士** 的注重隐私的欧洲节点，覆盖全球主要区域。
+        **内置服务器列表已精简：** 仅保留您确认工作正常的 **Cloudflare** 和 **AliDNS** 两个稳定节点。
         </p>
     </div>
 
@@ -140,28 +140,30 @@
 </div>
 
 <script>
-    // 默认服务器列表 (覆盖全球，新增德国和瑞士的欧洲节点)
+    // 默认服务器列表 (只保留您确认工作正常的 Cloudflare 和 AliDNS)
     const DEFAULT_SERVERS = [
-        'https://dns.google/resolve',        // Google (全球)
         'https://cloudflare-dns.com/dns-query', // Cloudflare (全球)
-        'https://dns.alidns.com/resolve',    // 阿里巴巴 (国内/亚洲)
-        'https://dns.adguard-dns.com/dns-query', // AdGuard (全球/专业过滤)
-        'https://doh.opendns.com/dns-query',     // OpenDNS/Cisco (欧洲/全球)
-        'https://public.dns.iij.jp/dns-query',    // IIJ Public DNS (日本/亚洲)
-        'https://doh.ffmuc.net/dns-query',       // Freifunk/Digitalcourage (德国)
-        'https://dns.digitale-gesellschaft.ch/dns-query' // Digital Society (瑞士)
+        'https://dns.alidns.com/resolve'    // 阿里巴巴 (国内/亚洲)
     ];
 
     // IPv4 正则表达式（用于判断是否为传统 IP 输入）
     const IPV4_REGEX = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
     
-    // --- UI 动态显示逻辑 ---
+    // --- UI 动态显示和回车逻辑 ---
     window.onload = function() {
         const domainInput = document.getElementById('domainInput');
         
-        // 监听焦点和输入事件
+        // 监听焦点和输入事件，显示自定义服务器输入框
         domainInput.addEventListener('focus', showCustomServer);
         domainInput.addEventListener('input', showCustomServer);
+
+        // 监听回车键，触发查询
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // 阻止默认的表单提交行为
+                startQuery();
+            }
+        });
     }
 
     function showCustomServer() {
@@ -185,21 +187,24 @@
      * @returns {string[]} 包含所有要查询的 URL 列表
      */
     function prepareServers() {
-        const customServerInput = document.getElementById('customServerInput').value.trim();
+        // 尝试获取 customServerInput，如果元素未显示，它可能尚未加载（但我们通常会在 showCustomServer 中确保它被创建）
+        const customServerInput = document.getElementById('customServerInput');
+        const customServerValue = customServerInput ? customServerInput.value.trim() : '';
+        
         let serversToQuery = [...DEFAULT_SERVERS];
         let customServerUrl = '';
 
-        if (customServerInput) {
-            if (IPV4_REGEX.test(customServerInput)) {
+        if (customServerValue) {
+            if (IPV4_REGEX.test(customServerValue)) {
                 // 传统 DNS IP 输入，自动转换为 HTTPDNS (https + /dns-query)
-                customServerUrl = `https://${customServerInput}/dns-query`;
-                console.warn(`[DNS IP 转换]: IP地址 ${customServerInput} 已转换为 DoH URL: ${customServerUrl}`);
-            } else if (!customServerInput.startsWith('http')) {
+                customServerUrl = `https://${customServerValue}/dns-query`;
+                console.warn(`[DNS IP 转换]: IP地址 ${customServerValue} 已转换为 DoH URL: ${customServerUrl}`);
+            } else if (!customServerValue.startsWith('http')) {
                 // 域名输入但缺少协议头，假设为 HTTPS
-                customServerUrl = `https://${customServerInput}`;
+                customServerUrl = `https://${customServerValue}`;
             } else {
                 // 完整的 HTTP/HTTPS URL
-                customServerUrl = customServerInput;
+                customServerUrl = customServerValue;
             }
             serversToQuery.push(customServerUrl);
         }
