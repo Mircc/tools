@@ -97,7 +97,7 @@
         
         <div class="query-box-top">
             <div class="input-group domain-group">
-                <label for="domainInput">要查询的域名 (例如: www.baidu.com)</label>
+                <label for="domainInput">要查询的域名 (例如: www.youdomain.com)</label>
                 <input type="text" id="domainInput" value="www.google.com" placeholder="请输入域名">
             </div>
             
@@ -118,7 +118,7 @@
         由于浏览器安全模型限制，本工具无法执行传统的 UDP/TCP DNS 解析。当您输入 **IP 地址**时，系统会**自动将其转换为 `https://IP/dns-query`** 格式进行 HTTPDNS 测试。
         </p>
         <p style="margin: 5px 0 0 0;">
-        **内置服务器列表已精简：** 仅保留您确认工作正常的 **Cloudflare** 和 **AliDNS** 两个稳定节点。
+        **内置服务器列表：** 包含 **Google**、**Cloudflare** 和 **AliDNS** 三个全球最稳定和常用的节点。
         </p>
     </div>
 
@@ -140,8 +140,9 @@
 </div>
 
 <script>
-    // 默认服务器列表 (只保留您确认工作正常的 Cloudflare 和 AliDNS)
+    // 默认服务器列表 (包含 Google, Cloudflare, AliDNS)
     const DEFAULT_SERVERS = [
+        'https://dns.google/resolve',        // Google (全球) - 重新添加
         'https://cloudflare-dns.com/dns-query', // Cloudflare (全球)
         'https://dns.alidns.com/resolve'    // 阿里巴巴 (国内/亚洲)
     ];
