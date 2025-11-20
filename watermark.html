@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>在线水印工具 </title>
+    <title>在线水印工具</title>
     <style>
         /* 沿用并优化自 Base64/DNS 工具的简约风格 */
         :root {
@@ -91,29 +91,25 @@
         .btn-download { background: #0294a7; color: white; }
         .btn-download:hover { background: #017887; }
 
-        /* --- 大图优化区域 --- */
+        /* 大图优化区域 */
         .image-display {
             text-align: center;
             position: relative;
             padding: 10px 0;
             min-height: 200px;
-            
-            /* 限制显示容器的最大高度，避免页面被拉伸 */
             max-height: 650px; 
             overflow-y: auto; 
         }
         
         #pic, #myCanvas {
-            max-width: 100%; /* 保证不会超出父容器宽度 (900px) */
-            max-height: 600px; /* 限制显示元素的最大高度 */
-            height: auto;    /* 维持纵横比 */
+            max-width: 100%; 
+            max-height: 600px; 
+            height: auto;    
             display: block;
             margin: 0 auto;
         }
-        /* ------------------ */
         
         #pic {
-            /* 初始图片隐藏，直到上传 */
             display: none; 
         }
         
@@ -138,6 +134,31 @@
             padding: 10px;
             border: 1px dashed #f9731630;
             border-radius: 4px;
+        }
+
+        /* 颜色选择器定制 */
+        .color-input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        #fontColorText {
+            flex-grow: 1; /* 文本框占据主要空间 */
+        }
+        
+        #fontColorPicker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border: 1px solid var(--border);
+            width: 40px; /* 减小宽度，使其看起来像一个按钮 */
+            height: 40px;
+            border-radius: 6px;
+            cursor: pointer;
+            padding: 2px;
+            box-sizing: border-box;
+            /* 移除输入框的默认内边距，确保与按钮对齐 */
+            margin: 0;
         }
     </style>
 </head>
@@ -204,8 +225,11 @@
                 </div>
 
                 <div class="input-group">
-                    <label for="fontColor">字体颜色 (Hex 代码，如 #000000)</label>
-                    <input type="text" id="fontColor" value="#000000">
+                    <label for="fontColorText">字体颜色 (Hex 代码 / 可视化选择)</label>
+                    <div class="color-input-container">
+                        <input type="text" id="fontColorText" value="#000000">
+                        <input type="color" id="fontColorPicker" value="#000000">
+                    </div>
                 </div>
                 
                 <div class="input-group">
@@ -264,9 +288,10 @@
     const imageStatus = document.getElementById('imageStatus');
     const mobileDownloadTip = document.getElementById('mobileDownloadTip');
 
-    // 参数获取
+    // 参数获取 (更新：使用 fontColorText 和 fontColorPicker)
     const fontText = document.getElementById('fontText');
-    const fontColor = document.getElementById('fontColor');
+    const fontColorText = document.getElementById('fontColorText');
+    const fontColorPicker = document.getElementById('fontColorPicker');
     const fontSize = document.getElementById('fontSize');
     const fontFamily = document.getElementById('fontFamily');
     const fontPlace = document.getElementById('fontPlace');
@@ -293,6 +318,29 @@
         
         // 4. 下载水印图片按钮
         saveWatermarkBtn.addEventListener('click', downloadWatermark);
+        
+        // --- 颜色输入双向同步 ---
+        
+        // 可视化选择器更新文本框
+        fontColorPicker.addEventListener('input', function() {
+            fontColorText.value = this.value.toUpperCase(); // 规范为大写Hex
+        });
+
+        // 文本框手动输入更新可视化选择器
+        fontColorText.addEventListener('input', function() {
+            let hex = this.value.trim().toUpperCase();
+            const reg = /^#([0-9A-F]{3}|[0-9A-F]{6})$/;
+            
+            // 简单格式修正：如果用户忘了 # 号，且是3或6位
+            if (!hex.startsWith('#') && (hex.length === 3 || hex.length === 6)) {
+                hex = '#' + hex;
+            }
+
+            if (reg.test(hex)) {
+                fontColorPicker.value = hex; // 有效 Hex 更新 Picker
+                this.value = hex; // 规范化输入
+            }
+        });
         
         // 5. 监听 Canvas 双击/长按 (移动端备用保存)
         myCanvas.addEventListener('dblclick', function() {
@@ -377,7 +425,7 @@
 
         // 获取参数
         const text = fontText.value;
-        const color = fontColor.value;
+        const color = fontColorText.value; // **使用文本框的值**
         const size = parseInt(fontSize.value);
         const family = fontFamily.value;
         const place = fontPlace.value;
