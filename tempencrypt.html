@@ -372,3 +372,255 @@
             false,
             ["deriveKey"]
         );
+
+        return window.crypto.subtle.deriveKey(
+            {
+                name: "PBKDF2",
+                salt: encoder.encode(STATIC_SALT), 
+                iterations: 100000,
+                hash: "SHA-256",
+            },
+            keyMaterial,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["encrypt", "decrypt"]
+        );
+    }
+
+    /**
+     * 加密处理
+     */
+    async function processEncrypt() {
+        const text = inputText.value.trim();
+        const expireHours = parseInt(expireTime.value);
+
+        if (!text) return showUIResult('请输入需要加密的内容。', true);
+
+        showUIResult('正在获取时间并执行加密...', false); 
+
+        try {
+            const currentHour = await getAuthorityTimeInHours();
+            const key = await generateCryptoKey(expireHours, currentHour);
+            
+            const encoder = new TextEncoder();
+            const encodedData = encoder.encode(text);
+            const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV
+
+            const encryptedBuffer = await window.crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv },
+                key,
+                encodedData
+            );
+            
+            const encryptedArray = new Uint8Array(encryptedBuffer);
+            
+            // --- 紧凑密文格式封装 ---
+            // 格式: CreationHour(4B) + ExpireHours(2B) + IV(12B) + Ciphertext + AuthTag(16B)
+            
+            const hourBytes = numberToBytes(currentHour, 4);
+            const expireBytes = numberToBytes(expireHours, 2);
+            
+            const headerLen = hourBytes.length + expireBytes.length + iv.length;
+            const combinedLength = headerLen + encryptedArray.length;
+            const combined = new Uint8Array(combinedLength);
+            
+            let offset = 0;
+            combined.set(hourBytes, offset); offset += hourBytes.length;
+            combined.set(expireBytes, offset); offset += expireBytes.length;
+            combined.set(iv, offset); offset += iv.length;
+            combined.set(encryptedArray, offset); 
+
+            // Base64URL 编码并添加前缀
+            const encryptedBase64URL = arrayBufferToBase64URL(combined.buffer);
+            const finalOutput = CIPHER_PREFIX + encryptedBase64URL;
+
+            showUIResult(finalOutput, false, false, `🔒本消息已临时加密，${expireHours}小时后自动销毁。`);
+
+        } catch (e) {
+            showUIResult(e.message, true);
+        }
+    }
+
+    /**
+     * 解密处理
+     */
+    async function processDecrypt() {
+        const text = inputText.value.trim();
+        if (!text.startsWith(CIPHER_PREFIX)) return showUIResult('输入内容不是有效的密文格式。', true);
+
+        const encryptedBase64URL = text.substring(CIPHER_PREFIX.length);
+        if (!encryptedBase64URL) return showUIResult('密文内容缺失。', true);
+
+        showUIResult('正在连接时间服务器验证有效性...', false);
+
+        try {
+            const combinedBuffer = base64URLToArrayBuffer(encryptedBase64URL);
+            const combined = new Uint8Array(combinedBuffer);
+            
+            // 1. 解析紧凑密文格式
+            const HOUR_LEN = 4;
+            const EXP_LEN = 2;
+            const IV_LEN = 12;
+            const HEADER_LEN = HOUR_LEN + EXP_LEN + IV_LEN;
+
+            if (combined.length < HEADER_LEN) throw new Error('密文数据长度不足。');
+            
+            const createdHour = bytesToNumber(combined.slice(0, HOUR_LEN), HOUR_LEN);
+            const expireHours = bytesToNumber(combined.slice(HOUR_LEN, HOUR_LEN + EXP_LEN), EXP_LEN);
+            const iv = combined.slice(HEADER_LEN - IV_LEN, HEADER_LEN);
+            const cipherAndTag = combined.slice(HEADER_LEN);
+
+            // 2. 检查本地已读记录 (基于密文指纹)
+            const fingerprint = encryptedBase64URL.substring(0, 32);
+            if (checkAndMarkRead(fingerprint)) {
+               resultInfo.textContent = '❕ 注意：此消息在当前设备已被解密过。';
+            } else {
+               resultInfo.textContent = '双击复制内容到剪贴板。';
+            }
+
+
+            // 3. 获取时间并生成解密 Key
+            const currentHour = await getAuthorityTimeInHours();
+            
+            // 4. 校验过期时间
+            if (currentHour - createdHour > expireHours) {
+                 throw new Error(`消息已过期。有效期为 ${expireHours} 小时。`);
+            }
+            
+            // 5. 生成解密 Key (必须与加密时在同一时间窗口内)
+            const key = await generateCryptoKey(expireHours, createdHour); // 注意：这里使用 createdHour 来保证 KeyBase 一致
+
+            // 6. 尝试解密
+            const decryptedBuffer = await window.crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: iv },
+                key,
+                cipherAndTag
+            );
+            
+            const decryptedText = new TextDecoder().decode(decryptedBuffer);
+
+            showUIResult(decryptedText, false, false, `✅ 成功解密。创建时间: ${new Date(createdHour * 3600 * 1000).toLocaleString()}`);
+            
+            // 标记为已读
+            markRead(fingerprint); 
+
+        } catch (e) {
+            console.error(e);
+            let errorMessage = e.message;
+            if (errorMessage.includes('decrypted data') || errorMessage.includes('密钥无效')) {
+                errorMessage = '解密失败：密钥或密文无效。可能是已过有效期或内容被篡改。';
+            }
+            showUIResult(errorMessage, true);
+        }
+    }
+
+    // --- 3. UI 交互与事件处理 ---
+
+    // 防重放/已读检查
+    function checkAndMarkRead(signature) {
+        return localStorage.getItem(`read_${signature}`);
+    }
+    function markRead(signature) {
+        try {
+            localStorage.setItem(`read_${signature}`, Date.now()); 
+        } catch (e) {
+            // 忽略隐身模式下可能的存储错误
+        }
+    }
+
+    function showUIResult(message, isError = false, showCopy = false, info = '') {
+        resultContainer.style.display = 'block';
+        if (isError) {
+            resultBox.className = 'result-box result-error';
+            resultTitle.textContent = '❌ 操作失败';
+            resultInfo.textContent = '请检查输入内容或稍后再试。';
+        } else {
+            resultBox.className = 'result-box result-success';
+            resultTitle.textContent = '✅ 操作成功';
+            resultInfo.textContent = info || '双击复制内容到剪贴板。';
+        }
+        resultContent.textContent = message;
+    }
+
+    /**
+     * 自动检测输入并更新按钮状态
+     */
+    function updateUIBasedOnInput() {
+        const text = inputText.value.trim();
+        const isCiphertext = text.startsWith(CIPHER_PREFIX);
+        
+        // 启用/禁用按钮
+        smartBtn.disabled = !text;
+
+        if (isCiphertext) {
+            smartBtn.textContent = '🔓 解密信息';
+            expireTime.disabled = true;
+            expireTime.style.opacity = 0.5;
+            expireTime.nextElementSibling.style.opacity = 0.5; // label
+        } else {
+            smartBtn.textContent = '🔒 加密信息';
+            expireTime.disabled = false;
+            expireTime.style.opacity = 1;
+            expireTime.nextElementSibling.style.opacity = 1; 
+        }
+    }
+    
+    function handleSmartAction() {
+        const text = inputText.value.trim();
+        const isCiphertext = text.startsWith(CIPHER_PREFIX);
+        
+        if (!text) return;
+        
+        if (isCiphertext) {
+            processDecrypt();
+        } else {
+            processEncrypt();
+        }
+    }
+
+    // --- 4 & 5. 事件绑定 ---
+    window.onload = function() {
+        // 安全检查
+        if (!window.isSecureContext) {
+            document.getElementById('httpsWarning').style.display = 'block';
+            smartBtn.disabled = true;
+            inputText.placeholder = "错误：Web Crypto API 仅支持 HTTPS 环境。";
+            return;
+        }
+
+        // 按钮点击事件
+        smartBtn.addEventListener('click', handleSmartAction);
+        
+        // 输入变化事件 (自动切换按钮)
+        inputText.addEventListener('input', updateUIBasedOnInput);
+        
+        // 回车键响应事件 (3)
+        inputText.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { // 阻止 Shift+Enter 换行
+                e.preventDefault();
+                handleSmartAction();
+            }
+        });
+
+        // 结果区域双击复制事件 (5)
+        resultBox.addEventListener('dblclick', () => {
+            const text = resultContent.textContent;
+            if (!text) return;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                resultInfo.textContent = '📋 已复制到剪贴板！';
+                setTimeout(() => {
+                    updateUIBasedOnInput(); // 恢复原始提示
+                }, 2000);
+            }).catch(err => {
+                alert('复制失败，请手动复制。错误: ' + err);
+            });
+        });
+        
+        // 初始状态更新
+        updateUIBasedOnInput();
+    }
+
+</script>
+</body>
+</html>
