@@ -189,7 +189,7 @@
     <div class="card">
         <div class="info-box">
             <p>• <strong>密文识别头：</strong> 密文以 `&mdash;sect&mdash;` 开头，工具将自动识别并切换为解密模式。</p>
-            <p>• <strong>权威校验增强：</strong> 工具将通过 **5 个**国际时间源进行严格互校验，确保时间同步准确性。</p>
+            <p>• <strong>权威校验增强：</strong> 工具将通过 **6 个**国际时间源进行严格互校验，确保时间同步准确性。</p>
             <p>• <strong>回车键响应：</strong> 在输入框按下回车键可直接执行操作。</p>
             <p>• <strong>双击复制：</strong> 双击结果区域可自动复制内容。</p>
         </div>
@@ -229,17 +229,18 @@
 
 <script>
     // --- 常量 ---
-    const CIPHER_PREFIX = '--sect--'; // 密文头更新为 --sect--
+    const CIPHER_PREFIX = '--sect--'; 
     const STATIC_SALT = 'static-salt-v1'; 
     const MAX_DEVIATION_MS = 60 * 1000; // 允许最大偏差 60 秒 (1分钟)
 
-    // 权威时间源列表 (5个独立/高可靠时间源)
+    // 权威时间源列表 (6个独立/高可靠时间源)
     const TIME_APIS = [
-        'https://worldtimeapi.org/api/ip',                   // WorldTimeAPI 1
+        'https://worldtimeapi.org/api/ip',                   // WorldTimeAPI 1 (基于IP)
         'https://worldtimeapi.org/api/timezone/Etc/UTC',      // WorldTimeAPI 2 (UTC 固定时区)
         'https://worldtimeapi.org/api/timezone/Europe/London',// WorldTimeAPI 3 (另一个固定时区)
-        'https://cloudflare.com/cdn-cgi/trace',               // Cloudflare
+        'https://cloudflare.com/cdn-cgi/trace',               // Cloudflare Trace
         'https://time.jsontest.com/',                         // Simple JSON Test Service
+        'https://timeapi.io/api/Time/current/zone?timeZone=Etc/UTC', // 新增: TimeAPI.io (UTC 固定时区)
     ];
 
     // --- 元素引用 (略) ---
@@ -337,6 +338,12 @@
             if (data.milliseconds_since_epoch) {
                 // jsontest.com 直接返回毫秒时间戳
                 return data.milliseconds_since_epoch;
+            }
+        } else if (url.includes('timeapi.io')) { // 新增 TimeAPI.io 解析逻辑
+            const data = await response.json();
+            if (data.dateTime) {
+                // timeapi.io 返回 ISO 8601 格式的 datetime 字符串
+                return new Date(data.dateTime).getTime();
             }
         }
         throw new Error(`时间源 ${url} 响应格式错误或缺失时间字段。`);
