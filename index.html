@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>临时加解密工具 - 安全信息传输</title>
+    <title>临时加解密工具 - 基础设施时间校验版</title>
     <style>
-        /* 统一的简约设计风格 (与此前页面保持一致) */
+        /* 保持之前的简约风格 */
         :root {
             --primary: #2563eb;
             --bg: #f8fafc;
@@ -47,7 +47,6 @@
             margin-bottom: 20px;
         }
 
-        /* 信息提示栏 */
         .info-box {
             background: var(--info-bg);
             color: var(--info-text);
@@ -58,9 +57,7 @@
             border-left: 4px solid var(--primary);
         }
         .info-box p { margin: 5px 0; }
-        .info-box strong { font-weight: 600; }
 
-        /* 输入区域 */
         .input-group { margin-bottom: 20px; }
         
         label {
@@ -84,18 +81,9 @@
         }
         
         textarea { min-height: 180px; resize: vertical; }
-        textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
-        }
+        textarea:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1); }
 
-        /* 按钮组 */
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
-        }
+        .button-group { display: flex; gap: 15px; margin-top: 20px; }
 
         button {
             flex: 1;
@@ -110,17 +98,9 @@
 
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: #1d4ed8; }
-        
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        /* 结果区域 */
-        .result-area {
-            margin-top: 25px;
-            display: none; 
-        }
+        .result-area { margin-top: 25px; display: none; }
         
         .result-box {
             padding: 20px;
@@ -128,52 +108,20 @@
             word-break: break-all;
             font-family: monospace;
             border: 1px solid transparent;
-            cursor: pointer; /* 双击复制提示 */
+            cursor: pointer;
         }
         
-        .result-box:active {
-            opacity: 0.9;
-        }
+        .result-success { background: var(--success-bg); color: var(--success-text); border-color: #86efac; }
+        .result-error { background: var(--error-bg); color: var(--error-text); border-color: #fca5a5; }
 
-        .result-success {
-            background: var(--success-bg);
-            color: var(--success-text);
-            border-color: #86efac;
-        }
-        
-        .result-error {
-            background: var(--error-bg);
-            color: var(--error-text);
-            border-color: #fca5a5;
-        }
+        .result-title { font-weight: 700; margin-bottom: 10px; display: block; }
+        .result-info { font-size: 0.8em; color: #64748b; margin-top: 10px; }
 
-        .result-title {
-            font-weight: 700;
-            margin-bottom: 10px;
-            display: block;
-        }
+        @media (max-width: 640px) { .button-group { flex-direction: column; } }
         
-        .result-info {
-            font-size: 0.8em;
-            color: #64748b;
-            margin-top: 10px;
-        }
-
-        /* 响应式 */
-        @media (max-width: 640px) {
-            .button-group { flex-direction: column; }
-        }
-        
-        /* 隐私/环境警告 */
         .env-warning {
-            background: #fff7ed;
-            color: #9a3412;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border: 1px solid #fdba74;
-            display: none; 
-            font-size: 0.9em;
+            background: #fff7ed; color: #9a3412; padding: 10px; border-radius: 6px;
+            margin-bottom: 20px; border: 1px solid #fdba74; display: none; font-size: 0.9em;
         }
     </style>
 </head>
@@ -183,24 +131,23 @@
     <h1>临时加解密工具</h1>
     
     <div id="httpsWarning" class="env-warning">
-        ⚠️ <strong>安全警告：</strong> 检测到当前环境不安全。Web Crypto API 需要 HTTPS 或 localhost 环境才能运行。请切换到安全环境使用。
+        ⚠️ <strong>安全警告：</strong> Web Crypto API 需要 HTTPS 环境。
     </div>
 
     <div class="card">
         <div class="info-box">
-            <p>• <strong>密文识别头：</strong> 密文以 `&mdash;sect&mdash;` 开头，工具将自动识别并切换为解密模式。</p>
-            <p>• <strong>权威校验增强：</strong> 工具将通过 **6 个**国际时间源进行严格互校验，确保时间同步准确性。</p>
-            <p>• <strong>回车键响应：</strong> 在输入框按下回车键可直接执行操作。</p>
-            <p>• <strong>双击复制：</strong> 双击结果区域可自动复制内容。</p>
+            <p>• <strong>基础设施级时间校验：</strong> 利用 CDN 响应头获取时间，无需专门的时间服务器，抗干扰能力极强。</p>
+            <p>• <strong>密文识别头：</strong> 密文以 `--sect--` 开头，工具将自动识别并切换为解密模式。</p>
+            <p>• <strong>自动响应：</strong> 支持回车键执行，双击结果自动复制。</p>
         </div>
 
         <div class="input-group">
-            <label for="inputText">输入内容 (明文或密文)</label>
-            <textarea id="inputText" placeholder="在此输入需要加密的敏感信息，或者粘贴接收到的密文..."></textarea>
+            <label for="inputText">输入内容</label>
+            <textarea id="inputText" placeholder="输入明文或 --sect-- 开头的密文..."></textarea>
         </div>
 
         <div class="input-group">
-            <label for="expireTime">设置有效期 (加密时有效)</label>
+            <label for="expireTime">有效期</label>
             <select id="expireTime">
                 <option value="24">24 小时 (1天)</option>
                 <option value="72" selected>72 小时 (3天)</option>
@@ -217,33 +164,31 @@
             <div id="resultBox" class="result-box">
                 <span class="result-title" id="resultTitle">结果</span>
                 <div id="resultContent"></div>
-                <div class="result-info" id="resultInfo">双击复制内容到剪贴板。</div>
+                <div class="result-info" id="resultInfo"></div>
             </div>
         </div>
     </div>
     
     <div style="text-align: center; color: #94a3b8; font-size: 0.85em; margin-top: 20px;">
-        纯前端本地加密处理 | 无数据上传服务器 | 密钥周期性销毁
+        纯前端 | CDN 辅助时间校验 | 密钥周期性销毁
     </div>
 </div>
 
 <script>
-    // --- 常量 ---
     const CIPHER_PREFIX = '--sect--'; 
     const STATIC_SALT = 'static-salt-v1'; 
-    const MAX_DEVIATION_MS = 90 * 1000; // 允许最大偏差 90 秒 (1.5分钟)
+    const MAX_DEVIATION_MS = 90 * 1000; 
 
-    // 权威时间源列表 (6个独立/高可靠时间源)
-    const TIME_APIS = [
-        'https://worldtimeapi.org/api/ip',                   // WorldTimeAPI 1 (基于IP)
-        'https://worldtimeapi.org/api/timezone/Etc/UTC',      // WorldTimeAPI 2 (UTC 固定时区)
-        'https://worldtimeapi.org/api/timezone/Europe/London',// WorldTimeAPI 3 (另一个固定时区)
-        'https://cloudflare.com/cdn-cgi/trace',               // Cloudflare Trace
-        'https://time.jsontest.com/',                         // Simple JSON Test Service
-        'https://timeapi.io/api/Time/current/zone?timeZone=Etc/UTC', // TimeAPI.io (UTC 固定时区)
+    // --- 核心改进：使用通用 CDN 资源作为“无感知”时间源 ---
+    // 请求这些 URL 的 HEAD，读取 Date 头部。这些都是高可用 CDN。
+    const CDN_TIME_SOURCES = [
+        'https://cdn.jsdelivr.net/npm/jquery/package.json', // JSDelivr
+        'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js', // Cloudflare CDN
+        'https://unpkg.com/vue/package.json', // Unpkg (Cloudflare based)
+        'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png', // Google Static
+        'https://microsoft.com/favicon.ico' // Microsoft
     ];
 
-    // --- 元素引用 (略) ---
     const inputText = document.getElementById('inputText');
     const expireTime = document.getElementById('expireTime');
     const smartBtn = document.getElementById('smartBtn');
@@ -253,423 +198,192 @@
     const resultContent = document.getElementById('resultContent');
     const resultInfo = document.getElementById('resultInfo');
 
-    // --- 核心工具函数：数据转换 (Base64URL, Bytes <-> Number) (略) ---
-    
-    /**
-     * 将 ArrayBuffer 转换为 Base64URL 字符串
-     */
+    // --- 工具函数 (Base64URL 等) ---
     function arrayBufferToBase64URL(buffer) {
         let binary = '';
         const bytes = new Uint8Array(buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return btoa(binary)
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=+$/, '');
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
-
-    /**
-     * 将 Base64URL 字符串转回 ArrayBuffer
-     */
     function base64URLToArrayBuffer(base64URL) {
         let base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
-        while (base64.length % 4) {
-            base64 += '=';
-        }
+        while (base64.length % 4) base64 += '=';
         const binary = atob(base64);
-        const len = binary.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binary.charCodeAt(i);
-        }
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
         return bytes.buffer;
     }
-    
-    /**
-     * 将数字（小时）转换为 Big Endian 字节
-     */
     function numberToBytes(num, bytes) {
-        const buffer = new ArrayBuffer(bytes);
-        const view = new DataView(buffer);
-        if (bytes === 4) {
-            view.setUint32(0, num, false); 
-        } else if (bytes === 2) {
-            view.setUint16(0, num, false); 
-        }
-        return new Uint8Array(buffer);
+        const view = new DataView(new ArrayBuffer(bytes));
+        bytes === 4 ? view.setUint32(0, num, false) : view.setUint16(0, num, false);
+        return new Uint8Array(view.buffer);
     }
-    
-    /**
-     * 从字节获取数字
-     */
     function bytesToNumber(bytes, bytesCount) {
         const view = new DataView(bytes.buffer, bytes.byteOffset, bytesCount);
-        if (bytesCount === 4) {
-            return view.getUint32(0, false); 
-        } else if (bytesCount === 2) {
-            return view.getUint16(0, false); 
-        }
-        return 0;
+        return bytesCount === 4 ? view.getUint32(0, false) : view.getUint16(0, false);
     }
-    
-    // --- 1. 时间校验 (多源增强与互校验) ---
+
+    // --- 1. 改进的时间校验逻辑 ---
 
     /**
-     * 从时间 API 响应中提取时间戳（毫秒）
+     * 请求 CDN 资源并解析 Date 头
      */
-    const extractTimestamp = async (url, response) => {
-        if (url.includes('worldtimeapi.org')) {
-            const data = await response.json();
-            if (data.utc_datetime) {
-                return new Date(data.utc_datetime).getTime();
-            }
-        } else if (url.includes('cloudflare.com/cdn-cgi/trace')) {
-            const text = await response.text();
-            const tsMatch = text.match(/ts=(\d+\.\d+)/); 
-            if (tsMatch) {
-                // Cloudflare 返回的是浮点数秒，转为毫秒
-                return parseFloat(tsMatch[1]) * 1000; 
-            }
-        } else if (url.includes('jsontest.com')) { 
-            const data = await response.json();
-            if (data.milliseconds_since_epoch) {
-                // jsontest.com 直接返回毫秒时间戳
-                return data.milliseconds_since_epoch;
-            }
-        } else if (url.includes('timeapi.io')) { // TimeAPI.io 解析逻辑
-            const data = await response.json();
-            if (data.dateTime) {
-                // timeapi.io 返回 ISO 8601 格式的 datetime 字符串
-                return new Date(data.dateTime).getTime();
-            }
+    const fetchDateHeader = async (url) => {
+        try {
+            // method: 'HEAD' 极其轻量，只获取头部
+            // cache: 'no-store' 防止浏览器缓存 Date 头
+            const response = await fetch(url, { method: 'HEAD', cache: 'no-store', mode: 'cors' });
+            const dateStr = response.headers.get('date');
+            if (!dateStr) throw new Error('无 Date 头');
+            return new Date(dateStr).getTime();
+        } catch (e) {
+            // Google/MS 等可能存在 CORS 限制，如果 fetch 失败 (opaque response)，则无法读取 header
+            // 因此我们主要依赖支持 CORS 的 CDN (JSDelivr, CDNJS, Unpkg)
+            console.warn(`无法从 ${url} 获取时间:`, e);
+            return null;
         }
-        throw new Error(`时间源 ${url} 响应格式错误或缺失时间字段。`);
     };
 
-    /**
-     * 从多个权威时间服务器获取时间，并进行互相校验。
-     * @returns {Promise<number>} 权威时间（距离 Epoch 的小时数）
-     */
     async function getAuthorityTimeInHours() {
-        resultInfo.textContent = `正在连接 ${TIME_APIS.length} 个权威时间服务器并进行校验...`;
+        resultInfo.textContent = `正在通过全球 CDN 网络校验时间...`;
         
-        // 1. 并发请求所有时间源
-        const fetchPromises = TIME_APIS.map(url => 
-            fetch(url, { cache: 'no-store' }).then(async response => {
-                if (!response.ok) throw new Error(`API ${url} 响应异常`);
-                return { url, timeMs: await extractTimestamp(url, response) };
-            }).catch(e => {
-                console.warn(`时间源 ${url} 失败: ${e.message}`);
-                return null; 
-            })
-        );
+        const promises = CDN_TIME_SOURCES.map(url => fetchDateHeader(url));
+        const results = (await Promise.all(promises)).filter(t => t !== null);
 
-        const results = (await Promise.all(fetchPromises)).filter(r => r !== null);
-        const resultsMs = results.map(r => r.timeMs);
-
-        // 2. 校验成功数量
-        if (resultsMs.length < 2) {
-            throw new Error(`时间校验失败：至少需要2个权威时间源成功，但只获得了 ${resultsMs.length} 个。请检查网络。`);
-        }
-        
-        resultInfo.textContent = `已成功获取 ${resultsMs.length} 个时间源，正在进行互校验...`;
-
-        // 3. 互相校验（偏差检查）
-        const maxTime = Math.max(...resultsMs);
-        const minTime = Math.min(...resultsMs);
-        const deviationMs = maxTime - minTime;
-
-        if (deviationMs > MAX_DEVIATION_MS) {
-            // **这里是修改后的偏差检查，现在是 90 秒**
-            throw new Error(`时间校验失败：多个权威时间源偏差过大 (${(deviationMs / 1000).toFixed(1)} 秒，超过 ${MAX_DEVIATION_MS/1000} 秒上限)。为安全起见，拒绝操作。`);
+        if (results.length < 2) {
+            // 如果 CDN 全挂了（极低概率），或者处于断网环境
+            throw new Error('无法连接到足够的互联网节点进行时间校验。请检查网络连接。');
         }
 
-        // 4. 计算平均时间
-        const averageTimeMs = resultsMs.reduce((sum, t) => sum + t, 0) / resultsMs.length;
-
-        // 5. 本地时间校验 (容差 24h)
-        const localTimeMs = Date.now();
-        const diffHours = Math.abs(localTimeMs - averageTimeMs) / (1000 * 3600);
-        
-        if (diffHours > 24) {
-            throw new Error('本地系统时间偏差过大 (>24h)。为安全起见，请校准系统时间。');
+        // 校验偏差
+        const maxTime = Math.max(...results);
+        const minTime = Math.min(...results);
+        if ((maxTime - minTime) > MAX_DEVIATION_MS) {
+            throw new Error('网络环境时间源偏差过大，存在安全风险。');
         }
+
+        const avgTime = results.reduce((a, b) => a + b, 0) / results.length;
         
-        return Math.floor(averageTimeMs / (1000 * 3600)); // 返回距离 Epoch 的小时数
+        // 本地时间校验
+        const localTime = Date.now();
+        if (Math.abs(localTime - avgTime) > 24 * 3600 * 1000) {
+            throw new Error('本地系统时间错误 (>24h)。请校准。');
+        }
+
+        return Math.floor(avgTime / (1000 * 3600));
     }
 
-    // --- 2. 密钥与加解密 (保持不变) ---
-
-    /**
-     * 生成密钥
-     */
+    // --- 2. 加解密逻辑 (保持) ---
     async function generateCryptoKey(expireHours, currentAuthorityHour) {
-        // 密钥生成算法：KeyBase = floor(currentHour / expireHours)
         const keyBase = Math.floor(currentAuthorityHour / expireHours);
         const seed = `${keyBase}-${expireHours}`; 
-        
         const encoder = new TextEncoder();
         const keyMaterial = await window.crypto.subtle.importKey(
-            "raw",
-            encoder.encode(seed),
-            { name: "PBKDF2" },
-            false,
-            ["deriveKey"]
+            "raw", encoder.encode(seed), { name: "PBKDF2" }, false, ["deriveKey"]
         );
-
         return window.crypto.subtle.deriveKey(
-            {
-                name: "PBKDF2",
-                salt: encoder.encode(STATIC_SALT), 
-                iterations: 100000,
-                hash: "SHA-256",
-            },
-            keyMaterial,
-            { name: "AES-GCM", length: 256 },
-            false,
-            ["encrypt", "decrypt"]
+            { name: "PBKDF2", salt: encoder.encode(STATIC_SALT), iterations: 100000, hash: "SHA-256" },
+            keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
         );
     }
 
-    /**
-     * 加密处理
-     */
     async function processEncrypt() {
         const text = inputText.value.trim();
-        const expireHours = parseInt(expireTime.value);
-
-        if (!text) return showUIResult('请输入需要加密的内容。', true);
-
-        showUIResult('正在获取时间并执行加密...', false); 
+        const eh = parseInt(expireTime.value);
+        if (!text) return showUIResult('请输入内容。', true);
+        showUIResult('正在同步时间...', false);
 
         try {
-            const currentHour = await getAuthorityTimeInHours();
-            const key = await generateCryptoKey(expireHours, currentHour);
-            
-            const encoder = new TextEncoder();
-            const encodedData = encoder.encode(text);
-            const iv = window.crypto.getRandomValues(new Uint8Array(12)); 
-
-            const encryptedBuffer = await window.crypto.subtle.encrypt(
-                { name: "AES-GCM", iv: iv },
-                key,
-                encodedData
+            const ch = await getAuthorityTimeInHours();
+            const key = await generateCryptoKey(eh, ch);
+            const iv = window.crypto.getRandomValues(new Uint8Array(12));
+            const encrypted = await window.crypto.subtle.encrypt(
+                { name: "AES-GCM", iv }, key, new TextEncoder().encode(text)
             );
-            
-            const encryptedArray = new Uint8Array(encryptedBuffer);
-            
-            // --- 紧凑密文格式封装 ---
-            const HOUR_LEN = 4;
-            const EXP_LEN = 2;
-            const IV_LEN = 12;
-            
-            const hourBytes = numberToBytes(currentHour, HOUR_LEN);
-            const expireBytes = numberToBytes(expireHours, EXP_LEN);
-            
-            const headerLen = hourBytes.length + expireBytes.length + IV_LEN;
-            const combinedLength = headerLen + encryptedArray.length;
-            const combined = new Uint8Array(combinedLength);
-            
-            let offset = 0;
-            combined.set(hourBytes, offset); offset += HOUR_LEN;
-            combined.set(expireBytes, offset); offset += EXP_LEN;
-            combined.set(iv, offset); offset += IV_LEN;
-            combined.set(encryptedArray, offset); 
 
-            // Base64URL 编码并添加前缀
-            const encryptedBase64URL = arrayBufferToBase64URL(combined.buffer);
-            const finalOutput = CIPHER_PREFIX + encryptedBase64URL;
+            const hb = numberToBytes(ch, 4);
+            const eb = numberToBytes(eh, 2);
+            const combined = new Uint8Array(hb.length + eb.length + iv.length + encrypted.byteLength);
+            combined.set(hb, 0);
+            combined.set(eb, 4);
+            combined.set(iv, 6);
+            combined.set(new Uint8Array(encrypted), 18);
 
-            showUIResult(finalOutput, false, false, `🔒本消息已临时加密，${expireHours}小时后自动销毁。`);
-
-        } catch (e) {
-            showUIResult(e.message, true);
-        }
+            const output = CIPHER_PREFIX + arrayBufferToBase64URL(combined.buffer);
+            showUIResult(output, false, false, `🔒 密文已生成，${eh}小时后失效。`);
+        } catch (e) { showUIResult(e.message, true); }
     }
 
-    /**
-     * 解密处理
-     */
     async function processDecrypt() {
         const text = inputText.value.trim();
-        if (!text.startsWith(CIPHER_PREFIX)) return showUIResult('输入内容不是有效的密文格式。', true);
-
-        const encryptedBase64URL = text.substring(CIPHER_PREFIX.length);
-        if (!encryptedBase64URL) return showUIResult('密文内容缺失。', true);
-
-        showUIResult('正在连接时间服务器验证有效性...', false);
+        const b64 = text.substring(CIPHER_PREFIX.length);
+        if (!b64) return showUIResult('密文无效', true);
+        showUIResult('正在验证...', false);
 
         try {
-            const combinedBuffer = base64URLToArrayBuffer(encryptedBase64URL);
-            const combined = new Uint8Array(combinedBuffer);
+            const buf = new Uint8Array(base64URLToArrayBuffer(b64));
+            if (buf.length < 18) throw new Error('数据损坏');
             
-            // 1. 解析紧凑密文格式
-            const HOUR_LEN = 4;
-            const EXP_LEN = 2;
-            const IV_LEN = 12;
-            const HEADER_LEN = HOUR_LEN + EXP_LEN + IV_LEN;
+            const ch = bytesToNumber(buf.slice(0, 4), 4);
+            const eh = bytesToNumber(buf.slice(4, 6), 2);
+            const iv = buf.slice(6, 18);
+            const data = buf.slice(18);
 
-            if (combined.length < HEADER_LEN) throw new Error('密文数据长度不足。');
+            // 指纹检查
+            const fp = text.substring(0, 32);
+            if (localStorage.getItem(`read_${fp}`)) resultInfo.textContent = '❕ 此消息在当前设备已读过。';
+
+            const nowH = await getAuthorityTimeInHours();
+            if (nowH - ch >= eh) throw new Error(`消息已过期 (有效期 ${eh}小时)`);
+
+            const key = await generateCryptoKey(eh, ch);
+            const dec = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
             
-            const createdHour = bytesToNumber(combined.slice(0, HOUR_LEN), HOUR_LEN);
-            const expireHours = bytesToNumber(combined.slice(HOUR_LEN, HOUR_LEN + EXP_LEN), EXP_LEN);
-            const iv = combined.slice(HEADER_LEN - IV_LEN, HEADER_LEN);
-            const cipherAndTag = combined.slice(HEADER_LEN);
-
-            // 2. 检查本地已读记录 (基于密文指纹)
-            const fingerprint = encryptedBase64URL.substring(0, 32);
-            if (checkAndMarkRead(fingerprint)) {
-               resultInfo.textContent = '❕ 注意：此消息在当前设备已被解密过。';
-            } else {
-               resultInfo.textContent = '双击复制内容到剪贴板。';
-            }
-
-
-            // 3. 获取时间并生成解密 Key
-            const currentHour = await getAuthorityTimeInHours();
-            
-            // 4. 校验过期时间
-            if (currentHour - createdHour >= expireHours) { 
-                 throw new Error(`消息已过期。有效期为 ${expireHours} 小时。已创建 ${currentHour - createdHour} 小时。`);
-            }
-            
-            // 5. 生成解密 Key 
-            const key = await generateCryptoKey(expireHours, createdHour); 
-
-            // 6. 尝试解密
-            const decryptedBuffer = await window.crypto.subtle.decrypt(
-                { name: "AES-GCM", iv: iv },
-                key,
-                cipherAndTag
-            );
-            
-            const decryptedText = new TextDecoder().decode(decryptedBuffer);
-
-            showUIResult(decryptedText, false, false, `✅ 成功解密。创建时间: ${new Date(createdHour * 3600 * 1000).toLocaleString()}`);
-            
-            // 标记为已读
-            markRead(fingerprint); 
-
-        } catch (e) {
-            console.error(e);
-            let errorMessage = e.message;
-            if (errorMessage.includes('decrypted data') || errorMessage.includes('密钥无效')) {
-                errorMessage = '解密失败：密钥或密文无效。可能是已过有效期或内容被篡改。';
-            }
-            showUIResult(errorMessage, true);
-        }
+            showUIResult(new TextDecoder().decode(dec), false, false, `✅ 解密成功。创建于: ${new Date(ch * 3600000).toLocaleString()}`);
+            try { localStorage.setItem(`read_${fp}`, Date.now()); } catch(e){}
+        } catch (e) { showUIResult('解密失败：密钥无效或已过期。', true); }
     }
 
-    // --- 3. UI 交互与事件处理 (保持不变) ---
-
-    // 防重放/已读检查
-    function checkAndMarkRead(signature) {
-        return localStorage.getItem(`read_${signature}`);
-    }
-    function markRead(signature) {
-        try {
-            localStorage.setItem(`read_${signature}`, Date.now()); 
-        } catch (e) {
-            // 忽略隐身模式下可能的存储错误
-        }
-    }
-
-    function showUIResult(message, isError = false, showCopy = false, info = '') {
+    // --- 3. UI 逻辑 ---
+    function showUIResult(msg, isErr, showCopy, info) {
         resultContainer.style.display = 'block';
-        if (isError) {
-            resultBox.className = 'result-box result-error';
-            resultTitle.textContent = '❌ 操作失败';
-            resultInfo.textContent = info || '请检查输入内容或稍后再试。';
-        } else {
-            resultBox.className = 'result-box result-success';
-            resultTitle.textContent = '✅ 操作成功';
-            resultInfo.textContent = info || '双击复制内容到剪贴板。';
-        }
-        resultContent.textContent = message;
+        resultBox.className = isErr ? 'result-box result-error' : 'result-box result-success';
+        resultTitle.textContent = isErr ? '❌ 失败' : '✅ 成功';
+        resultInfo.textContent = info || (isErr ? '' : '双击复制内容。');
+        resultContent.textContent = msg;
     }
 
-    /**
-     * 自动检测输入并更新按钮状态
-     */
-    function updateUIBasedOnInput() {
-        const text = inputText.value.trim();
-        const isCiphertext = text.startsWith(CIPHER_PREFIX);
-        
-        // 启用/禁用按钮
-        smartBtn.disabled = !text;
-
-        if (isCiphertext) {
-            smartBtn.textContent = '🔓 解密信息';
-            expireTime.disabled = true;
-            expireTime.style.opacity = 0.5;
-            document.querySelector('label[for="expireTime"]').style.opacity = 0.5; 
-        } else {
-            smartBtn.textContent = '🔒 加密信息';
-            expireTime.disabled = false;
-            expireTime.style.opacity = 1;
-            document.querySelector('label[for="expireTime"]').style.opacity = 1; 
-        }
-    }
-    
-    function handleSmartAction() {
-        const text = inputText.value.trim();
-        const isCiphertext = text.startsWith(CIPHER_PREFIX);
-        
-        if (!text) return;
-        
-        if (isCiphertext) {
-            processDecrypt();
-        } else {
-            processEncrypt();
-        }
+    function updateUI() {
+        const val = inputText.value.trim();
+        const isCipher = val.startsWith(CIPHER_PREFIX);
+        smartBtn.textContent = isCipher ? '🔓 解密信息' : '🔒 加密信息';
+        smartBtn.disabled = !val;
+        expireTime.disabled = isCipher;
+        document.querySelector('label[for="expireTime"]').style.opacity = isCipher ? 0.5 : 1;
     }
 
-    // --- 事件绑定 ---
     window.onload = function() {
-        // 安全检查
         if (!window.isSecureContext) {
             document.getElementById('httpsWarning').style.display = 'block';
             smartBtn.disabled = true;
-            inputText.placeholder = "错误：Web Crypto API 仅支持 HTTPS 环境。";
             return;
         }
-
-        // 按钮点击事件
-        smartBtn.addEventListener('click', handleSmartAction);
-        
-        // 输入变化事件 (自动切换按钮)
-        inputText.addEventListener('input', updateUIBasedOnInput);
-        
-        // 回车键响应事件
-        inputText.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey && inputText.value.trim()) { 
+        smartBtn.addEventListener('click', () => inputText.value.startsWith(CIPHER_PREFIX) ? processDecrypt() : processEncrypt());
+        inputText.addEventListener('input', updateUI);
+        inputText.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey && inputText.value.trim()) {
                 e.preventDefault();
-                handleSmartAction();
+                smartBtn.click();
             }
         });
-
-        // 结果区域双击复制事件
         resultBox.addEventListener('dblclick', () => {
-            const text = resultContent.textContent;
-            if (!text || resultBox.classList.contains('result-error')) return;
-            
-            navigator.clipboard.writeText(text).then(() => {
-                resultInfo.textContent = '📋 已复制到剪贴板！';
-                setTimeout(() => {
-                    updateUIBasedOnInput(); // 恢复原始提示
-                }, 2000);
-            }).catch(err => {
-                alert('复制失败，请手动复制。错误: ' + err);
-            });
+            const txt = resultContent.textContent;
+            if(txt && !resultBox.classList.contains('result-error')) {
+                navigator.clipboard.writeText(txt).then(() => alert('已复制！'));
+            }
         });
-        
-        // 初始状态更新
-        updateUIBasedOnInput();
+        updateUI();
     }
-
 </script>
 </body>
 </html>
