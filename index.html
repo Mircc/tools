@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>临时加解密工具 - 基础设施时间校验版</title>
+    <title>临时加解密工具 - 严丝合缝的安全措施，保护您的信息安全</title>
     <style>
-        /* 保持之前的简约风格 */
+        /* 统一的简约设计风格 */
         :root {
             --primary: #2563eb;
             --bg: #f8fafc;
@@ -123,6 +123,13 @@
             background: #fff7ed; color: #9a3412; padding: 10px; border-radius: 6px;
             margin-bottom: 20px; border: 1px solid #fdba74; display: none; font-size: 0.9em;
         }
+        
+        .server-status {
+            font-size: 0.75em;
+            color: #64748b;
+            margin-top: 5px;
+            text-align: right;
+        }
     </style>
 </head>
 <body>
@@ -136,9 +143,8 @@
 
     <div class="card">
         <div class="info-box">
-            <p>• <strong>基础设施级时间校验：</strong> 利用 CDN 响应头获取时间，无需专门的时间服务器，抗干扰能力极强。</p>
-            <p>• <strong>密文识别头：</strong> 密文以 `--sect--` 开头，工具将自动识别并切换为解密模式。</p>
-            <p>• <strong>自动响应：</strong> 支持回车键执行，双击结果自动复制。</p>
+            <p>• <strong>密文头：</strong> 密文以 `--sect--` 开头，自动识别。</p>
+            <p>• <strong>便捷操作：</strong> 支持回车键执行，双击结果自动复制。</p>
         </div>
 
         <div class="input-group">
@@ -170,23 +176,41 @@
     </div>
     
     <div style="text-align: center; color: #94a3b8; font-size: 0.85em; margin-top: 20px;">
-        纯前端 | CDN 辅助时间校验 | 密钥周期性销毁
+        纯前端 | 密钥周期性销毁
     </div>
 </div>
 
 <script>
     const CIPHER_PREFIX = '--sect--'; 
     const STATIC_SALT = 'static-salt-v1'; 
-    const MAX_DEVIATION_MS = 90 * 1000; 
+    const MAX_DEVIATION_MS = 90 * 1000; // 90秒宽容度
 
-    // --- 核心改进：使用通用 CDN 资源作为“无感知”时间源 ---
-    // 请求这些 URL 的 HEAD，读取 Date 头部。这些都是高可用 CDN。
+    // --- 核心改进：全球主流云厂商 CDN 静态资源 (CORS-Safe) ---
+    // 我们请求这些 URL 的 HEAD，读取 Date 头部。这些都是互联网基石级设施。
     const CDN_TIME_SOURCES = [
-        'https://cdn.jsdelivr.net/npm/jquery/package.json', // JSDelivr
-        'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js', // Cloudflare CDN
-        'https://unpkg.com/vue/package.json', // Unpkg (Cloudflare based)
-        'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png', // Google Static
-        'https://microsoft.com/favicon.ico' // Microsoft
+        // 1. Global / General (Cloudflare/Fastly)
+        'https://cdn.jsdelivr.net/npm/jquery/package.json', 
+        'https://unpkg.com/vue/package.json', 
+        
+        // 2. Amazon Web Services (AWS Global)
+        // S3 的根域名通常支持 HEAD 且返回 Date
+        'https://s3.amazonaws.com', 
+
+        // 3. Alibaba Cloud (China/Global)
+        // npmmirror 是阿里巴巴维护的国内最大镜像站，速度极快
+        'https://cdn.npmmirror.com/packages/jquery/package.json', 
+
+        // 4. Baidu Cloud (China)
+        // bdstatic 是百度云的静态资源 CDN
+        'https://code.bdstatic.com/npm/jquery@3.7.1/package.json',
+
+        // 5. Tencent Cloud (China)
+        // 腾讯云开源镜像站，通常支持 CORS
+        'https://mirrors.cloud.tencent.com/npm/package.json',
+        
+        // 6. Google (Global)
+        // Google Fonts CSS (通常支持 CORS)
+        'https://fonts.googleapis.com/css?family=Roboto'
     ];
 
     const inputText = document.getElementById('inputText');
@@ -230,50 +254,61 @@
      */
     const fetchDateHeader = async (url) => {
         try {
-            // method: 'HEAD' 极其轻量，只获取头部
-            // cache: 'no-store' 防止浏览器缓存 Date 头
-            const response = await fetch(url, { method: 'HEAD', cache: 'no-store', mode: 'cors' });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
+
+            const response = await fetch(url, { 
+                method: 'HEAD', 
+                cache: 'no-store', 
+                mode: 'cors',
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
             const dateStr = response.headers.get('date');
             if (!dateStr) throw new Error('无 Date 头');
             return new Date(dateStr).getTime();
         } catch (e) {
-            // Google/MS 等可能存在 CORS 限制，如果 fetch 失败 (opaque response)，则无法读取 header
-            // 因此我们主要依赖支持 CORS 的 CDN (JSDelivr, CDNJS, Unpkg)
-            console.warn(`无法从 ${url} 获取时间:`, e);
+            // console.warn(`Skipped ${url}:`, e.message);
             return null;
         }
     };
 
     async function getAuthorityTimeInHours() {
-        resultInfo.textContent = `正在通过全球 CDN 网络校验时间...`;
+        resultInfo.textContent = `正在连接 Amazon, Aliyun, Tencent, Baidu 等节点校验时间...`;
         
+        // 并发请求
         const promises = CDN_TIME_SOURCES.map(url => fetchDateHeader(url));
+        
+        // 等待所有结果（Settled），而不是 Fail-fast
+        // 我们使用 Promise.all 配合上面的 catch (return null) 已经实现了这一点
         const results = (await Promise.all(promises)).filter(t => t !== null);
 
         if (results.length < 2) {
-            // 如果 CDN 全挂了（极低概率），或者处于断网环境
-            throw new Error('无法连接到足够的互联网节点进行时间校验。请检查网络连接。');
+            throw new Error(`网络隔离：无法连接到足够的参考节点 (只连接了 ${results.length} 个)。请检查网络。`);
         }
 
         // 校验偏差
         const maxTime = Math.max(...results);
         const minTime = Math.min(...results);
-        if ((maxTime - minTime) > MAX_DEVIATION_MS) {
-            throw new Error('网络环境时间源偏差过大，存在安全风险。');
+        const deviation = maxTime - minTime;
+        
+        if (deviation > MAX_DEVIATION_MS) {
+            throw new Error(`安全警告：检测到环境时间源偏差过大 (${(deviation/1000).toFixed(1)}s)。可能存在中间人攻击或网络异常。`);
         }
 
         const avgTime = results.reduce((a, b) => a + b, 0) / results.length;
         
-        // 本地时间校验
+        // 本地时间校验 (作为参考)
         const localTime = Date.now();
         if (Math.abs(localTime - avgTime) > 24 * 3600 * 1000) {
-            throw new Error('本地系统时间错误 (>24h)。请校准。');
+            throw new Error('本地系统时间错误 (>24h)。请校准系统时间以继续。');
         }
 
         return Math.floor(avgTime / (1000 * 3600));
     }
 
-    // --- 2. 加解密逻辑 (保持) ---
+    // --- 2. 加解密逻辑 ---
     async function generateCryptoKey(expireHours, currentAuthorityHour) {
         const keyBase = Math.floor(currentAuthorityHour / expireHours);
         const seed = `${keyBase}-${expireHours}`; 
@@ -291,7 +326,7 @@
         const text = inputText.value.trim();
         const eh = parseInt(expireTime.value);
         if (!text) return showUIResult('请输入内容。', true);
-        showUIResult('正在同步时间...', false);
+        showUIResult('正在同步全球节点时间...', false);
 
         try {
             const ch = await getAuthorityTimeInHours();
@@ -318,7 +353,7 @@
         const text = inputText.value.trim();
         const b64 = text.substring(CIPHER_PREFIX.length);
         if (!b64) return showUIResult('密文无效', true);
-        showUIResult('正在验证...', false);
+        showUIResult('正在校验时间并解密...', false);
 
         try {
             const buf = new Uint8Array(base64URLToArrayBuffer(b64));
@@ -329,7 +364,6 @@
             const iv = buf.slice(6, 18);
             const data = buf.slice(18);
 
-            // 指纹检查
             const fp = text.substring(0, 32);
             if (localStorage.getItem(`read_${fp}`)) resultInfo.textContent = '❕ 此消息在当前设备已读过。';
 
