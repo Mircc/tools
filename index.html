@@ -231,7 +231,7 @@
     // --- 常量 ---
     const CIPHER_PREFIX = '--sect--'; 
     const STATIC_SALT = 'static-salt-v1'; 
-    const MAX_DEVIATION_MS = 60 * 1000; // 允许最大偏差 60 秒 (1分钟)
+    const MAX_DEVIATION_MS = 90 * 1000; // 允许最大偏差 90 秒 (1.5分钟)
 
     // 权威时间源列表 (6个独立/高可靠时间源)
     const TIME_APIS = [
@@ -240,7 +240,7 @@
         'https://worldtimeapi.org/api/timezone/Europe/London',// WorldTimeAPI 3 (另一个固定时区)
         'https://cloudflare.com/cdn-cgi/trace',               // Cloudflare Trace
         'https://time.jsontest.com/',                         // Simple JSON Test Service
-        'https://timeapi.io/api/Time/current/zone?timeZone=Etc/UTC', // 新增: TimeAPI.io (UTC 固定时区)
+        'https://timeapi.io/api/Time/current/zone?timeZone=Etc/UTC', // TimeAPI.io (UTC 固定时区)
     ];
 
     // --- 元素引用 (略) ---
@@ -339,7 +339,7 @@
                 // jsontest.com 直接返回毫秒时间戳
                 return data.milliseconds_since_epoch;
             }
-        } else if (url.includes('timeapi.io')) { // 新增 TimeAPI.io 解析逻辑
+        } else if (url.includes('timeapi.io')) { // TimeAPI.io 解析逻辑
             const data = await response.json();
             if (data.dateTime) {
                 // timeapi.io 返回 ISO 8601 格式的 datetime 字符串
@@ -383,7 +383,8 @@
         const deviationMs = maxTime - minTime;
 
         if (deviationMs > MAX_DEVIATION_MS) {
-            throw new Error(`时间校验失败：多个权威时间源偏差过大 (${(deviationMs / 1000).toFixed(1)} 秒)。为安全起见，拒绝操作。`);
+            // **这里是修改后的偏差检查，现在是 90 秒**
+            throw new Error(`时间校验失败：多个权威时间源偏差过大 (${(deviationMs / 1000).toFixed(1)} 秒，超过 ${MAX_DEVIATION_MS/1000} 秒上限)。为安全起见，拒绝操作。`);
         }
 
         // 4. 计算平均时间
