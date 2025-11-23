@@ -10,7 +10,7 @@
         :root {
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
-            --bg: #f8fafc; /* 柔和背景 */
+            --bg: #f8fafc;
             --card-bg: #ffffff;
             --border: #e2e8f0;
             --text-main: #1e293b;
@@ -105,8 +105,6 @@
             position: relative;
             overflow: hidden;
         }
-        
-        /* 装饰背景 */
         .tool-card-main::before {
             content: '';
             position: absolute;
@@ -138,7 +136,6 @@
             resize: vertical;
         }
         textarea { min-height: 160px; line-height: 1.6; }
-        
         textarea:focus, select:focus {
             outline: none;
             border-color: var(--primary);
@@ -177,7 +174,6 @@
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
         .result-content {
             padding: 20px;
             border-radius: 12px;
@@ -188,18 +184,8 @@
             position: relative;
             border: 1px solid transparent;
         }
-        
-        .result-success {
-            background: #f0fdf4;
-            color: #15803d;
-            border-color: #bbf7d0;
-        }
-        .result-error {
-            background: #fef2f2;
-            color: #b91c1c;
-            border-color: #fecaca;
-        }
-        
+        .result-success { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+        .result-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
         .result-hint {
             text-align: center;
             font-size: 0.85rem;
@@ -207,15 +193,33 @@
             margin-top: 12px;
         }
 
-        /* --- 场景说明区域 (优化版) --- */
+        /* --- 场景与技术说明区域 (优化版) --- */
         .feature-section {
             margin-top: 40px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        @media (min-width: 768px) {
+            .feature-section { grid-template-columns: 1.2fr 0.8fr; }
+        }
+
+        .info-card {
             background: #fff;
             border-radius: var(--radius);
             padding: 32px;
             border: 1px solid var(--border);
         }
-        .feature-text {
+        .info-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .info-text {
             color: #475569;
             font-size: 0.95rem;
             line-height: 1.8;
@@ -228,6 +232,18 @@
             padding: 0 4px;
             border-radius: 4px;
         }
+        
+        /* 技术标签 */
+        .tech-tag {
+            display: inline-block;
+            background: #eff6ff;
+            color: var(--primary);
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-right: 4px;
+        }
 
         /* --- 更多工具网格 --- */
         .grid-title {
@@ -237,13 +253,11 @@
             color: var(--text-main);
             font-weight: 700;
         }
-        
         .tools-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 20px;
         }
-        
         .tool-item {
             background: #fff;
             padding: 24px;
@@ -268,14 +282,13 @@
         /* --- 底部 --- */
         footer {
             text-align: center;
-            margin-top: 60px;
             color: #94a3b8;
             font-size: 0.85rem;
+            margin-top: 60px;
+            padding: 30px 0;
             border-top: 1px solid var(--border);
-            padding-top: 30px;
         }
 
-        /* 警告框 */
         .warning-box {
             background: #fff7ed;
             border: 1px solid #fdba74;
@@ -285,7 +298,7 @@
             text-align: center;
             font-size: 0.9rem;
             margin-bottom: 24px;
-            display: none; /* JS控制 */
+            display: none;
         }
     </style>
 </head>
@@ -317,7 +330,7 @@
     <div class="tool-card-main">
         <div class="input-wrapper">
             <label class="input-label">输入内容 (自动识别加密/解密)</label>
-            <textarea id="inputText" placeholder="在此输入您的联系方式、密码或任何敏感信息...
+            <textarea id="inputText" placeholder="在此输入您需要保护的信息，点击加密或回车键立刻采取保护措施。
 或者粘贴以 --sect-- 开头的密文进行解密"></textarea>
         </div>
 
@@ -334,16 +347,31 @@
         <button id="smartBtn" class="btn-action">🔒 加密信息</button>
 
         <div id="resultPanel" class="result-panel">
-            <div id="resultBox" class="result-content">
-                </div>
+            <div id="resultBox" class="result-content"></div>
             <div id="resultHint" class="result-hint"></div>
         </div>
     </div>
 
     <div class="feature-section">
-        <div class="feature-text">
-            <p style="margin-bottom: 16px;">在互联网上，任何留言信息都会跟随网站永久保存，这些信息可能会被搜索引擎检索、也可能会被“有心人”恶意收集进行人物定位，<strong>如何安全的分享个人信息，是人们最为关注的。</strong></p>
-            <p>用<span class="highlight">"限时密信"</span>工具，给信息分享加上一个有效期，互动者在得到该加密信息后，在有效期内可限时解密内容并获取真实信息。这样创作者们即提供了获得合作机会，又<strong>彻底避免了后续骚扰</strong>。</p>
+        <div class="info-card">
+            <div class="info-title">📢 为什么使用限时密信？</div>
+            <div class="info-text">
+                <p style="margin-bottom: 12px;">在互联网上，任何留言信息都可能跟随网站永久保存，甚至被搜索引擎检索或被恶意收集进行人物定位。<strong>如何安全的分享个人信息，是人们最为关注的。</strong></p>
+                <p style="margin-bottom: 12px;">使用<span class="highlight">"限时密信"</span>工具，给信息分享加上一个有效期。互动者在得到该加密信息后，在有效期内可限时解密内容并获取真实信息。</p>
+                <p>这样创作者们即提供了获得合作的机会，又<strong>彻底避免了后续的长期骚扰</strong>。</p>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-title">🛡️ 技术原理与安全性</div>
+            <div class="info-text">
+                <p style="margin-bottom: 12px;">本工具采用 <span class="tech-tag">Web Crypto API</span> 原生加密标准，所有计算均在您本地浏览器完成。</p>
+                <ul style="padding-left: 20px; margin: 0;">
+                    <li style="margin-bottom: 8px;"><strong>军用级加密：</strong> 使用 <span class="tech-tag">AES-GCM (256位)</span> 算法加密数据。</li>
+                    <li style="margin-bottom: 8px;"><strong>密钥派生：</strong> 密钥通过 <span class="tech-tag">PBKDF2</span> 算法基于“当前时间窗口”实时计算。</li>
+                    <li><strong>数学级不可逆：</strong> 密钥从未被存储。一旦超过有效期，时间因子变更，算法将无法再生成原始解密密钥，数据即刻实现数学层面的“销毁”。</li>
+                </ul>
+            </div>
         </div>
     </div>
 
