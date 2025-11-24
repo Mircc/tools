@@ -309,7 +309,8 @@
     const STATIC_SALT = 'static-salt-v2-compact'; 
     const MAX_DEVIATION_MS = 90 * 1000; 
     const KDF_ITERATIONS = 600000; // 提升迭代次数，加强暴力破解难度
-    const HONEYPOT_MSG = "[系统提示] 该密信已因超时被安全销毁，数据已无法恢复。"; // 模糊提示
+    // 蜜罐消息已缩短
+    const HONEYPOT_MSG = "该密信已销毁"; 
 
     const CDN_TIME_SOURCES = [
         'https://cdn.jsdelivr.net/npm/jquery/package.json', 
@@ -438,7 +439,7 @@
                 const realPayload = await createCipherSegment(text, eh, ch);
 
                 // 2. 生成 1 个蜜罐数据 (使用随机的过去时间)
-                // 随机偏移 100 到 5100 小时 (4天到7个月)
+                // 随机偏移 100 到 5100 小时 (4天到7个月)，确保蜜罐密钥与真实密钥不同
                 const randomOffset = -(Math.floor(Math.random() * 5000) + 100);
                 const fakeHour = ch + randomOffset;
                 const honeypotPayload = await createCipherSegment(HONEYPOT_MSG, eh, fakeHour);
@@ -446,7 +447,7 @@
                 // 3. 拼接混淆: 真实密文.蜜罐密文
                 const finalOutput = CIPHER_PREFIX + realPayload + "." + honeypotPayload;
                 
-                showUIResult(finalOutput, false, false, `🔒 密文已生成，${eh}小时后失效。长度约 ${finalOutput.length} 字符。`);
+                showUIResult(finalOutput, false, false, `🔒 密文已生成，${eh}小时后失效。长度约为 ${finalOutput.length} 字符。`);
             } catch (e) { showUIResult(e.message, true); }
             
             updateUI();
