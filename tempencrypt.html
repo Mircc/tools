@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>安全与隐私工具箱 - 一次性隐私数据加解密|在线Base64加解码|在线安全添加水印|在线HTTPDNS检测</title>
-    <meta name="description" content="我们是一个专注于提供安全、简洁、易用的在线小工具的网站，适合追求极致的数据安全保护人群，本站所有服务全部基于纯Web前端页面实现，无后端服务、不会存储您的任何数据，不做来访统计等。">
+    <meta name="description" content="我们是一个专注于提供安全、简洁、易用的在线小工具的网站，适合追求极致的数据安全保护人群，本站所有服务全部基于纯Web前端页面实现，无后端服务、不会存储您的任何数据，不做来访统计等，目前我们提供在线数据一次性加密服务、图片在线安全水印等服务，未来我们会增加更多安全服务。">
     
     <style>
         :root {
             --primary: #3b82f6;
             --primary-hover: #2563eb;
-            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            --card-bg: #ffffff;
+            --bg-gradient: linear-gradient(135deg, #f6f8fd 0%, #f1f5f9 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
             --text-main: #1e293b;
             --text-sub: #64748b;
             --border: #e2e8f0;
-            --radius: 24px;
-            --shadow-soft: 0 20px 40px -10px rgba(0,0,0,0.05);
-            --shadow-hover: 0 25px 50px -12px rgba(59, 130, 246, 0.1);
+            --radius: 20px;
+            --shadow-soft: 0 20px 40px -10px rgba(0,0,0,0.08);
+            --shadow-hover: 0 25px 50px -12px rgba(59, 130, 246, 0.15);
         }
 
         body {
@@ -31,9 +31,9 @@
 
         /* 导航栏 */
         .navbar {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-bottom: 1px solid rgba(255,255,255,0.5);
             position: sticky;
             top: 0;
@@ -50,58 +50,53 @@
         }
         .nav-logo {
             font-weight: 800;
-            font-size: 1.2rem;
+            font-size: 1.25rem;
             background: linear-gradient(90deg, #2563eb, #3b82f6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .nav-links { display: flex; gap: 10px; }
+        .nav-links { display: flex; gap: 8px; }
         .nav-link {
             text-decoration: none; color: var(--text-sub); font-weight: 500; font-size: 0.9rem;
             padding: 8px 16px; border-radius: 99px; transition: all 0.2s;
         }
-        .nav-link:hover { color: var(--primary); background: rgba(59, 130, 246, 0.05); }
+        .nav-link:hover { color: var(--primary); background: #eff6ff; }
         @media (max-width: 768px) { .nav-links { display: none; } }
 
         /* 主容器 */
-        .main-container { max-width: 800px; margin: 60px auto 80px; padding: 0 20px; }
+        .main-container { max-width: 800px; margin: 50px auto 80px; padding: 0 20px; }
 
-        .header-section { text-align: center; margin-bottom: 50px; }
-        h1 {
-            font-size: 2.8rem; font-weight: 800; margin-bottom: 12px; color: #0f172a;
-            letter-spacing: -0.03em;
-        }
-        .subtitle { font-size: 1.15rem; color: var(--text-sub); font-weight: 400; }
+        .header-section { text-align: center; margin-bottom: 40px; }
+        h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 10px; color: #0f172a; letter-spacing: -0.03em; }
+        .subtitle { font-size: 1.1rem; color: var(--text-sub); font-weight: 400; }
 
         /* 核心卡片 */
         .tool-card-main {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-soft);
-            padding: 48px;
-            border: 1px solid #fff;
-            position: relative;
-            transition: transform 0.3s ease;
+            background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow-soft);
+            padding: 40px; border: 1px solid #fff; position: relative; transition: transform 0.3s ease;
         }
         
-        /* 输入区域 */
-        .input-wrapper { margin-bottom: 28px; }
-        .input-label { display: block; font-weight: 600; font-size: 0.95rem; color: var(--text-main); margin-bottom: 10px; }
+        /* 输入框 */
+        .input-wrapper { margin-bottom: 24px; position: relative; }
+        .input-label { display: block; font-weight: 600; font-size: 0.95rem; color: var(--text-main); margin-bottom: 8px; }
         
-        textarea, select, input[type="text"] {
-            width: 100%; padding: 18px; border: 2px solid #f1f5f9; border-radius: 16px;
+        textarea, select {
+            width: 100%; padding: 20px; border: 2px solid #e2e8f0; border-radius: 12px;
             font-size: 1rem; background: #f8fafc; color: var(--text-main);
             font-family: monospace; box-sizing: border-box; transition: all 0.2s;
-            resize: vertical; outline: none;
+            min-height: 180px; resize: vertical; line-height: 1.6;
         }
-        textarea { min-height: 180px; line-height: 1.6; }
-        textarea:focus, select:focus, input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        textarea:focus, select:focus { outline: none; border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
 
-        /* 控件栏 */
-        .control-bar { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+        /* 控制栏 */
+        .control-bar { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
         .select-wrapper { flex: 1; min-width: 200px; }
-        
+        select { padding: 12px 16px; border-radius: 10px; cursor: pointer; }
+
         .security-toggle {
             display: flex; align-items: center; gap: 8px; cursor: pointer;
             font-size: 0.9rem; color: var(--text-sub); user-select: none;
@@ -109,73 +104,64 @@
         }
         .security-toggle:hover { background: #f1f5f9; }
         .security-toggle input { width: 16px; height: 16px; accent-color: var(--primary); }
-
-        /* 提取码区域 */
+        
         #passwordArea {
-            display: none; margin-top: 20px; padding: 20px;
-            background: #fff7ed; border: 1px solid #ffedd5; border-radius: 12px;
-            animation: fadeIn 0.3s ease;
+            display: none; margin-top: 15px; padding: 15px; background: #fff7ed;
+            border: 1px solid #ffedd5; border-radius: 10px; animation: fadeIn 0.3s ease;
         }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-        #extractionCode { margin-top: 8px; border-color: #fdba74; background: #fff; }
-        .pwd-hint { font-size: 0.85rem; color: #c2410c; margin-top: 8px; display: block; }
+        
+        #extractionCode {
+            width: 100%; padding: 12px; border: 1px solid #fdba74; border-radius: 8px;
+            font-size: 0.95rem; margin-top: 8px; box-sizing: border-box;
+        }
+        .pwd-hint { font-size: 0.8rem; color: #c2410c; margin-top: 5px; display: block; }
 
         /* 按钮 */
         .btn-action {
-            width: 100%; margin-top: 30px; padding: 18px; font-size: 1.1rem;
-            font-weight: 600; border: none; border-radius: 16px;
+            width: 100%; margin-top: 30px; padding: 16px; font-size: 1.1rem;
+            font-weight: 600; border: none; border-radius: 12px;
             background: var(--primary); color: white; cursor: pointer;
-            transition: all 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+            transition: all 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
-        .btn-action:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3); }
+        .btn-action:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4); }
         .btn-action:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-        /* 结果 */
+        /* 结果显示 */
         .result-panel { margin-top: 30px; display: none; animation: slideDown 0.3s ease-out; }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        
         .result-box {
-            padding: 24px; background: #f0fdf4; border: 1px solid #bbf7d0;
-            border-radius: 16px; color: #15803d; font-family: monospace;
-            word-break: break-all; cursor: pointer; position: relative;
+            padding: 20px; background: #f0fdf4; border: 1px solid #bbf7d0;
+            border-radius: 12px; color: #15803d; font-family: monospace;
+            word-break: break-all; cursor: pointer;
         }
         .result-box.error { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
-        .result-hint { text-align: center; font-size: 0.85rem; color: var(--text-sub); margin-top: 12px; }
+        .copy-hint { text-align: center; font-size: 0.85rem; color: var(--text-sub); margin-top: 12px; }
 
-        /* --- 优雅的居中导语 --- */
+        /* 极简导语区 */
         .feature-section {
-            margin-top: 60px;
-            text-align: center;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
+            margin-top: 50px; text-align: center; max-width: 680px; margin-left: auto; margin-right: auto;
         }
-        .feature-content {
-            font-size: 1.05rem; color: #475569; line-height: 1.8;
-        }
-        .highlight { color: var(--primary); font-weight: 600; }
+        .feature-content { font-size: 1.05rem; color: #475569; line-height: 1.8; }
+        .highlight { color: var(--primary); font-weight: 700; }
 
-        /* --- 更多工具 --- */
-        .tools-section-title {
-            text-align: center; margin-top: 80px; margin-bottom: 40px;
-            color: var(--text-main); font-weight: 700; font-size: 1.4rem;
-        }
+        /* 更多工具 */
+        .tools-title { text-align: center; margin: 80px 0 30px; color: var(--text-main); font-weight: 700; font-size: 1.2rem; }
         .tools-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 24px; margin-bottom: 60px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px;
         }
         .tool-card {
-            background: #fff; border: 1px solid var(--border); border-radius: 16px;
-            padding: 30px 20px; text-align: center; text-decoration: none; color: var(--text-main);
+            background: #fff; border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; text-align: center; text-decoration: none; color: var(--text-main);
             transition: all 0.2s; display: flex; flex-direction: column; align-items: center;
         }
-        .tool-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: var(--primary); }
-        .tool-icon { font-size: 2rem; margin-bottom: 15px; }
-        .tool-name { font-weight: 600; font-size: 1rem; margin-bottom: 5px; }
-        .tool-desc { font-size: 0.85rem; color: var(--text-sub); }
+        .tool-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--primary); }
+        .tool-icon { font-size: 1.8rem; margin-bottom: 8px; }
+        .tool-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+        .tool-desc { font-size: 0.75rem; color: var(--text-sub); }
 
-        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 60px; padding-bottom: 30px; border-top: 1px solid var(--border); padding-top: 30px; }
-        #httpsWarning { background: #fff7ed; border: 1px solid #fdba74; color: #c2410c; padding: 12px; border-radius: 12px; text-align: center; margin-bottom: 30px; display: none; }
+        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 60px; padding-bottom: 20px; border-top: 1px solid var(--border); padding-top: 20px; }
+        #httpsWarning { background: #fff7ed; border: 1px solid #fdba74; color: #c2410c; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 20px; display: none; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -199,7 +185,7 @@
         <div class="subtitle">安全的、限时的一次性信息分享助手</div>
     </div>
 
-    <div id="httpsWarning">⚠️ <strong>环境警告：</strong> Web Crypto API 需要 HTTPS 安全环境才能运行。</div>
+    <div id="httpsWarning">⚠️ <strong>环境警告：</strong> Web Crypto API 需要 HTTPS 环境才能运行。</div>
 
     <div class="tool-card-main">
         <div class="input-wrapper">
@@ -226,26 +212,27 @@
 
         <div id="passwordArea">
             <label class="input-label" style="color:#c2410c;">设置提取码 (解密密码)</label>
-            <input type="text" id="extractionCode" placeholder="例如: 123456 (请勿设置过于简单的密码)">
-            <span class="pwd-hint">💡 为了安全，请务必通过<strong>另一条渠道</strong>(如短信/口头)告知对方提取码，不要与密文一同发送。</span>
+            <input type="text" id="extractionCode" placeholder="例如: 123456">
+            <span class="pwd-hint">💡 请通过<strong>另一条渠道</strong>(如短信/口头)告知对方提取码。</span>
         </div>
 
         <button id="smartBtn" class="btn-action">🔒 立即加密</button>
 
         <div id="resultPanel" class="result-panel">
             <div id="resultBox" class="result-box"></div>
-            <div id="resultHint" class="result-hint"></div>
+            <div id="resultHint" class="copy-hint"></div>
         </div>
     </div>
 
     <div class="feature-section">
         <div class="feature-content">
-            <p style="margin-bottom: 20px;">在互联网上，任何留言信息都可能跟随网站永久保存，甚至被搜索引擎检索或被有心人恶意收集进行人物定位。<strong>如何安全的分享个人信息，是人们最为关注的。</strong></p>
-            <p>用<span class="highlight">"限时密信"</span>工具，给信息分享加上一个有效期，互动者在得到该加密信息后，在有效期内可限时解密内容并获取真实信息。这样创作者们即提供了获得合作机会，又<strong>彻底避免了后续的长期骚扰</strong>。</p>
+            <p>在互联网上，任何留言信息都可能跟随网站永久保存，甚至被搜索引擎检索或被有心人恶意收集进行人物定位。<strong>如何安全的分享个人信息，是人们最为关注的。</strong></p>
+            <br>
+            <p>用<span class="highlight">"限时密信"</span>工具，给信息分享加上一个有效期。互动者在得到该加密信息后，在有效期内可限时解密内容并获取真实信息。这样创作者们即提供了获得合作的机会，又<strong>彻底避免了后续的长期骚扰</strong>。</p>
         </div>
     </div>
 
-    <h3 class="tools-section-title">更多纯前端安全工具</h3>
+    <h3 class="tools-title">更多纯前端安全工具</h3>
     <div class="tools-grid">
         <a href="watermark.html" class="tool-card">
             <div class="tool-icon">🖼️</div>
@@ -279,8 +266,8 @@
     const STATIC_SALT = 'static-salt-v2-high-security'; 
     const MAX_DEVIATION_MS = 90 * 1000; 
     const KDF_ITERATIONS = 600000; 
+    const HONEYPOT_MSG = "[系统提示] 该密信已因超时被安全销毁，数据已无法恢复。";
 
-    // CDN 时间源
     const CDN_TIME_SOURCES = [
         'https://cdn.jsdelivr.net/npm/jquery/package.json', 
         'https://unpkg.com/vue/package.json', 
@@ -321,7 +308,6 @@
             smartBtn.textContent = '🔓 立即解密';
             expireTime.disabled = true;
             highSecurityToggle.parentElement.style.display = 'none'; 
-            // 解密时若需要密码则显示
             passwordArea.style.display = 'block';
             document.querySelector('#passwordArea label').textContent = "输入提取码 (若对方设置了)";
             document.querySelector('#passwordArea .pwd-hint').style.display = 'none';
@@ -329,11 +315,9 @@
         } else {
             expireTime.disabled = false;
             highSecurityToggle.parentElement.style.display = 'flex';
-            // 恢复加密UI
             document.querySelector('#passwordArea label').textContent = "设置提取码 (解密密码)";
             document.querySelector('#passwordArea .pwd-hint').style.display = 'block';
             extractionCodeInput.placeholder = "例如: 123456";
-            
             if (highSecurityToggle.checked) {
                 passwordArea.style.display = 'block';
                 smartBtn.textContent = "🔒 加密信息 (含提取码)";
@@ -407,31 +391,26 @@
         );
     }
 
-    // --- 蜜罐 (Honeypot) 逻辑 ---
-    async function generateHoneypots(eh) {
-        // 生成 2 个假的时间偏移量 (例如: 过去500小时，未来1000小时)
-        const offsets = [-500, 1000]; 
-        const honeypots = [];
+    // --- 蜜罐生成逻辑 ---
+    async function createHoneypotCipher(eh) {
+        // 生成一个随机的假时间 (例如：1000小时前 或 5000小时前)
+        // 这样黑客暴力破解时，会解开这个假消息
+        const randomOffset = Math.random() > 0.5 ? -Math.floor(Math.random()*5000+100) : Math.floor(Math.random()*5000+100);
+        const currentHour = await getAuthorityTimeInHours();
+        const fakeHour = currentHour + randomOffset;
         
-        for(let offset of offsets) {
-            // 用偏移的时间生成假的 Key
-            const fakeTime = (await getAuthorityTimeInHours()) + offset;
-            // 尝试生成一段假的密文
-            const key = await generateCryptoKey(eh, fakeTime, ""); // 假数据通常不带密码或随机密码
-            const iv = window.crypto.getRandomValues(new Uint8Array(12));
-            const fakeMsg = `[系统提示] 该内容已于 ${new Date(Date.now() - 86400000).toLocaleDateString()} 销毁`;
-            const encrypted = await window.crypto.subtle.encrypt(
-                { name: "AES-GCM", iv }, key, new TextEncoder().encode(fakeMsg)
-            );
-            
-            // 封装成同样的格式
-            const hb = numberToBytes(fakeTime, 4);
-            const eb = numberToBytes(eh, 2);
-            const combined = new Uint8Array(hb.length + eb.length + iv.length + encrypted.byteLength);
-            combined.set(hb, 0); combined.set(eb, 4); combined.set(iv, 6); combined.set(new Uint8Array(encrypted), 18);
-            honeypots.push(arrayBufferToBase64URL(combined.buffer));
-        }
-        return honeypots;
+        const key = await generateCryptoKey(eh, fakeHour, ""); // 假消息通常无密码
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encrypted = await window.crypto.subtle.encrypt(
+            { name: "AES-GCM", iv }, key, new TextEncoder().encode(HONEYPOT_MSG)
+        );
+
+        const hb = numberToBytes(fakeHour, 4);
+        const eb = numberToBytes(eh, 2);
+        const combined = new Uint8Array(hb.length + eb.length + iv.length + encrypted.byteLength);
+        combined.set(hb, 0); combined.set(eb, 4); combined.set(iv, 6); combined.set(new Uint8Array(encrypted), 18);
+        
+        return arrayBufferToBase64URL(combined.buffer);
     }
 
     async function processEncrypt() {
@@ -457,37 +436,21 @@
                 const hb = numberToBytes(ch, 4);
                 const eb = numberToBytes(eh, 2);
                 const combined = new Uint8Array(hb.length + eb.length + iv.length + encrypted.byteLength);
-                combined.set(hb, 0);
-                combined.set(eb, 4);
-                combined.set(iv, 6);
-                combined.set(new Uint8Array(encrypted), 18);
+                combined.set(hb, 0); combined.set(eb, 4); combined.set(iv, 6); combined.set(new Uint8Array(encrypted), 18);
 
                 const realPayload = arrayBufferToBase64URL(combined.buffer);
                 
-                // --- 蜜罐注入 ---
-                // 实际上，为了保持纯前端无状态，真正的蜜罐最好是在“解密失败”时动态生成假象
-                // 但既然要求在“密文中掺杂”，我们可以简单的把它们拼接在一起吗？
-                // 不行，因为接收者不知道哪个是真。
-                // 
-                // 修正思路：这里的蜜罐逻辑主要体现在“解密端”的抗暴力破解上。
-                // 如果黑客暴力轮询时间，我们无法在加密时预埋所有错误的解密结果。
-                // 
-                // 所以，真正的 Honeypot 策略是在 *攻击者* 尝试错误的 Key 时，
-                // 让他 *看起来* 像是解密成功了（得到了“已销毁”的提示），而不是报错。
-                // 但 AES-GCM 自带完整性校验（Tag），密钥错误会直接抛出 OperationError，无法伪造成功结果。
-                // 
-                // 因此，最有效的“混淆”是：我们的密文本身就是标准的，
-                // 但如果黑客改了时间代码，他算出的 Key 是错的，GCM 会报错。
-                // 我们在 catch(e) 里，如果判定是解密失败，可以随机返回一个 “[已销毁]” 的假结果吗？
-                // 不可以，因为用户输入错误密码时也需要提示错误。
-                //
-                // **结论**：在现有的 AES-GCM 体系下，最好的“干扰”是让暴力破解变得极慢（已通过 60万次迭代实现）。
-                // 文案中提到的“蜜罐”更多是一种威慑。
+                // 生成 1 个蜜罐数据混淆视听
+                const honeypot = await createHoneypotCipher(eh);
                 
-                const output = CIPHER_PREFIX + realPayload;
+                // 简单拼接：真实数据.蜜罐数据 (或随机顺序)
+                // 为了保证解密性能，我们这里固定顺序：真实.蜜罐
+                // 因为解密时我们会尝试拆分并解密每一部分，只要有一个是真实的就显示
+                const finalOutput = CIPHER_PREFIX + realPayload + "." + honeypot;
+                
                 let msg = `🔒 密文已生成，${eh}小时后自动失效。`;
                 if(pwd) msg += ` (须凭提取码解密)`;
-                showUIResult(output, false, false, msg);
+                showUIResult(finalOutput, false, false, msg);
             } catch (e) { showUIResult(e.message, true); }
             
             smartBtn.textContent = "🔒 立即加密";
@@ -497,37 +460,66 @@
 
     async function processDecrypt() {
         const text = inputText.value.trim();
-        const b64 = text.substring(CIPHER_PREFIX.length);
+        const raw = text.substring(CIPHER_PREFIX.length);
+        const parts = raw.split('.'); // 分割真实数据和蜜罐
         const pwd = extractionCodeInput.value.trim();
 
-        if (!b64) return showUIResult('密文格式无效', true);
+        if (parts.length === 0) return showUIResult('密文格式无效', true);
         
         smartBtn.textContent = "解密计算中...";
         smartBtn.disabled = true;
 
         setTimeout(async () => {
-            try {
-                const buf = new Uint8Array(base64URLToArrayBuffer(b64));
-                if (buf.length < 18) throw new Error('数据损坏');
-                
-                const ch = bytesToNumber(buf.slice(0, 4), 4);
-                const eh = bytesToNumber(buf.slice(4, 6), 2);
-                const iv = buf.slice(6, 18);
-                const data = buf.slice(18);
+            let successDecoded = null;
+            let failReason = '无法解密';
 
-                const nowH = await getAuthorityTimeInHours();
-                // 核心逻辑：严格的时间窗口检查
-                if (nowH - ch >= eh) throw new Error(`消息已过期 (有效期 ${eh}小时)`);
+            const nowH = await getAuthorityTimeInHours();
 
-                const key = await generateCryptoKey(eh, ch, pwd);
-                const dec = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
-                
-                showUIResult(new TextDecoder().decode(dec), false, false, `✅ 解密成功`);
-            } catch (e) { 
+            // 尝试解密所有片段
+            for (const part of parts) {
+                try {
+                    const buf = new Uint8Array(base64URLToArrayBuffer(part));
+                    if (buf.length < 18) continue;
+                    
+                    const ch = bytesToNumber(buf.slice(0, 4), 4);
+                    const eh = bytesToNumber(buf.slice(4, 6), 2);
+                    const iv = buf.slice(6, 18);
+                    const data = buf.slice(18);
+
+                    // 检查时间是否过期 (针对这一片段)
+                    if (nowH - ch >= eh) {
+                        // 如果是蜜罐数据(也就是假时间)，它肯定会过期或未到期
+                        // 如果我们在这里抛出错误，就会忽略这个片段
+                        continue; 
+                    }
+
+                    // 尝试解密
+                    const key = await generateCryptoKey(eh, ch, pwd);
+                    const dec = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+                    const decodedText = new TextDecoder().decode(dec);
+                    
+                    // 如果解出来的是蜜罐特征文本，忽略它 (给合法用户看真实数据)
+                    // 但如果黑客暴力破解，他解开的就是这个文本，会误以为是真实结果
+                    if (decodedText === HONEYPOT_MSG) continue;
+
+                    successDecoded = decodedText;
+                    break; // 找到真实数据，停止
+                } catch (e) {
+                    // 解密失败（密钥错误），继续尝试下一个片段
+                }
+            }
+
+            if (successDecoded) {
+                const fp = text.substring(0, 32);
+                let hint = '';
+                if (localStorage.getItem(`read_${fp}`)) hint = ' (此消息您已查看过)';
+                showUIResult(successDecoded, false, false, `✅ 解密成功${hint}`);
+                try { localStorage.setItem(`read_${fp}`, Date.now()); } catch(e){}
+            } else {
                 let msg = '解密失败：密钥无效或已过期。';
                 if(!pwd) msg += ' (若有提取码请输入)';
                 else msg += ' (请检查提取码是否正确)';
-                showUIResult(msg, true); 
+                showUIResult(msg, true);
             }
             
             updateUI();
