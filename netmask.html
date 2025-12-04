@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>子网掩码计算器 - IPv4 & IPv6 纯前端工具</title>
-    <meta name="description" content="纯前端在线子网掩码计算器。支持 IPv4 和 IPv6，根据地址和掩码/前缀计算地址范围，或根据 IP 范围反推子网掩码/前缀。">
+    <title>子网掩码计算器 - 智能超网识别版</title>
+    <meta name="description" content="纯前端在线子网掩码计算器。支持 IPv4 和 IPv6，支持 CIDR 计算以及任意 IP 范围的超网/子网反推。">
     
     <style>
         :root {
@@ -189,24 +189,24 @@
         }
         .result-item:last-child { border-bottom: none; }
 
-        .result-label {
-            color: var(--text-sub);
-            font-weight: 500;
-        }
-        .result-value {
-            color: var(--text-main);
-            font-family: monospace;
-            font-weight: 600;
-            text-align: right; /* IP地址靠右对齐 */
-        }
-        .result-error-box {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 12px;
+        .result-label { color: var(--text-sub); font-weight: 500; }
+        .result-value { color: var(--text-main); font-family: monospace; font-weight: 600; text-align: right; }
+        
+        /* 提示信息 */
+        .result-note {
+            background: #eff6ff;
+            color: #1e40af;
+            font-size: 0.85rem;
+            padding: 10px;
             border-radius: 8px;
-            text-align: center;
-            font-size: 0.9rem;
-            font-weight: 500;
+            margin-bottom: 15px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .result-error-box {
+            background: #fee2e2; color: #991b1b;
+            padding: 12px; border-radius: 8px; text-align: center;
+            font-size: 0.9rem; font-weight: 500;
         }
 
         footer { text-align: center; color: var(--text-sub); font-size: 0.8rem; margin-top: 60px; padding-bottom: 30px; border-top: 1px solid var(--border); padding-top: 30px; }
@@ -218,6 +218,9 @@
     <div class="nav-container">
         <a href="#" class="nav-logo">🔒 安全工具箱</a>
         <div class="nav-links">
+            <a href="#" class="nav-link">限时密信</a>
+            <a href="watermark.html" class="nav-link">在线水印</a>
+            <a href="dns.html" class="nav-link">DNS 查询</a>
             <a href="#" class="nav-link current">子网计算</a>
         </div>
     </div>
@@ -227,7 +230,7 @@
     
     <div class="header-section">
         <h1>子网掩码计算器</h1>
-        <div class="subtitle">全面支持 IPv4 / IPv6 的 CIDR/IP 范围快速计算与分析，纯前端实现</div>
+        <div class="subtitle">IPv4 / IPv6 智能计算 · 自动识别超网与子网</div>
     </div>
 
     <div class="tool-card-main">
@@ -239,28 +242,28 @@
 
         <div id="modeCidr" class="mode-content">
             <div class="input-group">
-                <label for="cidrCombinedInput">输入 IP 地址和掩码位/前缀 (e.g. 192.168.1.1/24 或 2001:db8::1/64)</label>
-                <input type="text" id="cidrCombinedInput" placeholder="192.168.1.1/24 或 2001:db8::1/64" class="ip-input">
+                <label for="cidrCombinedInput">输入 IP 地址和掩码位 (如 192.168.1.1/24 或 2001:db8::1/64)</label>
+                <input type="text" id="cidrCombinedInput" placeholder="192.168.1.1/24" class="ip-input">
             </div>
             <button id="calcCidrBtn" class="btn-action">🔍 计算子网信息</button>
         </div>
 
         <div id="modeRange" class="mode-content" style="display: none;">
             <div class="input-group">
-                <label for="firstIpInput">起始可用 IP 地址</label>
-                <input type="text" id="firstIpInput" placeholder="192.168.1.1 或 2001:db8::1" class="ip-input">
+                <label for="firstIpInput">起始 IP 地址</label>
+                <input type="text" id="firstIpInput" placeholder="例如: 192.168.4.1" class="ip-input">
             </div>
             <div class="input-group">
-                <label for="lastIpInput">结束可用 IP 地址</label>
-                <input type="text" id="lastIpInput" placeholder="192.168.1.254 或 2001:db8::ffff" class="ip-input">
+                <label for="lastIpInput">结束 IP 地址</label>
+                <input type="text" id="lastIpInput" placeholder="例如: 192.168.9.254" class="ip-input">
             </div>
-            <button id="calcRangeBtn" class="btn-action">↩️ 反推子网掩码/前缀</button>
+            <button id="calcRangeBtn" class="btn-action">↩️ 反推最小包围子网</button>
         </div>
 
         <div id="resultPanel" class="result-panel">
             <div id="resultError" class="result-error-box" style="display: none;"></div>
-            <div id="resultOutput">
-                </div>
+            <div id="resultNote" class="result-note" style="display: none;"></div>
+            <div id="resultOutput"></div>
         </div>
     </div>
 
@@ -272,584 +275,338 @@
 <script>
     // --- 核心工具函数 ---
 
-    function showError(message, resultError, resultPanel, resultOutput) {
+    function showError(message, resultError, resultPanel, resultOutput, resultNote) {
         resultError.textContent = message;
         resultError.style.display = 'block';
         resultPanel.style.display = 'block';
-        resultOutput.innerHTML = ''; // 清空成功结果
+        if(resultOutput) resultOutput.innerHTML = '';
+        if(resultNote) resultNote.style.display = 'none';
     }
     
-    // 中英文符号容错
+    // 容错: 中文符号转英文
     function cleanInput(input) {
         if (typeof input !== 'string') return input;
-        // 替换中文句号和中文冒号
         return input.replace(/。/g, '.').replace(/：/g, ':').trim();
     }
 
-    // --- IP 版本检测 ---
+    // IP 版本检测
     function getIPVersion(input) {
         const ipStr = input.split('/')[0].trim();
-        if (ipStr.includes(':')) {
-            // 简单校验 IPv6
-            return isValidIPv6(ipStr) ? 'IPv6' : 'Invalid';
-        }
-        if (ipStr.includes('.')) {
-            // 简单校验 IPv4
-            return isValidIp(ipStr) ? 'IPv4' : 'Invalid';
-        }
+        if (ipStr.includes(':')) return isValidIPv6(ipStr) ? 'IPv6' : 'Invalid';
+        if (ipStr.includes('.')) return isValidIp(ipStr) ? 'IPv4' : 'Invalid';
         return 'Invalid';
     }
 
-    // =================================================================
-    //                           IPv4 核心逻辑
-    // =================================================================
-
-    // 检查IPv4地址格式是否有效
+    // --- IPv4 逻辑 ---
     function isValidIp(ip) {
-        if (!ip || ip.length === 0) return false;
+        if (!ip) return false;
         const regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
         if (!regex.test(ip)) return false;
-        return ip.split('.').every(octet => {
-            const num = parseInt(octet);
-            return num >= 0 && num <= 255;
-        });
+        return ip.split('.').every(octet => parseInt(octet) >= 0 && parseInt(octet) <= 255);
     }
 
-    // IPv4地址 (字符串) 转换为 32位整数
     function ipToInt(ip) {
         return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet), 0) >>> 0;
     }
 
-    // 32位整数 转换为 IPv4地址 (字符串)
     function intToIp(int) {
-        return [
-            (int >>> 24) & 0xFF,
-            (int >>> 16) & 0xFF,
-            (int >>> 8) & 0xFF,
-            int & 0xFF
-        ].join('.');
+        return [(int >>> 24) & 0xFF, (int >>> 16) & 0xFF, (int >>> 8) & 0xFF, int & 0xFF].join('.');
     }
 
-    // 计算 IPv4 子网掩码 (32位整数)
     function getV4MaskInt(cidr) {
-        if (cidr < 0 || cidr > 32) return 0;
         return cidr === 0 ? 0 : (0xFFFFFFFF << (32 - cidr)) >>> 0;
     }
 
-    // 计算 IPv4 子网掩码 (IP格式)
     function getV4MaskIp(cidr) {
         return intToIp(getV4MaskInt(cidr));
     }
 
-
-    // =================================================================
-    //                           IPv6 核心逻辑
-    // =================================================================
-
-    // 检查IPv6地址格式是否有效 (简化版)
+    // --- IPv6 逻辑 ---
     function isValidIPv6(ip) {
-        if (!ip || ip.length === 0) return false;
+        if (!ip) return false;
         const parts = ip.split(':');
         let emptyCount = 0;
-        
         for (const part of parts) {
-            if (part === '') {
-                emptyCount++;
-            } else if (!/^[0-9a-fA-F]{1,4}$/.test(part)) {
-                return false;
-            }
+            if (part === '') emptyCount++;
+            else if (!/^[0-9a-fA-F]{1,4}$/.test(part)) return false;
         }
-        
         const nonNullParts = parts.filter(p => p !== '').length;
-        if (ip.includes('::')) {
-             return nonNullParts <= 7 && emptyCount <= 2;
-        } else {
-            return parts.length === 8;
-        }
+        return ip.includes('::') ? (nonNullParts <= 7 && emptyCount <= 2) : (parts.length === 8);
     }
 
-    // 扩展压缩的 IPv6 地址到完整 32 位十六进制字符串
     function normalizeIPv6(ip) {
-        if (!ip.includes('::')) {
-            return ip.split(':').map(p => p.padStart(4, '0')).join('').toLowerCase();
-        }
-
+        if (!ip.includes('::')) return ip.split(':').map(p => p.padStart(4, '0')).join('').toLowerCase();
         const [start, end] = ip.split('::');
-        const startParts = start.split(':').filter(p => p.length > 0);
-        const endParts = end.split(':').filter(p => p.length > 0);
-        
-        const missingChunks = 8 - startParts.length - endParts.length;
-        // 避免在 start 或 end 为空时出现 '00000000'
-        const padding = new Array(Math.max(0, missingChunks)).fill('0000').join('');
-        
+        const startParts = start.split(':').filter(p => p);
+        const endParts = end.split(':').filter(p => p);
+        const padding = new Array(8 - startParts.length - endParts.length).fill('0000').join('');
         const startHex = startParts.map(p => p.padStart(4, '0')).join('');
         const endHex = endParts.map(p => p.padStart(4, '0')).join('');
-        
-        const hex = startHex + padding + endHex;
-        return hex.toLowerCase();
+        return (startHex + padding + endHex).toLowerCase();
     }
 
-    // 将 32 位十六进制字符串转换为 BigInt
     function ipV6ToBigInt(hex32String) {
-        if (typeof BigInt === 'undefined') {
-             throw new TypeError("BigInt not supported");
-        }
         return BigInt('0x' + hex32String);
     }
 
-    // 将 BigInt 转换为压缩的 IPv6 字符串 (用于显示)
     function bigIntToCompressedIPv6(bigInt) {
         let hex = bigInt.toString(16).padStart(32, '0');
         let parts = [];
-        for (let i = 0; i < 32; i += 4) {
-            parts.push(hex.substring(i, i + 4));
-        }
-        
+        for (let i = 0; i < 32; i += 4) parts.push(hex.substring(i, i + 4));
         parts = parts.map(p => p.replace(/^0+/, '') || '0');
-
-        let maxZeros = 0;
-        let maxIndex = -1;
-        let currentZeros = 0;
-        let startIndex = -1;
         
-        // 找到最长的连续 '0' 序列 (用于 '::' 压缩)
+        let maxZeros = 0, maxIndex = -1, currentZeros = 0, startIndex = -1;
         for (let i = 0; i < parts.length; i++) {
             if (parts[i] === '0') {
                 if (currentZeros === 0) startIndex = i;
                 currentZeros++;
             } else {
-                if (currentZeros > maxZeros) {
-                    maxZeros = currentZeros;
-                    maxIndex = startIndex;
-                }
+                if (currentZeros > maxZeros) { maxZeros = currentZeros; maxIndex = startIndex; }
                 currentZeros = 0;
             }
         }
-        // 检查末尾的序列
-        if (currentZeros > maxZeros) {
-            maxZeros = currentZeros;
-            maxIndex = startIndex;
-        }
-
-        if (maxZeros >= 2) {
-            parts.splice(maxIndex, maxZeros, '');
-        }
+        if (currentZeros > maxZeros) { maxZeros = currentZeros; maxIndex = startIndex; }
+        if (maxZeros >= 2) parts.splice(maxIndex, maxZeros, '');
         
-        // 特殊处理开头或结尾是空字符串的情况 (例如 ::1 或 1::)
-        let result = parts.join(':').toLowerCase();
-        if (result.startsWith(':')) result = ':' + result;
-        if (result.endsWith(':') && !result.endsWith('::')) result = result + ':';
-        
-        return result.replace(/:::/g, '::'); // 修复可能多余的冒号
+        let res = parts.join(':').toLowerCase();
+        if (res.startsWith(':')) res = ':' + res;
+        if (res.endsWith(':') && !res.endsWith('::')) res = res + ':';
+        return res.replace(/:::/g, '::');
     }
 
-    // 计算 IPv6 网络掩码 (BigInt)
     function getV6MaskBigInt(prefix) {
-        if (prefix < 0 || prefix > 128) return 0n;
         if (prefix === 0) return 0n;
-        
         const hostBits = 128n - BigInt(prefix);
-        const allOnes = (1n << 128n) - 1n; // 128个 1
-        const hostOnes = (1n << hostBits) - 1n; // 128-prefix 个 1
-        
-        return allOnes ^ hostOnes;
+        return ((1n << 128n) - 1n) ^ ((1n << hostBits) - 1n);
     }
 
     // =================================================================
-    //                           功能实现 (CIDR 模式)
+    // 功能 1: CIDR 计算
     // =================================================================
-
     function calculateCidrDetails() {
-        const rawInput = document.getElementById('cidrCombinedInput').value;
-        const combinedInput = cleanInput(rawInput); // 应用容错
-        
+        const combinedInput = cleanInput(document.getElementById('cidrCombinedInput').value);
         const resultPanel = document.getElementById('resultPanel');
         const resultError = document.getElementById('resultError');
         const resultOutput = document.getElementById('resultOutput');
+        const resultNote = document.getElementById('resultNote');
         
         resultError.style.display = 'none';
+        resultNote.style.display = 'none';
         resultOutput.innerHTML = '';
         resultPanel.style.display = 'none';
 
-        try {
-            const parts = combinedInput.split('/');
-            let ipStr, prefix;
+        const parts = combinedInput.split('/');
+        let ipStr = parts[0].trim();
+        let prefix = parts.length === 2 ? parseInt(parts[1].trim()) : null;
 
-            // 解析输入
-            if (parts.length === 2) {
-                ipStr = parts[0].trim();
-                prefix = parseInt(parts[1].trim());
-            } else if (parts.length === 1) {
-                ipStr = parts[0].trim();
-                const version = getIPVersion(ipStr);
-                if (version === 'IPv4') {
-                    prefix = 32;
-                } else if (version === 'IPv6') {
-                    prefix = 128;
-                } else {
-                     showError("输入格式错误。请使用 'IP地址/掩码位或前缀' 格式。", resultError, resultPanel, resultOutput);
-                     return;
-                }
-            } else {
-                showError("输入格式错误。请使用 'IP地址/掩码位或前缀' 格式。", resultError, resultPanel, resultOutput);
-                return;
-            }
-
-            const version = getIPVersion(ipStr);
-            if (version === 'Invalid') {
-                 showError("无法识别的 IP 地址格式。", resultError, resultPanel, resultOutput);
-                 return;
-            }
-
-            if (version === 'IPv4' && (isNaN(prefix) || prefix < 0 || prefix > 32)) {
-                showError("IPv4 掩码位必须在 0 到 32 之间。", resultError, resultPanel, resultOutput);
-                return;
-            }
-            if (version === 'IPv6' && (isNaN(prefix) || prefix < 0 || prefix > 128)) {
-                showError("IPv6 前缀长度必须在 0 到 128 之间。", resultError, resultPanel, resultOutput);
-                return;
-            }
-            
-            // --- IPv4 计算逻辑 ---
-            if (version === 'IPv4') {
-                const ipInt = ipToInt(ipStr);
-                const maskInt = getV4MaskInt(prefix);
-                const networkInt = (ipInt & maskInt) >>> 0;
-                
-                const hostBits = 32 - prefix;
-                const totalAddresses = 1 << hostBits;
-                const broadcastInt = (networkInt | (totalAddresses - 1)) >>> 0;
-
-                // 确定可用 IP 范围
-                let firstAvailableIp, lastAvailableIp, totalHostsDisplay;
-
-                if (prefix === 32) {
-                    firstAvailableIp = intToIp(networkInt);
-                    lastAvailableIp = intToIp(networkInt);
-                    totalHostsDisplay = '1';
-                } else if (prefix === 31) {
-                    firstAvailableIp = intToIp(networkInt);
-                    lastAvailableIp = intToIp(broadcastInt);
-                    totalHostsDisplay = '2 (点对点)';
-                } else if (totalAddresses >= 4) {
-                    firstAvailableIp = intToIp(networkInt + 1);
-                    lastAvailableIp = intToIp(broadcastInt - 1);
-                    totalHostsDisplay = (totalAddresses - 2).toLocaleString();
-                } else {
-                    firstAvailableIp = 'N/A';
-                    lastAvailableIp = 'N/A';
-                    totalHostsDisplay = '0';
-                }
-                
-                const results = [
-                    { label: "IP 版本", value: "IPv4" },
-                    { label: "IP 数量 (总)", value: totalAddresses.toLocaleString() },
-                    { label: "IP 数量 (可用)", value: totalHostsDisplay },
-                    { label: "网络地址", value: intToIp(networkInt) },
-                    { label: "子网掩码", value: getV4MaskIp(prefix) },
-                    { label: "掩码位 (CIDR)", value: `/${prefix}` },
-                    { label: "第一个可用 IP", value: firstAvailableIp },
-                    { label: "最后一个可用 IP", value: lastAvailableIp },
-                    { label: "广播地址", value: intToIp(broadcastInt) }
-                ];
-
-                results.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.innerHTML = `<span class="result-label">${item.label}</span><span class="result-value">${item.value}</span>`;
-                    resultOutput.appendChild(div);
-                });
-
-            // --- IPv6 计算逻辑 ---
-            } else if (version === 'IPv6') {
-                const normalizedIp = normalizeIPv6(ipStr);
-                const ipInt = ipV6ToBigInt(normalizedIp);
-                const maskInt = getV6MaskBigInt(prefix);
-                const networkInt = (ipInt & maskInt);
-                
-                const hostBits = 128 - prefix;
-                
-                const totalAddresses = `2^${hostBits}`;
-                const hostOnes = (1n << BigInt(hostBits)) - 1n; 
-                const lastAddressInt = networkInt | hostOnes;
-
-                let firstAvailableIp;
-                let lastAvailableIp;
-                let availableHostsDisplay;
-
-                if (hostBits === 0) { // /128
-                    availableHostsDisplay = '1';
-                    firstAvailableIp = bigIntToCompressedIPv6(networkInt);
-                    lastAvailableIp = bigIntToCompressedIPv6(networkInt);
-                } else if (hostBits === 1) { // /127
-                    availableHostsDisplay = '2 (点对点链路)';
-                    firstAvailableIp = bigIntToCompressedIPv6(networkInt);
-                    lastAvailableIp = bigIntToCompressedIPv6(lastAddressInt);
-                } else {
-                    availableHostsDisplay = `2^${hostBits} (主机容量)`;
-                    firstAvailableIp = bigIntToCompressedIPv6(networkInt + 1n);
-                    lastAvailableIp = bigIntToCompressedIPv6(lastAddressInt - 1n);
-                }
-
-                const results = [
-                    { label: "IP 版本", value: "IPv6" },
-                    { label: "IP 数量 (总)", value: totalAddresses },
-                    { label: "IP 数量 (可用)", value: availableHostsDisplay },
-                    { label: "网络前缀", value: `${bigIntToCompressedIPv6(networkInt)}/${prefix}` },
-                    { label: "前缀长度", value: `/${prefix}` },
-                    { label: "第一个地址", value: firstAvailableIp },
-                    { label: "最后一个地址", value: lastAvailableIp },
-                    { label: "子网范围结束", value: bigIntToCompressedIPv6(lastAddressInt) }
-                ];
-
-                results.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.innerHTML = `<span class="result-label">${item.label}</span><span class="result-value">${item.value}</span>`;
-                    resultOutput.appendChild(div);
-                });
-            }
-            
-            resultPanel.style.display = 'block';
-
-        } catch (e) {
-            if (e instanceof TypeError && e.message.includes('BigInt')) {
-                 showError("计算出错：您的浏览器不支持 BigInt 类型 (IPv6 需要)。请升级您的浏览器。", resultError, resultPanel, resultOutput);
-            } else {
-                 showError("计算出错，请检查输入格式是否正确。", resultError, resultPanel, resultOutput);
-            }
-            console.error(e);
+        const version = getIPVersion(ipStr);
+        if (version === 'Invalid') {
+             showError("无法识别的 IP 地址格式。", resultError, resultPanel, resultOutput);
+             return;
         }
-    }
 
+        // 设置默认掩码
+        if (prefix === null) prefix = version === 'IPv4' ? 32 : 128;
 
-    // =================================================================
-    //                           功能实现 (范围反推模式)
-    // =================================================================
-
-    function calculateRangeDetails() {
-        const firstIpStr = cleanInput(document.getElementById('firstIpInput').value); // 应用容错
-        const lastIpStr = cleanInput(document.getElementById('lastIpInput').value);   // 应用容错
-        
-        const resultPanel = document.getElementById('resultPanel');
-        const resultError = document.getElementById('resultError');
-        const resultOutput = document.getElementById('resultOutput');
-
-        resultError.style.display = 'none';
-        resultOutput.innerHTML = '';
-        resultPanel.style.display = 'none';
-
-        const version1 = getIPVersion(firstIpStr);
-        const version2 = getIPVersion(lastIpStr);
-
-        if (version1 === 'Invalid' || version2 === 'Invalid' || version1 !== version2) {
-            showError("请输入相同且有效的 IP 地址版本 (IPv4 或 IPv6)。", resultError, resultPanel, resultOutput);
+        if (version === 'IPv4' && (isNaN(prefix) || prefix < 0 || prefix > 32)) {
+            showError("IPv4 掩码位必须在 0 到 32 之间。", resultError, resultPanel, resultOutput);
+            return;
+        }
+        if (version === 'IPv6' && (isNaN(prefix) || prefix < 0 || prefix > 128)) {
+            showError("IPv6 前缀长度必须在 0 到 128 之间。", resultError, resultPanel, resultOutput);
             return;
         }
 
         try {
-            // --- IPv4 反推逻辑 ---
-            if (version1 === 'IPv4') {
-                const firstIpInt = ipToInt(firstIpStr);
-                const lastIpInt = ipToInt(lastIpStr);
-
-                if (firstIpInt >= lastIpInt) {
-                    showError("起始 IP 必须小于结束 IP。", resultError, resultPanel, resultOutput);
-                    return;
-                }
-                
-                const hostCount = lastIpInt - firstIpInt + 1;
-                // IPv4 总地址数 = 可用地址数 + 2 (除非 /31 或 /32)
-                const isP2P = (lastIpInt - firstIpInt) === 1 && (firstIpInt % 2 === 0);
-                const totalAddressesNeeded = isP2P ? 2 : hostCount + 2; 
-
-                let hostBits = 0;
-                while ((1 << hostBits) < totalAddressesNeeded) {
-                    hostBits++;
-                }
-                if (hostBits > 32) hostBits = 32;
-
-                const prefix = 32 - hostBits;
+            if (version === 'IPv4') {
+                const ipInt = ipToInt(ipStr);
                 const maskInt = getV4MaskInt(prefix);
+                const networkInt = (ipInt & maskInt) >>> 0;
+                const hostBits = 32 - prefix;
+                const totalAddresses = 1 << hostBits;
+                const broadcastInt = (networkInt | (totalAddresses - 1)) >>> 0;
                 
-                // 确保网络地址在输入范围之前
-                const theoreticalNetworkInt = firstIpInt - (prefix < 31 ? 1 : 0);
-                const networkInt = theoreticalNetworkInt & maskInt;
+                const availableHosts = totalAddresses >= 4 ? totalAddresses - 2 : (prefix === 31 ? 2 : (prefix === 32 ? 1 : 0));
                 
-                // 理论上的广播地址
-                const broadcastInt = networkInt | ((1 << hostBits) - 1);
-                
-                const firstAvailableInt = networkInt + (prefix < 31 ? 1 : 0);
-                const lastAvailableInt = broadcastInt - (prefix < 31 ? 1 : 0);
+                let firstIp = 'N/A', lastIp = 'N/A';
+                if (prefix === 32) { firstIp = lastIp = intToIp(networkInt); }
+                else if (prefix === 31) { firstIp = intToIp(networkInt); lastIp = intToIp(broadcastInt); }
+                else { firstIp = intToIp(networkInt + 1); lastIp = intToIp(broadcastInt - 1); }
 
-                // 校验：检查输入范围是否恰好是计算出的子网的可用范围
-                if (firstIpInt !== firstAvailableInt || lastIpInt !== lastAvailableInt) {
-                    // 对于 /31 (P2P), 网络地址和可用地址是相同的
-                    if (prefix === 31 && firstIpInt === networkInt && lastIpInt === broadcastInt) {
-                        // 忽略校验，使用计算结果
-                    } else {
-                        showError(`该 IPv4 范围 (${firstIpStr} - ${lastIpStr}) 无法构成一个标准的 /${prefix} 子网的可用范围。标准可用范围应为 ${intToIp(firstAvailableInt)} - ${intToIp(lastAvailableInt)}。`, resultError, resultPanel, resultOutput);
-                        return;
-                    }
-                }
-                
-                const results = [
-                    { label: "IP 版本", value: "IPv4" },
-                    { label: "IP 数量 (可用)", value: hostCount.toLocaleString() },
-                    { label: "掩码位 (CIDR)", value: `/${prefix}` },
-                    { label: "子网掩码", value: getV4MaskIp(prefix) },
-                    { label: "网络地址", value: intToIp(networkInt) },
-                    { label: "广播地址", value: intToIp(broadcastInt) }
-                ];
+                renderResults(resultOutput, [
+                    { l: "IP 版本", v: "IPv4" },
+                    { l: "网络地址", v: intToIp(networkInt) },
+                    { l: "子网掩码", v: getV4MaskIp(prefix) },
+                    { l: "可用 IP 数量", v: availableHosts.toLocaleString() },
+                    { l: "首个可用 IP", v: firstIp },
+                    { l: "最后可用 IP", v: lastIp },
+                    { l: "广播地址", v: intToIp(broadcastInt) }
+                ]);
 
-                results.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.innerHTML = `<span class="result-label">${item.label}</span><span class="result-value">${item.value}</span>`;
-                    resultOutput.appendChild(div);
-                });
-
-            // --- IPv6 反推逻辑 ---
-            } else if (version1 === 'IPv6') {
-                const firstIpInt = ipV6ToBigInt(normalizeIPv6(firstIpStr));
-                const lastIpInt = ipV6ToBigInt(normalizeIPv6(lastIpStr));
+            } else { // IPv6
+                const ipBigInt = ipV6ToBigInt(normalizeIPv6(ipStr));
+                const maskBigInt = getV6MaskBigInt(prefix);
+                const networkBigInt = ipBigInt & maskBigInt;
+                const hostBits = 128n - BigInt(prefix);
+                const lastBigInt = networkBigInt | ((1n << hostBits) - 1n);
                 
-                if (firstIpInt >= lastIpInt) {
-                    showError("起始 IP 必须小于结束 IP。", resultError, resultPanel, resultOutput);
-                    return;
-                }
-                
-                const hostCountBigInt = lastIpInt - firstIpInt + 1n;
-                
-                // 1. 确定最小块大小 (2^hostBits >= hostCount)
-                let hostBits = 0;
-                let totalAddressesPowerOfTwo = 1n;
-                while (totalAddressesPowerOfTwo < hostCountBigInt) {
-                    totalAddressesPowerOfTwo *= 2n;
-                    hostBits++;
+                // IPv6 约定显示逻辑
+                let firstIp, lastIp;
+                if (prefix === 128) { firstIp = lastIp = bigIntToCompressedIPv6(networkBigInt); }
+                else if (prefix === 127) { firstIp = bigIntToCompressedIPv6(networkBigInt); lastIp = bigIntToCompressedIPv6(lastBigInt); }
+                else {
+                    firstIp = bigIntToCompressedIPv6(networkBigInt + 1n); // 通常 Router Anycast 后的第一个
+                    lastIp = bigIntToCompressedIPv6(lastBigInt - 1n);
                 }
 
-                const prefix = 128 - hostBits;
-                
-                if (prefix < 0) {
-                     showError("IP 范围过大，超出 IPv6 地址空间限制。", resultError, resultPanel, resultOutput);
-                     return;
-                }
-
-                const maskInt = getV6MaskBigInt(prefix);
-                
-                // 2. 根据用户输入的起始地址，计算其所在的标准网络地址
-                let baseNetworkInt;
-                if (hostBits <= 1) { // /127, /128：全范围可用
-                    baseNetworkInt = firstIpInt;
-                } else { // /126 及以下：通常约定第一个/最后一个地址不作为主机地址
-                    baseNetworkInt = firstIpInt - 1n; 
-                }
-                
-                const networkInt = (baseNetworkInt & maskInt);
-                const subnetEndInt = networkInt | ((1n << BigInt(hostBits)) - 1n);
-
-                // 3. 校验输入范围是否与计算出的标准子网完美匹配
-                let expectedFirst, expectedLast;
-                if (hostBits <= 1) { // /127, /128
-                    expectedFirst = networkInt;
-                    expectedLast = subnetEndInt;
-                } else { // /126 及以下
-                    expectedFirst = networkInt + 1n;
-                    expectedLast = subnetEndInt - 1n;
-                }
-                
-                if (firstIpInt !== expectedFirst || lastIpInt !== expectedLast) {
-                    showError(`该 IPv6 范围 (${firstIpStr} - ${lastIpStr}) 无法构成一个标准的 /${prefix} 子网的可用范围。标准范围应为 ${bigIntToCompressedIPv6(expectedFirst)} - ${bigIntToCompressedIPv6(expectedLast)}。`, resultError, resultPanel, resultOutput);
-                    return;
-                }
-                
-                const results = [
-                    { label: "IP 版本", value: "IPv6" },
-                    { label: "IP 数量 (可用)", value: hostCountBigInt.toString() },
-                    { label: "前缀长度 (CIDR)", value: `/${prefix}` },
-                    { label: "网络前缀", value: `${bigIntToCompressedIPv6(networkInt)}/${prefix}` },
-                    { label: "第一个可用 IP", value: bigIntToCompressedIPv6(firstIpInt) },
-                    { label: "最后一个可用 IP", value: bigIntToCompressedIPv6(lastIpInt) },
-                    { label: "子网范围结束", value: bigIntToCompressedIPv6(subnetEndInt) }
-                ];
-                
-                results.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.innerHTML = `<span class="result-label">${item.label}</span><span class="result-value">${item.value}</span>`;
-                    resultOutput.appendChild(div);
-                });
+                renderResults(resultOutput, [
+                    { l: "IP 版本", v: "IPv6" },
+                    { l: "网络前缀", v: `${bigIntToCompressedIPv6(networkBigInt)}/${prefix}` },
+                    { l: "总地址数", v: `2^${hostBits}` },
+                    { l: "首个地址", v: firstIp },
+                    { l: "最后一个地址", v: lastIp },
+                    { l: "范围结束", v: bigIntToCompressedIPv6(lastBigInt) }
+                ]);
             }
-            
             resultPanel.style.display = 'block';
-
-        } catch (e) {
-            if (e instanceof TypeError && e.message.includes('BigInt')) {
-                 showError("计算出错：您的浏览器不支持 BigInt 类型 (IPv6 需要)。请升级您的浏览器。", resultError, resultPanel, resultOutput);
-            } else {
-                 showError("计算出错，请检查IP格式和范围。", resultError, resultPanel, resultOutput);
-            }
-            console.error(e);
-        }
+        } catch (e) { showError("计算错误", resultError, resultPanel); }
     }
 
+    // =================================================================
+    // 功能 2: 范围反推 (智能超网计算)
+    // =================================================================
+    function calculateRangeDetails() {
+        const firstIpStr = cleanInput(document.getElementById('firstIpInput').value);
+        const lastIpStr = cleanInput(document.getElementById('lastIpInput').value);
+        
+        const resultPanel = document.getElementById('resultPanel');
+        const resultError = document.getElementById('resultError');
+        const resultOutput = document.getElementById('resultOutput');
+        const resultNote = document.getElementById('resultNote');
 
-    // --- UI 交互 ---
+        resultError.style.display = 'none';
+        resultOutput.innerHTML = '';
+        resultNote.style.display = 'none';
+        resultPanel.style.display = 'none';
 
-    function switchMode(mode) {
-        document.querySelectorAll('.mode-button').forEach(btn => {
-            btn.classList.remove('active');
+        const ver = getIPVersion(firstIpStr);
+        if (ver === 'Invalid' || getIPVersion(lastIpStr) !== ver) {
+            showError("请输入有效的、版本一致的起始和结束 IP。", resultError, resultPanel);
+            return;
+        }
+
+        try {
+            if (ver === 'IPv4') {
+                const start = ipToInt(firstIpStr);
+                const end = ipToInt(lastIpStr);
+                if (start >= end) { showError("起始 IP 必须小于结束 IP。", resultError, resultPanel); return; }
+
+                // --- 算法更新：寻找最小包围子网 ---
+                // 1. 计算两个IP的异或值，找到最高不同位
+                const xor = start ^ end;
+                // 2. 确定需要多少个主机位才能覆盖这个差异
+                // Math.clz32 返回前导0的个数。32 - clz32(xor) 就是最高有效位的位置(从1开始计数)
+                // 例如：如果xor是 0000...0101 (5)，clz32是29，有效位是3。需要3位主机位(掩码/29)才能覆盖差异。
+                // 但仅仅覆盖差异不够，还需要由于对齐问题导致的额外位。
+                
+                // 更简单的逻辑：从 /32 开始递减，直到 (start & mask) == (end & mask)
+                let cidr = 32;
+                while (cidr > 0) {
+                    const mask = getV4MaskInt(cidr);
+                    if ((start & mask) === (end & mask)) break;
+                    cidr--;
+                }
+                
+                const maskInt = getV4MaskInt(cidr);
+                const networkInt = (start & maskInt) >>> 0;
+                const hostBits = 32 - cidr;
+                const broadcastInt = networkInt | ((1 << hostBits) - 1);
+                
+                // 判断是否是“完美匹配”
+                const isExactMatch = (networkInt + 1 === start) && (broadcastInt - 1 === end);
+                const isSubSet = !isExactMatch;
+
+                if (isSubSet) {
+                    resultNote.textContent = `💡 注意：您输入的范围 (${firstIpStr} - ${lastIpStr}) 不是一个标准的 CIDR 子网边界。下方结果是能包含此范围的【最小公共子网】。`;
+                    resultNote.style.display = 'block';
+                }
+
+                renderResults(resultOutput, [
+                    { l: "计算结果 (CIDR)", v: `/${cidr}` },
+                    { l: "包含该范围的网络", v: `${intToIp(networkInt)}/${cidr}` },
+                    { l: "子网掩码", v: getV4MaskIp(cidr) },
+                    { l: "网络地址", v: intToIp(networkInt) },
+                    { l: "广播地址", v: intToIp(broadcastInt) },
+                    { l: "标准可用范围", v: `${intToIp(networkInt+1)} - ${intToIp(broadcastInt-1)}` }
+                ]);
+
+            } else { // IPv6
+                const start = ipV6ToBigInt(normalizeIPv6(firstIpStr));
+                const end = ipV6ToBigInt(normalizeIPv6(lastIpStr));
+                if (start >= end) { showError("起始 IP 必须小于结束 IP。", resultError, resultPanel); return; }
+
+                let prefix = 128;
+                while (prefix > 0) {
+                    const mask = getV6MaskBigInt(prefix);
+                    if ((start & mask) === (end & mask)) break;
+                    prefix--;
+                }
+                
+                const mask = getV6MaskBigInt(prefix);
+                const network = start & mask;
+                const hostBits = 128n - BigInt(prefix);
+                const lastAddr = network | ((1n << hostBits) - 1n);
+
+                // 检查是否完美匹配 (简单对比首尾)
+                // IPv6 比较复杂，这里简单提示如果是子集
+                if (network !== start || lastAddr !== end) {
+                    resultNote.textContent = `💡 注意：您输入的范围是下方计算出的【最小公共前缀】的子集。`;
+                    resultNote.style.display = 'block';
+                }
+
+                renderResults(resultOutput, [
+                    { l: "计算结果 (Prefix)", v: `/${prefix}` },
+                    { l: "网络前缀", v: `${bigIntToCompressedIPv6(network)}/${prefix}` },
+                    { l: "完整范围起始", v: bigIntToCompressedIPv6(network) },
+                    { l: "完整范围结束", v: bigIntToCompressedIPv6(lastAddr) }
+                ]);
+            }
+            resultPanel.style.display = 'block';
+        } catch(e) { showError("计算错误: " + e.message, resultError, resultPanel); }
+    }
+
+    function renderResults(container, items) {
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.innerHTML = `<span class="result-label">${item.l}</span><span class="result-value">${item.v}</span>`;
+            container.appendChild(div);
         });
-        document.querySelector(`.mode-button[data-mode="${mode}"]`).classList.add('active');
+    }
 
+    // --- 初始化 ---
+    function switchMode(mode) {
+        document.querySelectorAll('.mode-button').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.mode-button[data-mode="${mode}"]`).classList.add('active');
         document.getElementById('modeCidr').style.display = mode === 'cidr' ? 'block' : 'none';
         document.getElementById('modeRange').style.display = mode === 'range' ? 'block' : 'none';
-        
         document.getElementById('resultPanel').style.display = 'none';
     }
 
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // UI 元素
-        const cidrCombinedInput = document.getElementById('cidrCombinedInput');
-        const firstIpInput = document.getElementById('firstIpInput');
-        const lastIpInput = document.getElementById('lastIpInput');
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.mode-button').forEach(btn => 
+            btn.addEventListener('click', (e) => switchMode(e.target.getAttribute('data-mode'))));
         
-        // 绑定模式切换事件
-        document.querySelectorAll('.mode-button').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const mode = e.target.getAttribute('data-mode');
-                switchMode(mode);
-            });
-        });
-        
-        // 绑定计算按钮事件
         document.getElementById('calcCidrBtn').addEventListener('click', calculateCidrDetails);
         document.getElementById('calcRangeBtn').addEventListener('click', calculateRangeDetails);
         
-        // 绑定回车键触发计算
-        cidrCombinedInput.addEventListener('keydown', e => { 
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                calculateCidrDetails(); 
-            }
+        // 回车支持
+        ['cidrCombinedInput', 'firstIpInput', 'lastIpInput'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', e => {
+                if (e.key === 'Enter') id === 'cidrCombinedInput' ? calculateCidrDetails() : calculateRangeDetails();
+            });
         });
         
-        firstIpInput.addEventListener('keydown', e => { 
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                calculateRangeDetails(); 
-            }
-        });
-        lastIpInput.addEventListener('keydown', e => { 
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                calculateRangeDetails(); 
-            }
-        });
-        
-        // 初始设置为CIDR模式
         switchMode('cidr');
     });
 </script>
