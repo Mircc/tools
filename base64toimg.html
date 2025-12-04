@@ -163,4 +163,175 @@
     <div class="nav-container">
         <a href="index.html" class="nav-logo">🔒 安全工具箱</a>
         <div class="nav-links">
-            <a href="
+            <a href="index.html" class="nav-link">首页</a>
+            <a href="watermark.html" class="nav-link">在线水印</a>
+            <a href="dns.html" class="nav-link">DNS 查询</a>
+            <a href="base64.html" class="nav-link">Base64</a>
+            <a href="#" class="nav-link" style="color: var(--primary);">图片Base64</a>
+            <a href="RESTfulAPI.html" class="nav-link">API 调试</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>图片 Base64 转换工具</h1>
+
+    <div class="card">
+        <h3>📤 图片转 Base64</h3>
+        <div class="upload-zone" id="dropZone">
+            <input type="file" id="fileInput" accept="image/*">
+            <span class="upload-icon">🖼️</span>
+            <span>点击上传或将图片拖拽至此</span>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <label style="display:block; margin-bottom:8px; font-weight:600; font-size:0.9em;">转换结果 (Data URI)</label>
+            <textarea id="imgOutputText" readonly placeholder="图片 Base64 编码将显示在这里... (双击复制)" title="双击复制"></textarea>
+            <div id="imgStatus" class="status-msg"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📥 Base64 转图片预览</h3>
+        <div class="tips">
+            💡 提示：粘贴 Base64 字符串到下方，点击转换(或按 Enter)即可还原图片。
+        </div>
+        
+        <textarea id="inputStr" placeholder="在此粘贴 data:image/png;base64,..."></textarea>
+        <button class="btn-primary" id="convertBtn">🔄 还原图片</button>
+        
+        <div class="preview-box">
+            <span class="empty-preview" id="emptyTip">图片预览区域</span>
+            <img id="imgPreview" alt="Preview">
+        </div>
+        <div id="convertStatus" class="status-msg"></div>
+    </div>
+</div>
+
+<script>
+    window.onload = function() {
+        // --- 元素获取 ---
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const imgOutputText = document.getElementById('imgOutputText');
+        const imgStatus = document.getElementById('imgStatus');
+
+        const inputStr = document.getElementById('inputStr');
+        const convertBtn = document.getElementById('convertBtn');
+        const imgPreview = document.getElementById('imgPreview');
+        const emptyTip = document.getElementById('emptyTip');
+        const convertStatus = document.getElementById('convertStatus');
+
+        // --- 1. 图片转 Base64 ---
+        
+        // 文件选择事件
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        // 拖拽高亮效果
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect({ target: fileInput });
+            }
+        });
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                imgStatus.textContent = '❌ 请上传有效的图片文件';
+                imgStatus.className = 'status-msg text-error';
+                return;
+            }
+
+            imgStatus.textContent = '正在转换...';
+            imgStatus.className = 'status-msg';
+            imgOutputText.value = '';
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const base64 = event.target.result;
+                imgOutputText.value = base64;
+                imgStatus.textContent = `✅ 转换成功! 大小: ${(file.size/1024).toFixed(2)} KB`;
+                imgStatus.className = 'status-msg text-success';
+            };
+            reader.onerror = function() {
+                imgStatus.textContent = '❌ 读取文件失败';
+                imgStatus.className = 'status-msg text-error';
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // 双击复制功能
+        imgOutputText.addEventListener('dblclick', () => {
+            copyToClipboard(imgOutputText, imgStatus);
+        });
+
+        // --- 2. Base64 转图片 ---
+        
+        // 支持回车键直接触发
+        inputStr.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // 阻止换行
+                convertBtn.click(); // 触发转换
+            }
+        });
+
+        convertBtn.addEventListener('click', () => {
+            const val = inputStr.value.trim();
+            if (!val) {
+                convertStatus.textContent = '请先粘贴 Base64 字符串';
+                convertStatus.className = 'status-msg text-error';
+                return;
+            }
+
+            // 简单修复：如果缺少头部，尝试补全 (假设是 png)
+            let src = val;
+            if (!val.startsWith('data:image') && /^[A-Za-z0-9+/=]+$/.test(val.substring(0, 50))) {
+                src = 'data:image/png;base64,' + val;
+            }
+
+            imgPreview.src = src;
+            imgPreview.style.display = 'block';
+            emptyTip.style.display = 'none';
+            
+            // 监听图片加载状态
+            imgPreview.onload = function() {
+                convertStatus.textContent = `✅ 图片还原成功 (${imgPreview.naturalWidth}x${imgPreview.naturalHeight})`;
+                convertStatus.className = 'status-msg text-success';
+            };
+            imgPreview.onerror = function() {
+                imgPreview.style.display = 'none';
+                emptyTip.style.display = 'block';
+                convertStatus.textContent = '❌ 无效的 Base64 图片数据';
+                convertStatus.className = 'status-msg text-error';
+            };
+        });
+
+        // --- 辅助函数 ---
+        async function copyToClipboard(textarea, statusEl) {
+            if (!textarea.value) return;
+            try {
+                textarea.select();
+                await navigator.clipboard.writeText(textarea.value);
+                const oldText = statusEl.textContent;
+                statusEl.textContent = '📋 已复制到剪切板！';
+                setTimeout(() => statusEl.textContent = oldText, 2000);
+            } catch (err) {
+                document.execCommand('copy');
+                statusEl.textContent = '已选中，请手动复制';
+            }
+        }
+    };
+</script>
+
+</body>
+</html>
