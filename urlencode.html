@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极简 UrlEncode 工具</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #334155;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            padding: 30px;
+        }
+
+        h2 {
+            margin: 0 0 20px 0;
+            text-align: center;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 16px;
+            background-color: #f9fafb;
+            color: var(--text);
+            resize: vertical;
+            box-sizing: border-box;
+            outline: none;
+            transition: all 0.2s;
+            font-family: monospace;
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+            background-color: #fff;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+        
+        #output {
+            cursor: pointer;
+        }
+        #output:focus {
+             background-color: #f1f5f9;
+             box-shadow: none;
+             border-color: var(--border);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        select {
+            padding: 0 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text);
+            cursor: pointer;
+            outline: none;
+            flex: 0 0 30%;
+        }
+
+        #actionBtn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            background-color: var(--primary);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #actionBtn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .result-box {
+            margin-top: 20px;
+            border-top: 1px dashed var(--border);
+            padding-top: 20px;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .copy-link {
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .copy-link:hover { text-decoration: underline; }
+
+        #output {
+            background-color: #f1f5f9;
+            border-color: transparent;
+        }
+        
+        .hint-text {
+            font-size: 12px;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>UrlEncode</h2>
+
+    <textarea id="input" placeholder="在此输入内容... (Enter 执行，Shift+Enter 换行)"></textarea>
+
+    <div class="controls">
+        <select id="encoding"></select>
+        <button id="actionBtn">编码</button>
+    </div>
+
+    <div class="result-box" id="resultArea">
+        <div class="result-header">
+            <span>结果：</span>
+            <span class="copy-link" id="copyBtn">复制结果</span>
+        </div>
+        <textarea id="output" readonly title="双击此处自动复制"></textarea>
+        <div class="hint-text">💡 提示：双击结果框可快速复制</div>
+    </div>
+</div>
+
+<script>
+    // 1. 编码数据定义
+    const encodingArr = [
+        { "Key": "常用", "Value": [
+            { "Key": "UTF-8", "Value": "UTF-8" },
+            { "Key": "GBK", "Value": "GBK (简繁体)" },
+            { "Key": "Big5", "Value": "Big5 (繁体)" },
+            { "Key": "UTF-16LE", "Value": "UTF-16LE" }
+        ]},
+        { "Key": "其他", "Value": [
+            { "Key": "US-ASCII", "Value": "US-ASCII" },
+            { "Key": "ISO-8859-1", "Value": "ISO-8859-1" },
+            { "Key": "SHIFT_JIS", "Value": "SHIFT_JIS"},
+            { "Key": "EUC-JP", "Value": "EUC-JP"}
+        ]}
+    ];
+
+    // 使用 window.onload 确保 DOM 加载完毕
+    window.onload = function() {
+        const select = document.getElementById('encoding');
+        const inputEl = document.getElementById('input');
+        const outputEl = document.getElementById('output');
+        const actionBtn = document.getElementById('actionBtn');
+        const resultArea = document.getElementById('resultArea');
+        const copyBtn = document.getElementById('copyBtn');
+        
+        let currentMode = 'encode';
+
+        // 2. 初始化下拉框
+        encodingArr.forEach(group => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = group.Key;
+            group.Value.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.Key;
+                option.textContent = item.Value;
+                if (item.Key === 'UTF-8') option.selected = true;
+                optgroup.appendChild(option);
+            });
+            select.appendChild(optgroup);
+        });
+
+        // 3. 监听输入内容：自动切换按钮状态
+        inputEl.addEventListener('input', () => {
+            const val = inputEl.value;
+            // 核心判断逻辑：如果有连续的 %XX，则认为是解码模式
+            if (/%[0-9A-Fa-f]{2}/.test(val)) {
+                currentMode = 'decode';
+                actionBtn.textContent = "解码";
+                actionBtn.style.backgroundColor = "#10b981"; // 绿色暗示解码
+            } else {
+                currentMode = 'encode';
+                actionBtn.textContent = "编码";
+                actionBtn.style.backgroundColor = "#2563eb"; // 蓝色暗示编码
+            }
+        });
+
+        // 4. 监听键盘回车
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                execute();
+            }
+        });
+
+        // 5. 监听按钮点击
+        actionBtn.addEventListener('click', execute);
+
+        // 6. 监听复制操作 (按钮点击 + 双击文本框)
+        copyBtn.addEventListener('click', triggerCopy);
+        outputEl.addEventListener('dblclick', triggerCopy);
+
+
+        // --- 功能函数定义 ---
+
+        function execute() {
+            const str = inputEl.value.trim();
+            const charset = select.value;
+
+            if (!str) {
+                resultArea.style.display = 'none';
+                return;
+            }
+
+            let result = '';
+            try {
+                if (currentMode === 'encode') {
+                    result = doEncode(str, charset);
+                } else {
+                    result = doDecode(str, charset);
+                }
+                outputEl.value = result;
+                resultArea.style.display = 'block';
+            } catch (e) {
+                outputEl.value = "错误：" + e.message;
+                resultArea.style.display = 'block';
+            }
+        }
+
+        function doEncode(str, charset) {
+            if (charset === 'UTF-8') {
+                return encodeURIComponent(str);
+            } else {
+                return "⚠️ 原生浏览器仅支持 UTF-8 编码。GBK/Big5 等请切换回 UTF-8 或使用后端工具。";
+            }
+        }
+
+        function doDecode(str, charset) {
+            // 优先尝试标准解码
+            if (charset === 'UTF-8') {
+                try { return decodeURIComponent(str); } catch(e) {} 
+            }
+            
+            // 通用解码逻辑 (支持 GBK 等)
+            try {
+                const arr = [];
+                for (let i = 0; i < str.length; ) {
+                    if (str[i] === '%') {
+                        const hex = str.substring(i+1, i+3);
+                        // 检查是否为有效的2位16进制
+                        if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+                            arr.push(parseInt(hex, 16));
+                            i += 3;
+                            continue;
+                        }
+                    }
+                    arr.push(str.charCodeAt(i));
+                    i++;
+                }
+                const decoder = new TextDecoder(charset);
+                return decoder.decode(new Uint8Array(arr));
+            } catch (e) {
+                throw new Error("解码失败，可能是格式错误或浏览器不支持该编码。");
+            }
+        }
+
+        function triggerCopy() {
+            outputEl.select();
+            document.execCommand('copy');
+            
+            const originalText = copyBtn.innerText;
+            copyBtn.innerText = "已复制!";
+            copyBtn.style.color = "#10b981"; // 闪烁绿色
+            
+            setTimeout(() => {
+                copyBtn.innerText = originalText;
+                copyBtn.style.color = ""; // 恢复默认
+            }, 1000);
+        }
+    };
+</script>
+
+</body>
+</html>
