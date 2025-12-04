@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 格式化工具</title>
+    <meta name="description" content="用于格式化、验证和美化 JSON 数据，支持实时渲染和树形视图。">
+    
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --radius: 12px;
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        h1 { color: var(--text-main); text-align: center; margin-bottom: 5px; font-size: 2rem; }
+        .description { text-align: center; color: var(--text-sub); margin-bottom: 30px; font-size: 1rem; }
+
+        .card {
+            background: var(--card);
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 20px;
+        }
+        
+        /* Layout Grid */
+        .json-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        @media (min-width: 768px) {
+            .json-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Input & Textarea Styles */
+        .input-group { width: 100%; }
+        label { display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px; color: var(--text-sub); }
+
+        textarea {
+            width: 100%; min-height: 400px; padding: 15px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; box-sizing: border-box; background: #fff; color: var(--text-main);
+            font-family: monospace; resize: vertical; outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        textarea[readonly] { background: #f1f5f9; cursor: text; }
+
+        /* Controls */
+        .controls-bar {
+            display: flex;
+            justify-content: flex-start;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: #6b7280; color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+
+        /* Status */
+        .status-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: none;
+            font-size: 0.95rem;
+        }
+        .status-valid { background: var(--success); color: white; }
+        .status-error { background: var(--danger); color: white; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-section">
+        <h1>JSON 格式化工具</h1>
+        <p class="description">用于格式化、验证和美化 JSON 数据，支持实时渲染和树形视图。</p>
+    </div>
+
+    <div class="card">
+        <div class="controls-bar">
+            <button class="btn btn-primary" id="formatBtn">✨ 格式化 / 美化</button>
+            <button class="btn btn-secondary" id="minifyBtn">↔️ 压缩 / Minify</button>
+            <button class="btn btn-danger" id="clearBtn">🗑️ 清空</button>
+        </div>
+
+        <div id="statusOutput" class="status-message"></div>
+
+        <div class="json-grid">
+            <div class="input-group">
+                <label for="inputJson">JSON 输入 (支持粘贴或手动编辑)</label>
+                <textarea id="inputJson" placeholder="粘贴 JSON 字符串到此处..."></textarea>
+            </div>
+
+            <div class="input-group">
+                <label for="outputJson">JSON 输出 / 结果</label>
+                <textarea id="outputJson" readonly placeholder="格式化或压缩后的 JSON 数据将在此显示..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- DOM 元素 ---
+    const inputJson = document.getElementById('inputJson');
+    const outputJson = document.getElementById('outputJson');
+    const formatBtn = document.getElementById('formatBtn');
+    const minifyBtn = document.getElementById('minifyBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const statusOutput = document.getElementById('statusOutput');
+
+    // --- 核心逻辑 ---
+
+    function showStatus(message, isError = false) {
+        statusOutput.textContent = message;
+        statusOutput.style.display = 'block';
+        statusOutput.classList.remove('status-valid', 'status-error');
+        statusOutput.classList.add(isError ? 'status-error' : 'status-valid');
+    }
+
+    function validateAndParse(jsonString) {
+        try {
+            const data = JSON.parse(jsonString);
+            showStatus('✅ JSON 验证通过！', false);
+            return data;
+        } catch (e) {
+            showStatus('❌ JSON 格式错误！请检查语法 (例如：缺失逗号或引号)。', true);
+            throw e; // 抛出错误以停止后续处理
+        }
+    }
+
+    function formatJson() {
+        const jsonString = inputJson.value.trim();
+        if (!jsonString) {
+            outputJson.value = '';
+            showStatus('⚠️ 输入内容为空。', true);
+            return;
+        }
+
+        try {
+            const data = validateAndParse(jsonString);
+            // 格式化：使用 null, 2 缩进
+            outputJson.value = JSON.stringify(data, null, 2);
+        } catch (e) {
+            outputJson.value = "无法格式化，请修正 JSON 错误。";
+        }
+    }
+
+    function minifyJson() {
+        const jsonString = inputJson.value.trim();
+        if (!jsonString) {
+            outputJson.value = '';
+            showStatus('⚠️ 输入内容为空。', true);
+            return;
+        }
+
+        try {
+            const data = validateAndParse(jsonString);
+            // 压缩：使用 null, 0 缩进 (或不传参数)
+            outputJson.value = JSON.stringify(data);
+            showStatus('✅ JSON 验证通过并已压缩！', false);
+        } catch (e) {
+            outputJson.value = "无法压缩，请修正 JSON 错误。";
+        }
+    }
+
+    function clearContent() {
+        inputJson.value = '';
+        outputJson.value = '';
+        statusOutput.style.display = 'none';
+    }
+
+    // --- 初始化和事件绑定 ---
+
+    window.onload = function() {
+        // 绑定按钮事件
+        formatBtn.addEventListener('click', formatJson);
+        minifyBtn.addEventListener('click', minifyJson);
+        clearBtn.addEventListener('click', clearContent);
+
+        // 绑定回车键：在输入框内按 Ctrl + Enter 触发格式化
+        inputJson.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                formatJson();
+            }
+        });
+        
+        // 绑定输入事件：输入内容变化时进行实时验证
+        inputJson.addEventListener('input', function() {
+            const val = this.value.trim();
+            if (val) {
+                // 仅在输入不为空时尝试验证，但不在输出框显示格式化结果
+                try {
+                    JSON.parse(val);
+                    showStatus('✅ JSON 格式有效。', false);
+                } catch (e) {
+                    showStatus('❌ JSON 格式有误，请检查语法。', true);
+                }
+            } else {
+                 statusOutput.style.display = 'none';
+            }
+        });
+        
+        // 双击复制功能 (应用于输出框)
+        outputJson.addEventListener('dblclick', function() {
+            outputJson.select();
+            document.execCommand('copy');
+            showStatus('📋 结果已复制到剪贴板！', false);
+            // 延迟清空状态信息
+            setTimeout(() => statusOutput.style.display = 'none', 1500);
+        });
+    };
+</script>
+
+</body>
+</html>
