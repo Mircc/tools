@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通用加解密工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --error: #ef4444;
+            --success: #10b981;
+            --warn: #f59e0b;
+            --radius: 12px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        h1 { color: var(--text-main); text-align: center; margin-bottom: 20px; font-size: 2rem; }
+        h3 { font-size: 1.1rem; color: var(--text-main); margin-bottom: 10px; }
+
+        .card {
+            background: var(--card);
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+        
+        /* Layout */
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .input-group { width: 100%; }
+
+        /* Input Styles */
+        label { display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px; color: var(--text-sub); }
+
+        input[type="text"], select, textarea {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; box-sizing: border-box; background: #fff; color: var(--text-main);
+            font-family: monospace; resize: vertical; min-height: 40px;
+        }
+        textarea { min-height: 150px; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+
+        /* Buttons */
+        .btn-action { 
+            width: 100%; padding: 12px; font-size: 1.1rem; font-weight: 600; border: none; border-radius: 8px;
+            background: var(--primary); color: white; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-action:hover { background: var(--primary-hover); }
+        .btn-action:disabled { opacity: 0.6; cursor: not-allowed; background: #9ca3af; }
+
+        /* Status */
+        .status-message { min-height: 1.5em; margin-top: 10px; font-size: 0.9em; color: var(--error); }
+        .status-ok { color: var(--success); }
+        .status-warn { color: var(--warn); }
+        
+        .result-box {
+            background: #f1f5f9; padding: 15px; border-radius: 8px; margin-top: 10px;
+            font-family: monospace; font-size: 0.9em; min-height: 100px; word-break: break-all;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>通用加解密工具</h1>
+
+    <div class="card">
+        <h3>密钥与算法设置</h3>
+        <div class="controls-grid">
+            <div class="input-group">
+                <label for="secretKey">密钥 (可选)</label>
+                <input type="text" id="secretKey" placeholder="默认密钥: tools.eu.org">
+            </div>
+            <div class="input-group">
+                <label for="algorithmSelect">加密算法</label>
+                <select id="algorithmSelect">
+                    <option value="AES-256-CBC" selected>AES-256-CBC (推荐)</option>
+                    <option value="AES-128-CBC">AES-128-CBC</option>
+                    <option value="RC4">RC4</option>
+                    <option value="SHA-256">SHA-256 (哈希校验)</option>
+                    <option value="SHA-512">SHA-512 (哈希校验)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="input-group">
+            <label for="contentInput">输入内容 (明文或密文)</label>
+            <textarea id="contentInput" placeholder="输入明文进行加密，或粘贴密文进行解密..."></textarea>
+        </div>
+        
+        <button id="mainActionBtn" class="btn-action">🔒 加密</button>
+        
+        <div id="actionStatus" class="status-message"></div>
+
+        <div class="input-group">
+            <label for="resultOutput">处理结果 (密文或明文)</label>
+            <textarea id="resultOutput" class="result-box" readonly placeholder="结果将显示在这里..."></textarea>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- 配置常量 ---
+    const DEFAULT_KEY = 'tools.eu.org';
+    const CIPHER_PREFIX = 'ENC_V1:';
+    
+    // --- 算法支持映射表 ---
+    // 简化后，所有算法均视为 'supported: true'，使用 CryptoJS 实现
+    const ALGORITHGM_SUPPORT = {
+        'AES-256-CBC': { type: 'symmetric', keyLen: 256, algo: CryptoJS.AES },
+        'AES-128-CBC': { type: 'symmetric', keyLen: 128, algo: CryptoJS.AES },
+        'RC4': { type: 'symmetric', keyLen: 128, algo: CryptoJS.RC4 },
+        'SHA-256': { type: 'hash', algo: CryptoJS.SHA256 },
+        'SHA-512': { type: 'hash', algo: CryptoJS.SHA512 },
+    };
+
+    // --- DOM 元素 ---
+    const secretKeyInput = document.getElementById('secretKey');
+    const algorithmSelect = document.getElementById('algorithmSelect');
+    const contentInput = document.getElementById('contentInput');
+    const mainActionBtn = document.getElementById('mainActionBtn');
+    const resultOutput = document.getElementById('resultOutput');
+    const actionStatus = document.getElementById('actionStatus');
+
+    // --- 辅助函数 ---
+
+    const arrayBufferToBase64 = (buffer) => btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    
+    // 密文输入解析器
+    const parseCipherInput = (content) => {
+        const base64Cipher = content.replace(CIPHER_PREFIX, '');
+        // 使用 CryptoJS 的原生方法解析 Base64 字符串
+        return CryptoJS.lib.CipherParams.create({
+            ciphertext: CryptoJS.enc.Base64.parse(base64Cipher)
+        });
+    };
+    
+    /**
+     * 派生密钥 (使用 CryptoJS 的 EvpKDF)
+     */
+    function deriveKey(secretKey) {
+        // CryptoJS 的 EvpKDF 简化了密钥和盐的派生，内部使用 MD5
+        // 外部库无法直接访问标准的 Web Crypto PBKDF2，此处是最佳替代方案。
+        const salt = CryptoJS.lib.WordArray.random(16); // 随机生成盐值
+        const key = CryptoJS.EvpKDF(secretKey, salt, { 
+            keySize: 256 / 32, // 确保 Key Size 足够大
+            iterations: 1 
+        });
+        return { key, salt };
+    }
+    
+    // --- 核心操作函数 ---
+
+    /**
+     * 处理加密操作
+     */
+    async function processEncrypt() {
+        const content = contentInput.value;
+        const secretKey = secretKeyInput.value.trim() || DEFAULT_KEY;
+        const algorithm = algorithmSelect.value;
+        const algoConfig = ALGORITHGM_SUPPORT[algorithm];
+        
+        actionStatus.textContent = `处理中... (算法: ${algorithm})`;
+        mainActionBtn.disabled = true;
+        
+        try {
+            if (algoConfig.type === 'symmetric') {
+                // 对称加密: 使用密钥派生
+                const key = CryptoJS.enc.Utf8.parse(secretKey); // 简化密钥，不使用 KDF (更快)
+                // const { key, salt } = deriveKey(secretKey); // 复杂KDF
+                
+                const encrypted = algoConfig.algo.encrypt(content, key, { 
+                    mode: CryptoJS.mode.CBC,
+                    padding: CryptoJS.pad.Pkcs7,
+                    // 不使用 IV 和 Salt 自动生成，保持密钥简单
+                });
+                
+                // 密文结构: Prefix + Base64(Ciphertext)
+                resultOutput.value = CIPHER_PREFIX + encrypted.toString();
+                actionStatus.textContent = `✅ 加密成功！算法: ${algorithm}`;
+                actionStatus.classList.add('status-ok');
+            
+            } else if (algoConfig.type === 'hash') {
+                // 哈希操作
+                const hash = algoConfig.algo(content);
+                resultOutput.value = hash.toString(CryptoJS.enc.Hex);
+                actionStatus.textContent = `✅ ${algorithm} 哈希计算成功！`;
+                actionStatus.classList.add('status-ok');
+
+            } else {
+                throw new Error("算法不受支持。");
+            }
+        } catch (e) {
+            actionStatus.textContent = `❌ 操作失败: ${e.message}`;
+            actionStatus.classList.remove('status-ok');
+        } finally {
+            mainActionBtn.disabled = false;
+        }
+    }
+
+    /**
+     * 处理解密操作
+     */
+    async function processDecrypt() {
+        const content = contentInput.value.trim();
+        const secretKey = secretKeyInput.value.trim() || DEFAULT_KEY;
+        const algorithm = algorithmSelect.value;
+        const algoConfig = ALGORITHGM_SUPPORT[algorithm];
+
+        if (algoConfig.type !== 'symmetric') {
+             actionStatus.textContent = "❌ 只有对称加密算法支持解密。";
+             return;
+        }
+
+        actionStatus.textContent = `处理中... (算法: ${algorithm})`;
+        mainActionBtn.disabled = true;
+
+        try {
+            const key = CryptoJS.enc.Utf8.parse(secretKey); // 简化密钥，直接使用
+            
+            const decrypted = algoConfig.algo.decrypt(content.replace(CIPHER_PREFIX, ''), key, {
+                 mode: CryptoJS.mode.CBC,
+                 padding: CryptoJS.pad.Pkcs7
+            });
+
+            // 检查解密结果是否为空 (密码错误或数据损坏)
+            if (decrypted.sigBytes === 0) {
+                 throw new Error("解密失败：密文或密钥不正确。");
+            }
+
+            resultOutput.value = decrypted.toString(CryptoJS.enc.Utf8);
+            actionStatus.textContent = `✅ 解密成功！算法: ${algorithm}`;
+            actionStatus.classList.add('status-ok');
+
+        } catch (e) {
+            actionStatus.textContent = `❌ 解密失败: ${e.message}. 请检查密钥或密文是否正确。`;
+            actionStatus.classList.remove('status-ok');
+        } finally {
+            mainActionBtn.disabled = false;
+        }
+    }
+
+    // --- 初始化和事件绑定 ---
+    function updateActionUI() {
+        const content = contentInput.value.trim();
+        const algorithm = algorithmSelect.value;
+        const isCipher = content.startsWith(CIPHER_PREFIX);
+        const algoConfig = ALGORITHGM_SUPPORT[algorithm];
+        
+        mainActionBtn.disabled = content.length === 0;
+
+        if (isCipher && algoConfig.type === 'symmetric') {
+            mainActionBtn.textContent = '🔓 解密';
+            mainActionBtn.dataset.action = 'decrypt';
+        } else {
+            mainActionBtn.textContent = algoConfig.type === 'hash' ? `🔨 ${algorithm}` : '🔒 加密';
+            mainActionBtn.dataset.action = 'encrypt';
+        }
+        actionStatus.textContent = '';
+        actionStatus.classList.remove('status-warn');
+    }
+    
+    function handleSmartAction() {
+        const action = mainActionBtn.dataset.action;
+        if (action === 'encrypt') {
+            processEncrypt();
+        } else if (action === 'decrypt') {
+            processDecrypt();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // 检查外部库是否加载成功
+        if (typeof CryptoJS === 'undefined') {
+             actionStatus.textContent = '❌ 外部库 CryptoJS 未加载成功，请检查网络或CDN链接。';
+             actionStatus.classList.add('status-error');
+             mainActionBtn.disabled = true;
+             return;
+        }
+
+        // 绑定事件
+        contentInput.addEventListener('input', updateActionUI);
+        algorithmSelect.addEventListener('change', updateActionUI);
+        mainActionBtn.addEventListener('click', handleSmartAction);
+        
+        // 绑定回车键
+        contentInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSmartAction();
+            }
+        });
+        
+        // 双击复制
+        resultOutput.addEventListener('dblclick', function() {
+            if (resultOutput.value) {
+                 navigator.clipboard.writeText(resultOutput.value).then(() => {
+                    actionStatus.textContent = '📋 已复制到剪贴板！';
+                    actionStatus.classList.add('status-ok');
+                    setTimeout(() => actionStatus.textContent = '', 2000);
+                 });
+            }
+        });
+        
+        updateActionUI(); // 初始状态
+    });
+</script>
+</body>
+</html>
