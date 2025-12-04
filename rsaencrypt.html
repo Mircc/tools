@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA 加密解密工具 - Web Crypto</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --radius: 12px;
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; }
+        
+        h1 { color: var(--text-main); text-align: center; margin-bottom: 20px; font-size: 2rem; }
+        h3 { font-size: 1.1rem; color: var(--primary); margin-top: 15px; margin-bottom: 10px; }
+
+        .card {
+            background: var(--card);
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 30px;
+        }
+        
+        /* Layout */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;}
+
+        /* Input Styles */
+        .input-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px; color: var(--text-sub); }
+
+        input[type="text"], select, textarea {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; box-sizing: border-box; background: #fff; color: var(--text-main);
+            font-family: monospace; resize: vertical; min-height: 40px;
+        }
+        textarea { min-height: 100px; }
+        input[type="text"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+
+        /* Buttons */
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* Status and Results */
+        #mainActionBtn { padding: 12px 20px; font-size: 1.1rem; width: 100%; }
+
+        .status-message { min-height: 1.5em; margin-top: 10px; font-size: 0.9em; color: #ef4444; }
+        #keyGenerationStatus { min-height: 1.5em; margin-top: 10px; font-size: 0.9em; color: #22c55e; }
+        
+        .result-box {
+            background: #f1f5f9; padding: 15px; border-radius: 8px; margin-top: 15px;
+            font-family: monospace; font-size: 0.9em; min-height: 80px; word-break: break-all;
+        }
+
+        .alert-box {
+            background: #fffbe7; color: #92400e; padding: 10px; border-radius: 8px; margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>RSA 加密/解密工具</h1>
+    
+    <div class="alert-box">
+        ⚠️ **重要提示：** RSA 加密有数据长度限制（通常为密钥长度减去 42 字节）。加密数据过长会导致失败。
+    </div>
+
+    <div class="card">
+        <h2>密钥生成 (Web Crypto API)</h2>
+        
+        <div class="grid-3">
+            <div class="input-group">
+                <label for="keySize">密钥位数</label>
+                <select id="keySize">
+                    <option value="2048" selected>2048 bits (推荐)</option>
+                    <option value="3072">3072 bits</option>
+                    <option value="4096">4096 bits</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="keyFormat">私钥格式</label>
+                <select id="keyFormat">
+                    <option value="pkcs8" selected>PKCS#8 (推荐)</option>
+                    <option value="pkcs1">PKCS#1 (不支持原生导出)</option>
+                </select>
+            </div>
+            <div class="input-group" style="padding-top: 25px;">
+                <button id="generateKeyBtn" class="btn btn-primary">🔑 生成密钥对</button>
+            </div>
+        </div>
+        
+        <div id="keyGenerationStatus" style="color:#22c55e;"></div>
+
+        <div class="grid-2">
+            <div class="input-group">
+                <label for="publicKeyOutput">公钥 (SPKI PEM)</label>
+                <textarea id="publicKeyOutput" placeholder="生成的公钥将显示在这里..." readonly></textarea>
+            </div>
+            <div class="input-group">
+                <label for="privateKeyOutput">私钥 (PKCS#8 PEM)</label>
+                <textarea id="privateKeyOutput" placeholder="生成的私钥将显示在这里..." readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>数据处理 (RSA-OAEP)</h2>
+
+        <div class="grid-2">
+            <div class="input-group">
+                <label for="inputPublicKey">输入公钥 (Encrypt)</label>
+                <textarea id="inputPublicKey" placeholder="用于加密，可从上方复制"></textarea>
+            </div>
+            <div class="input-group">
+                <label for="inputPrivateKey">输入私钥 (Decrypt)</label>
+                <textarea id="inputPrivateKey" placeholder="用于解密，可从上方复制"></textarea>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="contentInput">输入内容 (明文或密文)</label>
+            <textarea id="contentInput" placeholder="输入明文进行加密，或粘贴密文进行解密..."></textarea>
+        </div>
+        
+        <button id="mainActionBtn" class="btn btn-primary">🔒 加密</button>
+        
+        <div id="actionStatus" class="status-message"></div>
+
+        <div class="input-group">
+            <label for="resultOutput">处理结果 (双击复制)</label>
+            <textarea id="resultOutput" class="result-box" readonly title="双击自动复制结果"></textarea>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // --- 常量 ---
+    const RSA_ALGORITHM = 'RSA-OAEP';
+    const HASH_ALGORITHM = 'SHA-256';
+    const MAX_PLAINTEXT_LENGTH_BYTES = 200; // 预估的最大安全明文长度，用于提示用户
+
+    // --- DOM 元素 ---
+    const keySize = document.getElementById('keySize');
+    const keyFormat = document.getElementById('keyFormat');
+    const generateKeyBtn = document.getElementById('generateKeyBtn');
+    const publicKeyOutput = document.getElementById('publicKeyOutput');
+    const privateKeyOutput = document.getElementById('privateKeyOutput');
+    const keyGenerationStatus = document.getElementById('keyGenerationStatus');
+
+    const inputPublicKey = document.getElementById('inputPublicKey');
+    const inputPrivateKey = document.getElementById('inputPrivateKey');
+    const contentInput = document.getElementById('contentInput');
+    const mainActionBtn = document.getElementById('mainActionBtn');
+    const resultOutput = document.getElementById('resultOutput');
+    const actionStatus = document.getElementById('actionStatus');
+
+    // --- 工具函数 ---
+
+    // ArrayBuffer to Base64 (needed for PEM)
+    const arrayBufferToBase64 = (buffer) => btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    
+    // Base64 to ArrayBuffer
+    const base64ToArrayBuffer = (base64) => {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+    };
+    
+    // Array
