@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片 Base64 转换工具</title>
+    <style>
+        /* 核心风格 - 与 base64.html 保持严格一致 */
+        :root {
+            --primary: #2563eb;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: #334155;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #1e293b; text-align: center; margin-bottom: 20px; }
+
+        .card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        /* 输入区域布局 */
+        .input-section { display: flex; flex-direction: column; gap: 15px; }
+        
+        .section-label { display: block; font-size: 0.9em; font-weight: 600; margin-bottom: 5px; color: #475569; }
+
+        /* 图片上传区域 - 虚线框风格 */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background-color: #f9fafb;
+            position: relative;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--primary);
+            background-color: #eff6ff;
+            color: var(--primary);
+        }
+        .upload-zone input[type="file"] {
+            position: absolute;
+            width: 100%; height: 100%; top: 0; left: 0;
+            opacity: 0; cursor: pointer;
+        }
+        .upload-icon { font-size: 24px; margin-bottom: 8px; display: block; }
+
+        /* 分隔符 */
+        .divider {
+            text-align: center; font-size: 0.85em; color: #94a3b8; position: relative; margin: 5px 0;
+        }
+        .divider::before, .divider::after {
+            content: ""; position: absolute; top: 50%; width: 45%; height: 1px; background: var(--border);
+        }
+        .divider::before { left: 0; }
+        .divider::after { right: 0; }
+
+        /* 文本框样式 */
+        textarea {
+            width: 100%; min-height: 100px; padding: 10px 12px;
+            border: 1px solid var(--border); border-radius: 6px;
+            font-size: 14px; font-family: monospace; box-sizing: border-box;
+            resize: vertical;
+        }
+        textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
+        textarea[readonly] { background-color: #f8fafc; cursor: copy; }
+
+        /* 按钮 */
+        .btn {
+            width: 100%; padding: 10px; border: none; border-radius: 6px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s; height: 40px; margin-top: 10px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        
+        /* 结果展示区 */
+        .preview-box {
+            margin-top: 15px;
+            text-align: center;
+            background: repeating-linear-gradient(45deg, #f1f5f9 0, #f1f5f9 10px, #fff 10px, #fff 20px); /* 透明背景格 */
+            border: 1px solid var(--border);
+            border-radius:
