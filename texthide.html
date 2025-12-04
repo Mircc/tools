@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字隐藏工具 - 隐私文本隐写</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --radius: 12px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        h1 { color: var(--text-main); text-align: center; margin-bottom: 30px; font-size: 2rem; }
+        
+        /* 核心卡片与 Tabs */
+        .card {
+            background: var(--card);
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+        
+        .tab-controls { 
+            display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border); 
+        }
+        .tab-btn {
+            padding: 10px 15px; border: none; background: transparent; cursor: pointer;
+            font-weight: 600; color: var(--text-sub); border-bottom: 3px solid transparent;
+            transition: all 0.2s; font-size: 1rem;
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* 模式设置与按钮 */
+        .controls-row { display: flex; align-items: flex-start; gap: 20px; margin-bottom: 20px; }
+
+        .input-group { width: 100%; margin-bottom: 15px; }
+        label { display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 8px; color: var(--text-sub); }
+
+        textarea {
+            width: 100%; min-height: 150px; padding: 15px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; box-sizing: border-box; background: #f8fafc; color: var(--text-main);
+            font-family: monospace; resize: vertical; outline: none;
+            transition: border-color 0.2s;
+        }
+        textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        textarea[readonly] { background: #f1f5f9; cursor: pointer; } 
+        #cipherInput { cursor: text; } /* 确保输入框是标准文本光标 */
+
+        /* 按钮 */
+        .btn-action { 
+            padding: 12px 20px; border: none; border-radius: 8px; font-weight: 600; 
+            background: var(--primary); color: white; cursor: pointer; transition: all 0.2s;
+            font-size: 1.1rem; width: 100%; margin-top: 20px;
+        }
+        .btn-action:hover { background: var(--primary-hover); }
+        .btn-action:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* 结果/状态 */
+        .status-message { min-height: 1.5em; margin-top: 10px; font-size: 0.9em; color: var(--error); }
+        .status-success { color: var(--success); }
+        
+        .result-box { margin-top: 20px; }
+        .result-box label { color: var(--primary); }
+        
+        /* 布局特定调整 */
+        #revealInputs { display: none; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>文字隐藏工具</h1>
+
+    <div class="card">
+        <div id="tabControls" class="tab-controls">
+            <button class="tab-btn active" data-mode="hide">文本隐藏 (插入)</button>
+            <button class="tab-btn" data-mode="reveal">提取内容 (解密)</button>
+        </div>
+        
+        <div class="controls-row">
+            <div class="select-wrapper">
+                <p style="font-weight: 600; font-size: 0.9em; color: var(--text-sub);">当前模式：增强隐写 (系统默认)</p>
+            </div>
+        </div>
+        
+        <div id="hideInputs" class="input-group">
+            <div class="grid-2">
+                <div class="input-group">
+                    <label for="carrierInput">载体文本 (Carrier Text)</label>
+                    <textarea id="carrierInput" placeholder="输入要隐藏内容于其中的文本..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="hiddenInput">需隐藏的私密内容 (Secret Text)</label>
+                    <textarea id="hiddenInput" placeholder="输入要隐藏的文本..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div id="revealInputs" class="input-group">
+            <label for="cipherInput">粘贴包含隐藏信息的文本</label>
+            <textarea id="cipherInput" placeholder="粘贴从隐藏步骤获得的文本..."></textarea>
+        </div>
+        
+        <button class="btn-action" id="mainActionBtn">开始隐藏</button>
+        
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="result-box">
+            <label for="outputResult">操作结果</label>
+            <textarea id="outputResult" readonly title="双击复制"></textarea>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- ZWC 字符常量 (固定使用 Base 5 增强模式) ---
+    const FIXED_MODE = '5';
+    const ZWC_CHARS = {
+        '5': ['\u200b', '\u200c', '\u200d', '\u200e', '\u200f']
+    };
+    const MODE_BASE = { '5': 5 };
+
+    // --- DOM 元素 ---
+    const tabControls = document.getElementById('tabControls');
+    const mainActionBtn = document.getElementById('mainActionBtn');
+    const statusMessage = document.getElementById('statusMessage');
+    const outputResult = document.getElementById('outputResult');
+    
+    const carrierInput = document.getElementById('carrierInput');
+    const hiddenInput = document.getElementById('hiddenInput');
+    const cipherInput = document.getElementById('cipherInput');
+    
+    const hideInputs = document.getElementById('hideInputs');
+    const revealInputs = document.getElementById('revealInputs');
+
+    // 核心工具函数：编码/解码
+    
+    /**
+     * 将文本编码为零宽度字符序列
+     */
+    function textHideEncode(text, mode) {
+        const chars = ZWC_CHARS[mode];
+        const base = MODE_BASE[mode];
+        let zwcSequence = '';
+        if (!text) return '';
+        
+        for (let i = 0; i < text.length; i++) {
+            const charCode = text.charCodeAt(i);
+            let baseString = charCode.toString(base);
+            const paddedLength = 7; 
+            baseString = baseString.padStart(paddedLength, '0');
+
+            for (let j = 0; j < baseString.length; j++) {
+                const digit = parseInt(baseString[j]);
+                zwcSequence += chars[digit];
+            }
+        }
+        return zwcSequence;
+    }
+
+    /**
+     * 从包含零宽度字符的文本中提取并解码原始内容
+     */
+    function textHideDecode(text, mode) {
+        const chars = ZWC_CHARS[mode];
+        const base = MODE_BASE[mode];
+        const reversedChars = new Map(chars.map((c, i) => [c, i.toString()]));
+        let binaryDigits = ''; 
+        let decodedText = '';
+        
+        for (let i = 0; i < text.length; i++) {
+            const char = text.charAt(i);
+            if (reversedChars.has(char)) {
+                binaryDigits += reversedChars.get(char);
+            }
+        }
+
+        const charEncodingLength = 7; 
+
+        if (binaryDigits.length === 0 || binaryDigits.length % charEncodingLength !== 0) {
+             throw new Error('未检测到有效的零宽度字符序列或编码模式不匹配。');
+        }
+
+        for (let i = 0; i < binaryDigits.length; i += charEncodingLength) {
+            const codeString = binaryDigits.substring(i, i + charEncodingLength);
+            const charCode = parseInt(codeString, base);
+            decodedText += String.fromCharCode(charCode);
+        }
+
+        return decodedText;
+    }
+
+    /**
+     * 安全优化：随机分散插入逻辑 (取代原工具的集中插入)
+     */
+    function insertRandomly(carrier, zwcSequence) {
+        const carrierLen = carrier.length;
+        const zwcLen = zwcSequence.length;
+        
+        if (carrierLen < zwcLen * 3) {
+             statusMessage.textContent = '⚠️ 载体文本太短，无法有效分散零宽度字符，可能影响伪装性。';
+             const mid = Math.floor(carrierLen / 2);
+             return carrier.slice(0, mid) + zwcSequence + carrier.slice(mid);
+        }
+
+        let result = carrier;
+        let positions = [];
+
+        for (let i = 0; i < zwcLen; i++) {
+            let pos = Math.floor(Math.random() * carrierLen);
+            positions.push(pos);
+        }
+        
+        positions.sort((a, b) => b - a);
+
+        for (let i = 0; i < zwcLen; i++) {
+            const pos = positions[i];
+            const charToInsert = zwcSequence[zwcLen - 1 - i]; 
+            result = result.slice(0, pos) + charToInsert + result.slice(pos);
+        }
+
+        return result;
+    }
+
+    // --- UI 流程和事件绑定 ---
+
+    function switchTab(mode) {
+        const isActiveHide = (mode === 'hide');
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.tab-btn[data-mode="${mode}"]`).classList.add('active');
+
+        hideInputs.style.display = isActiveHide ? 'block' : 'none';
+        revealInputs.style.display = isActiveHide ? 'none' : 'block';
+        
+        mainActionBtn.textContent = isActiveHide ? '开始隐藏' : '开始提取';
+        mainActionBtn.dataset.mode = mode; 
+        
+        outputResult.value = ''; 
+        statusMessage.textContent = '';
+    }
+
+    function handleAction() {
+        const mode = mainActionBtn.dataset.mode;
+        const currentMode = FIXED_MODE;
+        statusMessage.textContent = '';
+        outputResult.value = '';
+
+        if (mode === 'hide') {
+            const carrier = carrierInput.value.trim();
+            const hidden = hiddenInput.value.trim();
+            if (!carrier || !hidden) {
+                statusMessage.textContent = '❌ 载体和隐藏内容都不能为空。';
+                statusMessage.className = 'status-message text-error';
+                return;
+            }
+
+            try {
+                const encodedZWC = textHideEncode(hidden, currentMode);
+                const ciphertext = insertRandomly(carrier, encodedZWC);
+                
+                outputResult.value = ciphertext;
+                statusMessage.textContent = `✅ 隐藏成功! 密文长度: ${ciphertext.length} 字符 (包含 ${encodedZWC.length} 个零宽度字符)。`;
+                statusMessage.className = 'status-message text-success';
+            } catch (e) {
+                statusMessage.textContent = `❌ 隐藏失败: ${e.message}`;
+                statusMessage.className = 'status-message text-error';
+            }
+
+        } else if (mode === 'reveal') {
+            const cipher = cipherInput.value;
+            if (!cipher) {
+                statusMessage.textContent = '❌ 请粘贴包含隐藏信息的文本。';
+                statusMessage.className = 'status-message text-error';
+                return;
+            }
+
+            try {
+                const chars = ZWC_CHARS[currentMode];
+                const ZWC_PATTERN = new RegExp(`[${chars.join('')}]+`, 'g');
+                
+                // 1. 提取 ZWC 序列 (将所有匹配到的序列拼在一起)
+                const zwcSequenceMatch = cipher.match(ZWC_PATTERN);
+                if (!zwcSequenceMatch || zwcSequenceMatch.length === 0) {
+                     throw new Error('未检测到零宽度字符序列，无法解密。');
+                }
+                const totalZwcSequence = zwcSequenceMatch.join('');
+                
+                // 2. 解码隐藏内容 (只显示隐藏内容)
+                const decodedContent = textHideDecode(totalZwcSequence, currentMode);
+                
+                outputResult.value = decodedContent;
+                statusMessage.textContent = '✅ 提取成功!';
+                statusMessage.className = 'status-message text-success';
+            } catch (e) {
+                statusMessage.textContent = `❌ 提取失败: ${e.message}`;
+                statusMessage.className = 'status-message text-error';
+            }
+        }
+    }
+    
+    // 复制功能
+    function copyResult(textarea) {
+        if (!textarea.value) return;
+        
+        textarea.select();
+        document.execCommand('copy');
+        
+        const statusEl = statusMessage; 
+        statusEl.textContent = '📋 已复制到剪切板!';
+        statusEl.className = 'status-message text-success';
+        
+        setTimeout(() => {
+            statusEl.textContent = '';
+        }, 1500);
+    }
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tab 切换绑定
+        tabControls.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tab-btn')) {
+                switchTab(e.target.dataset.mode);
+            }
+        });
+        
+        // 主操作按钮绑定
+        mainActionBtn.addEventListener('click', handleAction);
+        
+        // 回车键绑定 (在任一 textarea 聚焦时)
+        document.querySelectorAll('textarea').forEach(textarea => {
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAction();
+                }
+            });
+            // 双击复制绑定
+            outputResult.addEventListener('dblclick', (e) => {
+                copyResult(e.target);
+            });
+        });
+        
+        // 初始设置
+        switchTab('hide');
+    });
+</script>
+</body>
+</html>
