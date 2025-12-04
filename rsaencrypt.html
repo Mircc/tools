@@ -60,7 +60,7 @@
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: var(--primary-hover); }
         .btn-danger { background: #ef4444; color: white; }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; background: #9ca3af; }
 
         /* Status and Results */
         #mainActionBtn { padding: 12px 20px; font-size: 1.1rem; width: 100%; }
@@ -71,10 +71,18 @@
         .result-box {
             background: #f1f5f9; padding: 15px; border-radius: 8px; margin-top: 15px;
             font-family: monospace; font-size: 0.9em; min-height: 80px; word-break: break-all;
+            cursor: pointer;
         }
 
         .alert-box {
-            background: #fffbe7; color: #92400e; padding: 10px; border-radius: 8px; margin-bottom: 15px;
+            background: #fffbe7; color: #92400e; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9em;
+        }
+        
+        /* 严重错误提示 */
+        .error-banner {
+            background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px; 
+            margin-bottom: 20px; border: 1px solid #f87171; display: none;
+            text-align: center; font-weight: 600;
         }
     </style>
 </head>
@@ -82,6 +90,12 @@
 
 <div class="container">
     <h1>RSA 加密/解密工具</h1>
+    
+    <div id="envWarning" class="error-banner">
+        ❌ 错误：检测到不安全的环境 (file:// 或 http://)。<br>
+        Web Crypto API 必须在 HTTPS 或 localhost (本地服务器) 环境下才能运行。<br>
+        请使用 VSCode Live Server 或部署到 GitHub Pages 访问。
+    </div>
     
     <div class="alert-box">
         ⚠️ **重要提示：** RSA 加密有数据长度限制（通常为密钥长度减去 42 字节）。加密数据过长会导致失败。
@@ -160,11 +174,9 @@
     // --- 常量 ---
     const RSA_ALGORITHM = 'RSA-OAEP';
     const HASH_ALGORITHM = 'SHA-256';
-    const MAX_PLAINTEXT_LENGTH_BYTES = 200; // 预估的最大安全明文长度，用于提示用户
 
     // --- DOM 元素 ---
     const keySize = document.getElementById('keySize');
-    const keyFormat = document.getElementById('keyFormat');
     const generateKeyBtn = document.getElementById('generateKeyBtn');
     const publicKeyOutput = document.getElementById('publicKeyOutput');
     const privateKeyOutput = document.getElementById('privateKeyOutput');
@@ -176,15 +188,47 @@
     const mainActionBtn = document.getElementById('mainActionBtn');
     const resultOutput = document.getElementById('resultOutput');
     const actionStatus = document.getElementById('actionStatus');
+    const envWarning = document.getElementById('envWarning');
+
+    // --- 初始化检查 ---
+    window.onload = function() {
+        // 检查 Secure Context
+        if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
+            envWarning.style.display = 'block';
+            generateKeyBtn.disabled = true;
+            mainActionBtn.disabled = true;
+            contentInput.placeholder = "功能不可用：需要 HTTPS 或 localhost 环境";
+            return;
+        }
+
+        // 绑定事件
+        generateKeyBtn.addEventListener('click', generateRsaKeyPair);
+        contentInput.addEventListener('input', updateActionUI);
+        mainActionBtn.addEventListener('click', handleMainAction);
+        
+        // 绑定回车键 (防止 shift+enter 触发)
+        contentInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleMainAction();
+            }
+        });
+        
+        // 双击复制
+        resultOutput.addEventListener('dblclick', copyResultToClipboard);
+        
+        // 初始 UI 状态
+        updateActionUI();
+    };
 
     // --- 工具函数 ---
 
-    // ArrayBuffer to Base64 (needed for PEM)
     const arrayBufferToBase64 = (buffer) => btoa(String.fromCharCode(...new Uint8Array(buffer)));
     
-    // Base64 to ArrayBuffer
     const base64ToArrayBuffer = (base64) => {
-        const binary = atob(base64);
+        // 移除回车换行
+        const cleanBase64 = base64.replace(/\s/g, '');
+        const binary = atob(cleanBase64);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) {
             bytes[i] = binary.charCodeAt(i);
@@ -192,4 +236,192 @@
         return bytes.buffer;
     };
     
-    // Array
+    function arrayBufferToPem(buffer, type) {
+        const base64 = arrayBufferToBase64(buffer);
+        const header = type.includes('PUBLIC') ? 'BEGIN PUBLIC KEY' : 'BEGIN PRIVATE KEY';
+        const footer = type.includes('PUBLIC') ? 'END PUBLIC KEY' : 'END PRIVATE KEY';
+        return `-----${header}-----\n${base64.match(/.{1,64}/g).join('\n')}\n-----${footer}-----`;
+    }
+
+    function pemToArrayBuffer(pem) {
+        const base64 = pem.replace(/-----BEGIN [A-Z ]+-----/g, '')
+                          .replace(/-----END [A-Z ]+-----/g, '')
+                          .replace(/\s/g, ''); 
+        return base64ToArrayBuffer(base64);
+    }
+    
+    // --- 核心功能实现 ---
+
+    async function generateRsaKeyPair() {
+        const bits = parseInt(keySize.value);
+        keyGenerationStatus.textContent = '生成中... (这可能需要几秒钟)';
+        keyGenerationStatus.style.color = '#f59e0b';
+        generateKeyBtn.disabled = true;
+
+        try {
+            const keyPair = await window.crypto.subtle.generateKey(
+                {
+                    name: RSA_ALGORITHM,
+                    modulusLength: bits,
+                    publicExponent: new Uint8Array([1, 0, 1]), 
+                    hash: HASH_ALGORITHM,
+                },
+                true, 
+                ['encrypt', 'decrypt']
+            );
+
+            const publicKeyBuffer = await window.crypto.subtle.exportKey('spki', keyPair.publicKey);
+            publicKeyOutput.value = arrayBufferToPem(publicKeyBuffer, 'PUBLIC');
+            inputPublicKey.value = publicKeyOutput.value; 
+
+            const privateKeyBuffer = await window.crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+            privateKeyOutput.value = arrayBufferToPem(privateKeyBuffer, 'PRIVATE');
+            inputPrivateKey.value = privateKeyOutput.value; 
+
+            keyGenerationStatus.textContent = `✅ 密钥对生成成功 (${bits} bits)！`;
+            keyGenerationStatus.style.color = '#22c55e';
+            
+        } catch (error) {
+            keyGenerationStatus.textContent = `❌ 生成失败: ${error.message}`;
+            keyGenerationStatus.style.color = '#ef4444';
+        } finally {
+            generateKeyBtn.disabled = false;
+        }
+    }
+
+    // 统一处理动作
+    function handleMainAction() {
+        const content = contentInput.value.trim();
+        if (isLikelyCiphertext(content)) {
+            decryptContent();
+        } else {
+            encryptContent();
+        }
+    }
+
+    async function encryptContent() {
+        const publicKeyPem = inputPublicKey.value.trim();
+        const content = contentInput.value;
+        actionStatus.textContent = '';
+
+        if (!publicKeyPem) return showStatus('❌ 加密需要公钥。', 'error');
+        if (content.length === 0) return showStatus('❌ 内容不能为空。', 'error');
+        
+        // 检查长度
+        const contentBytes = new TextEncoder().encode(content);
+        const keyLengthBits = parseInt(keySize.value) || 2048; // 假设默认2048，实际应解析key
+        // RSA-OAEP-SHA256 padding overhead is 2 * hashLength + 2. SHA-256 hash len is 32.
+        // Overhead = 2 * 32 + 2 = 66 bytes.
+        // Max size = KeySizeBytes - 66.
+        const maxDataBytes = (keyLengthBits / 8) - 66; 
+        
+        if (contentBytes.length > maxDataBytes) {
+            return showStatus(`❌ 内容过长。当前设置最大支持 ${maxDataBytes} 字节，您输入了 ${contentBytes.length} 字节。`, 'error');
+        }
+
+        setLoading(true, '加密中...');
+
+        try {
+            const publicKeyBuffer = pemToArrayBuffer(publicKeyPem);
+            const publicKey = await window.crypto.subtle.importKey(
+                'spki', publicKeyBuffer, { name: RSA_ALGORITHM, hash: HASH_ALGORITHM }, false, ['encrypt']
+            );
+
+            const encryptedBuffer = await window.crypto.subtle.encrypt(
+                { name: RSA_ALGORITHM }, publicKey, contentBytes
+            );
+
+            resultOutput.value = arrayBufferToBase64(encryptedBuffer);
+            showStatus('✅ 加密成功！', 'success');
+            
+        } catch (error) {
+            showStatus(`❌ 加密失败: ${error.message}`, 'error');
+        } finally {
+            setLoading(false, '🔒 加密');
+            updateActionUI(); // 恢复按钮状态
+        }
+    }
+
+    async function decryptContent() {
+        const privateKeyPem = inputPrivateKey.value.trim();
+        const ciphertextBase64 = contentInput.value.trim();
+        actionStatus.textContent = '';
+
+        if (!privateKeyPem) return showStatus('❌ 解密需要私钥。', 'error');
+
+        setLoading(true, '解密中...');
+
+        try {
+            const privateKeyBuffer = pemToArrayBuffer(privateKeyPem);
+            let ciphertextBuffer;
+            try {
+                ciphertextBuffer = base64ToArrayBuffer(ciphertextBase64);
+            } catch(e) {
+                throw new Error("密文不是有效的 Base64 格式");
+            }
+
+            const privateKey = await window.crypto.subtle.importKey(
+                'pkcs8', privateKeyBuffer, { name: RSA_ALGORITHM, hash: HASH_ALGORITHM }, false, ['decrypt']
+            );
+
+            const decryptedBuffer = await window.crypto.subtle.decrypt(
+                { name: RSA_ALGORITHM }, privateKey, ciphertextBuffer
+            );
+
+            resultOutput.value = new TextDecoder().decode(decryptedBuffer);
+            showStatus('✅ 解密成功！', 'success');
+
+        } catch (error) {
+            showStatus(`❌ 解密失败: ${error.message}`, 'error');
+        } finally {
+            setLoading(false, '🔓 解密');
+            updateActionUI();
+        }
+    }
+    
+    // --- 智能检测与UI更新 ---
+
+    function isLikelyCiphertext(text) {
+        if (!text || text.length < 50) return false; 
+        // 简单的 Base64 字符集检查，且不含空格（除了换行）
+        // RSA 密文通常较长且看起来像随机 Base64
+        const base64Pattern = /^[A-Za-z0-9+/=\s]+$/;
+        return base64Pattern.test(text);
+    }
+
+    function updateActionUI() {
+        const content = contentInput.value.trim();
+        const isCipher = isLikelyCiphertext(content);
+
+        if (isCipher) {
+            mainActionBtn.textContent = '🔓 解密';
+            mainActionBtn.className = 'btn btn-primary'; // 可选：给解密换个颜色
+        } else {
+            mainActionBtn.textContent = '🔒 加密';
+            mainActionBtn.className = 'btn btn-primary';
+        }
+    }
+    
+    function copyResultToClipboard() {
+        if (!resultOutput.value) return;
+        resultOutput.select();
+        document.execCommand('copy');
+        const originalStatus = actionStatus.textContent;
+        actionStatus.textContent = '📋 已复制到剪贴板！';
+        actionStatus.style.color = '#2563eb';
+        setTimeout(() => actionStatus.textContent = originalStatus, 2000);
+    }
+
+    function showStatus(msg, type) {
+        actionStatus.textContent = msg;
+        actionStatus.style.color = type === 'error' ? '#ef4444' : '#22c55e';
+    }
+
+    function setLoading(isLoading, text) {
+        mainActionBtn.disabled = isLoading;
+        mainActionBtn.textContent = text;
+    }
+
+</script>
+</body>
+</html>
