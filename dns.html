@@ -19,107 +19,82 @@
             background: var(--bg);
             color: #334155;
             margin: 0;
-            padding: 20px;
             line-height: 1.5;
         }
 
-        .container { max-width: 1000px; margin: 0 auto; }
+        /* --- Navbar --- */
+        .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1000; }
+        .nav-container { max-width: 1200px; margin: 0 auto; height: 60px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { font-weight: 700; font-size: 1.15rem; color: var(--primary); text-decoration: none; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-link { text-decoration: none; color: #64748b; font-weight: 500; font-size: 0.9rem; transition: color 0.2s; }
+        .nav-link:hover { color: var(--primary); }
+        .nav-link.active { color: var(--primary); font-weight: 600; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
         h1 { color: #1e293b; text-align: center; margin-bottom: 20px; }
         h2 { font-size: 1.1rem; margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; }
 
-        .card {
-            background: var(--card);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 20px; }
 
-        /* 输入与查询栏 - 顶行布局 */
         .query-box-top { display: flex; gap: 10px; margin-bottom: 15px; align-items: flex-end; }
-        
         .input-group { width: 100%; }
-        /* 针对顶行域名输入框的宽度 */
         .domain-group { flex-grow: 1; } 
-        
         .input-group label { display: block; font-size: 0.9em; font-weight: 600; margin-bottom: 5px; color: #475569; }
 
-        input[type="text"] {
-            width: 100%; padding: 10px 12px;
-            border: 1px solid var(--border); border-radius: 6px;
-            font-size: 14px; font-family: monospace; box-sizing: border-box;
-        }
-        input[type="text"]:focus { outline: 2px solid var(--primary); border-color: transparent; }
-
-        .btn {
-            padding: 10px 20px; border: none; border-radius: 6px;
-            font-weight: 600; cursor: pointer; white-space: nowrap;
-            transition: all 0.2s;
-            height: 40px; /* 统一高度 */
-        }
+        input[type="text"] { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; white-space: nowrap; height: 40px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
 
-        /* 隐藏的自定义服务器输入框样式 */
-        #customServerWrapper {
-            transition: opacity 0.3s ease;
-            opacity: 0; /* 默认使用 opacity 0 和 display none 配合做平滑过渡 */
-            margin-top: -5px; /* 稍微向上调整，减少初始间距 */
-            padding-top: 10px;
-        }
-        
-        /* 表格样式保持不变 */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; padding: 12px; background: #f8fafc; color: #64748b; font-size: 0.9em; font-weight: 600; }
+        th { text-align: left; padding: 12px; background: #f8fafc; color: #64748b; font-size: 0.9em; }
         td { padding: 12px; border-top: 1px solid var(--border); vertical-align: middle; }
-        
-        .status-badge {
-            display: inline-flex; align-items: center; padding: 4px 8px;
-            border-radius: 99px; font-size: 12px; font-weight: 600;
-        }
-        .st-wait { background: #f1f5f9; color: #64748b; }
+        .status-badge { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 99px; font-size: 12px; font-weight: 600; }
         .st-ok { background: #dcfce7; color: #15803d; }
         .st-err { background: #fee2e2; color: #b91c1c; }
-        
-        .ip-list { font-family: monospace; font-weight: bold; color: #0f172a; }
-        .meta-info { font-size: 0.85em; color: #94a3b8; margin-top: 4px; }
-
-        .tips { font-size: 0.9em; color: #64748b; background: #fff7ed; padding: 15px; border-radius: 8px; border-left: 4px solid #f97316; }
+        .st-wait { background: #f1f5f9; color: #64748b; }
+        .tips { font-size: 0.9em; color: #64748b; background: #fff7ed; padding: 15px; border-radius: 8px; border-left: 4px solid #f97316; margin-bottom: 20px; }
     </style>
 </head>
 <body>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">🛡️ 安全工具箱</a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">首页</a>
+            <a href="watermark.html" class="nav-link">在线水印</a>
+            <a href="dns.html" class="nav-link active">DNS查询</a>
+            <a href="jasonformat.html" class="nav-link">JSON工具</a>
+            <a href="base64.html" class="nav-link">Base64</a>
+        </div>
+    </div>
+</nav>
 
 <div class="container">
     <h1>HTTPDNS/DNS 统一验证工具</h1>
 
     <div class="card">
-        
         <div class="query-box-top">
             <div class="input-group domain-group">
-                <label for="domainInput">要查询的域名 (例如: www.youdomain.com)</label>
+                <label for="domainInput">查询域名 (支持 IP 自动转换 HTTPDNS)</label>
                 <input type="text" id="domainInput" value="www.google.com" placeholder="请输入域名">
             </div>
-            
             <button class="btn btn-primary" id="queryBtn" onclick="startQuery()">🚀 开始查询</button>
         </div>
-        
-        <div id="customServerWrapper" style="display: none; opacity: 0;">
+        <div id="customServerWrapper" style="display: none; margin-top: 10px;">
             <div class="input-group">
-                <label for="customServerInput">自定义 DNS/HTTPDNS 服务器 (IP 或 URL)</label>
+                <label>自定义 DNS/DoH 服务器 (选填)</label>
                 <input type="text" id="customServerInput" placeholder="例如: 8.8.8.8 或 https://dns.alidns.com/resolve">
             </div>
         </div>
     </div>
     
     <div class="tips">
-        <strong>⚠️ 传统 DNS 限制提示：</strong>
-        <p style="margin: 5px 0 0 0;">
-        由于浏览器安全模型限制，本工具无法执行传统的 UDP/TCP DNS 解析。当您输入 **IP 地址**时，系统会**自动将其转换为 `https://IP/dns-query`** 格式进行 HTTPDNS 测试。
-        </p>
-        <p style="margin: 5px 0 0 0;">
-        **内置服务器列表：** 包含 **Google**、**Cloudflare** 和 **AliDNS** 三个全球最稳定和常用的节点。
-        </p>
+        <strong>⚠️ 提示：</strong> 浏览器限制了原生 UDP/DNS 调用。输入 **IP 地址** 时，工具会自动转换为标准的 `https://IP/dns-query` 格式进行测试。内置列表包含 Google, Cloudflare 和 AliDNS。
     </div>
 
     <div class="card">
@@ -129,7 +104,7 @@
                 <tr>
                     <th style="width: 45%">服务器地址</th>
                     <th style="width: 15%">状态</th>
-                    <th style="width: 40%">解析结果 / 调试信息</th>
+                    <th style="width: 40%">解析结果 / 耗时</th>
                 </tr>
             </thead>
             <tbody id="resultBody">
@@ -140,178 +115,83 @@
 </div>
 
 <script>
-    // 默认服务器列表 (包含 Google, Cloudflare, AliDNS)
     const DEFAULT_SERVERS = [
-        'https://dns.google/resolve',        // Google (全球) - 重新添加
-        'https://cloudflare-dns.com/dns-query', // Cloudflare (全球)
-        'https://dns.alidns.com/resolve'    // 阿里巴巴 (国内/亚洲)
+        'https://dns.google/resolve', 
+        'https://cloudflare-dns.com/dns-query', 
+        'https://dns.alidns.com/resolve'
     ];
-
-    // IPv4 正则表达式（用于判断是否为传统 IP 输入）
     const IPV4_REGEX = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-    
-    // --- UI 动态显示和回车逻辑 ---
+
     window.onload = function() {
         const domainInput = document.getElementById('domainInput');
-        
-        // 监听焦点和输入事件，显示自定义服务器输入框
-        domainInput.addEventListener('focus', showCustomServer);
-        domainInput.addEventListener('input', showCustomServer);
-
-        // 监听回车键，触发查询
+        domainInput.addEventListener('focus', () => document.getElementById('customServerWrapper').style.display = 'block');
         document.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // 阻止默认的表单提交行为
-                startQuery();
-            }
+            if (e.key === 'Enter') startQuery();
         });
     }
 
-    function showCustomServer() {
-        const wrapper = document.getElementById('customServerWrapper');
-        if (wrapper.style.display === 'none') {
-            wrapper.style.display = 'block';
-            setTimeout(() => {
-                 wrapper.style.opacity = 1; // 延迟后平滑显示
-            }, 10);
-            
-            // 首次显示后移除监听器，避免不必要的重复触发
-            const domainInput = document.getElementById('domainInput');
-            domainInput.removeEventListener('focus', showCustomServer);
-            domainInput.removeEventListener('input', showCustomServer);
-        }
-    }
-    // -------------------------
-
-    /**
-     * 根据用户输入，智能生成要查询的服务器列表
-     * @returns {string[]} 包含所有要查询的 URL 列表
-     */
     function prepareServers() {
-        // 尝试获取 customServerInput，如果元素未显示，它可能尚未加载（但我们通常会在 showCustomServer 中确保它被创建）
-        const customServerInput = document.getElementById('customServerInput');
-        const customServerValue = customServerInput ? customServerInput.value.trim() : '';
-        
-        let serversToQuery = [...DEFAULT_SERVERS];
-        let customServerUrl = '';
-
-        if (customServerValue) {
-            if (IPV4_REGEX.test(customServerValue)) {
-                // 传统 DNS IP 输入，自动转换为 HTTPDNS (https + /dns-query)
-                customServerUrl = `https://${customServerValue}/dns-query`;
-                console.warn(`[DNS IP 转换]: IP地址 ${customServerValue} 已转换为 DoH URL: ${customServerUrl}`);
-            } else if (!customServerValue.startsWith('http')) {
-                // 域名输入但缺少协议头，假设为 HTTPS
-                customServerUrl = `https://${customServerValue}`;
-            } else {
-                // 完整的 HTTP/HTTPS URL
-                customServerUrl = customServerValue;
-            }
-            serversToQuery.push(customServerUrl);
+        const customVal = document.getElementById('customServerInput').value.trim();
+        let servers = [...DEFAULT_SERVERS];
+        if (customVal) {
+            if (IPV4_REGEX.test(customVal)) servers.push(`https://${customVal}/dns-query`);
+            else if (!customVal.startsWith('http')) servers.push(`https://${customVal}`);
+            else servers.push(customVal);
         }
-
-        // 移除重复项并确保非空
-        serversToQuery = Array.from(new Set(serversToQuery)).filter(s => s.length > 0);
-        
-        return serversToQuery;
+        return [...new Set(servers)];
     }
 
     async function startQuery() {
         const domain = document.getElementById('domainInput').value.trim();
         if (!domain) return alert('请输入域名');
 
-        const serversToQuery = prepareServers();
-
         const btn = document.getElementById('queryBtn');
         const tbody = document.getElementById('resultBody');
-        
         btn.disabled = true;
         btn.innerHTML = '查询中...';
         tbody.innerHTML = '';
 
-        serversToQuery.forEach((server, index) => {
+        const servers = prepareServers();
+        servers.forEach((s, i) => {
             const tr = document.createElement('tr');
-            tr.id = `row-${index}`;
-            let displayUrl = server;
-            
-            // 优化显示：如果是自动转换的 IP 地址，进行提示
-            if (server.includes('/dns-query') && IPV4_REGEX.test(server.replace('https://', '').replace('/dns-query', ''))) {
-                displayUrl = `<span style="font-weight: bold; color: #f97316;">(自定义 IP 转换)</span> ${server}`;
-            }
-
-            tr.innerHTML = `
-                <td style="word-break:break-all;">
-                    <div>${displayUrl}</div>
-                    <div class="meta-info">等待请求...</div>
-                </td>
-                <td><span class="status-badge st-wait">Pending</span></td>
-                <td>-</td>
-            `;
+            tr.id = `row-${i}`;
+            tr.innerHTML = `<td>${s}</td><td><span class="status-badge st-wait">Pending</span></td><td>-</td>`;
             tbody.appendChild(tr);
         });
 
-        const promises = serversToQuery.map((server, index) => doFetch(server, domain, index));
-        await Promise.all(promises);
-
+        await Promise.all(servers.map((s, i) => doFetch(s, domain, i)));
         btn.disabled = false;
         btn.innerHTML = '🚀 开始查询';
     }
 
-    async function doFetch(serverUrl, domain, index) {
-        const row = document.getElementById(`row-${index}`);
+    async function doFetch(urlStr, domain, idx) {
+        const row = document.getElementById(`row-${idx}`);
         const statusCell = row.cells[1];
-        const resultCell = row.cells[2];
-        const metaDiv = row.cells[0].querySelector('.meta-info');
-        
-        const startTime = performance.now();
+        const resCell = row.cells[2];
+        const start = performance.now();
 
         try {
-            const urlObj = new URL(serverUrl);
+            const u = new URL(urlStr);
+            u.searchParams.set('name', domain);
+            u.searchParams.set('type', 'A');
             
-            // 标准参数
-            urlObj.searchParams.set('name', domain);
-            urlObj.searchParams.set('type', 'A');
-
-            const headers = { 'Accept': 'application/dns-json' };
-
-            const res = await fetch(urlObj.toString(), { method: 'GET', headers });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-
+            const res = await fetch(u.toString(), { headers: { 'Accept': 'application/dns-json' } });
             const data = await res.json();
-            const endTime = performance.now();
-            const duration = Math.round(endTime - startTime);
-
-            metaDiv.textContent = `耗时: ${duration}ms`;
+            const time = Math.round(performance.now() - start);
 
             if (data.Answer) {
                 statusCell.innerHTML = `<span class="status-badge st-ok">Success</span>`;
-                const ips = data.Answer
-                    .filter(r => r.type === 1) // A 记录
-                    .map(r => r.data)
-                    .join(', ');
-                resultCell.innerHTML = `<div class="ip-list">${ips || '无A记录'}</div>`;
-                if(!ips && data.Answer.length > 0) {
-                    resultCell.innerHTML += `<div class="meta-info">非A记录数据: ${JSON.stringify(data.Answer.map(r => ({type: r.type, data: r.data})))}</div>`;
-                }
+                const ips = data.Answer.filter(r => r.type === 1).map(r => r.data).join(', ');
+                resCell.innerHTML = `<strong>${ips || '无A记录'}</strong> <span style="font-size:0.8em;color:#999">(${time}ms)</span>`;
             } else {
-                statusCell.innerHTML = `<span class="status-badge st-ok">无结果</span>`;
-                resultCell.textContent = `Status: ${data.Status} (无 Answer 字段)`;
+                statusCell.innerHTML = `<span class="status-badge st-ok">No Answer</span>`;
+                resCell.textContent = `Status: ${data.Status} (${time}ms)`;
             }
-
-        } catch (err) {
-            const duration = Math.round(performance.now() - startTime);
-            metaDiv.textContent = `耗时: ${duration}ms`;
+        } catch (e) {
             statusCell.innerHTML = `<span class="status-badge st-err">Error</span>`;
-            
-            let errorMsg = err.message;
-            if (errorMsg.includes('Failed to fetch')) {
-                errorMsg = '连接被阻断 (CORS、网络或证书错误)';
-            }
-            resultCell.innerHTML = `<span style="color:#b91c1c;">${errorMsg}</span>`;
+            resCell.innerHTML = `<span style="color:#b91c1c;font-size:0.9em">${e.message}</span>`;
         }
     }
 </script>
-
 </body>
 </html>
