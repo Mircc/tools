@@ -3,281 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Base64 编/解码工具 (简约版)</title>
+    <title>Base64 编/解码工具</title>
     <style>
-        /* 沿用并优化自上一个工具的简约风格 */
-        :root {
-            --primary: #2563eb;
-            --danger: #ef4444;
-            --success: #22c55e;
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --border: #e2e8f0;
-        }
+        :root { --primary: #2563eb; --bg: #f8fafc; --card: #fff; --border: #e2e8f0; }
+        body { font-family: sans-serif; background: var(--bg); color: #334155; margin: 0; line-height: 1.5; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg);
-            color: #334155;
-            margin: 0;
-            padding: 20px;
-            line-height: 1.5;
-        }
+        /* Navbar */
+        .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1000; }
+        .nav-container { max-width: 1200px; margin: 0 auto; height: 60px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { font-weight: 700; font-size: 1.15rem; color: var(--primary); text-decoration: none; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-link { text-decoration: none; color: #64748b; font-weight: 500; font-size: 0.9rem; transition: color 0.2s; }
+        .nav-link:hover { color: var(--primary); }
+        .nav-link.active { color: var(--primary); font-weight: 600; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
 
-        .container { max-width: 800px; margin: 0 auto; }
-        h1 { color: #1e293b; text-align: center; margin-bottom: 20px; }
-
-        .card {
-            background: var(--card);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
+        .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
+        h1 { text-align: center; margin-bottom: 20px; color: #1e293b; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
         
-        /* 控件区域布局 */
-        .controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            gap: 15px;
-        }
-
-        .input-group { width: 100%; }
-        
-        .input-group label { display: block; font-size: 0.9em; font-weight: 600; margin-bottom: 5px; color: #475569; }
-
-        textarea {
-            width: 100%; min-height: 150px; padding: 10px 12px;
-            border: 1px solid var(--border); border-radius: 6px;
-            font-size: 14px; font-family: monospace; box-sizing: border-box;
-            resize: vertical;
-        }
-        /* 添加一个 visual hint */
-        #outputText { cursor: copy; } 
-        
+        textarea { width: 100%; min-height: 150px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; font-family: monospace; resize: vertical; }
         textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
-
-        select {
-            padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
-            background: var(--card); font-size: 14px; cursor: pointer;
-            height: 40px;
-            min-width: 120px;
-        }
-
-        .btn {
-            padding: 10px 20px; border: none; border-radius: 6px;
-            font-weight: 600; cursor: pointer; white-space: nowrap;
-            transition: all 0.2s;
-            height: 40px; 
-        }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: #1d4ed8; }
-        .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
         
-        .error-message { color: var(--danger); font-size: 0.9em; margin-top: 5px; }
-        
-        /* 提示信息样式 */
-        .tips { 
-            font-size: 0.9em; 
-            color: #64748b; 
-            background: #eff6ff; 
-            padding: 10px 15px; 
-            border-radius: 8px; 
-            border-left: 4px solid var(--primary); 
-            margin-bottom: 15px;
-        }
-
+        .controls { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; }
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn:hover { background: #1d4ed8; }
+        select { padding: 8px; border-radius: 6px; border: 1px solid var(--border); }
+        .status { font-size: 0.9em; margin-top: 5px; min-height: 1.2em; }
     </style>
 </head>
 <body>
 
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">🛡️ 安全工具箱</a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">首页</a>
+            <a href="watermark.html" class="nav-link">在线水印</a>
+            <a href="dns.html" class="nav-link">DNS查询</a>
+            <a href="jasonformat.html" class="nav-link">JSON工具</a>
+            <a href="base64.html" class="nav-link active">Base64</a>
+        </div>
+    </div>
+</nav>
+
 <div class="container">
     <h1>Base64 编/解码工具</h1>
-
-    <div class="card">
-        <div class="input-group">
-            <label for="inputText">输入内容 (明文或 Base64 编码)</label>
-            <textarea id="inputText" placeholder="在此输入文本..." autofocus></textarea>
-        </div>
-    </div>
     
+    <div class="card">
+        <label style="display:block;margin-bottom:8px;font-weight:600">输入内容</label>
+        <textarea id="inputText" placeholder="输入文本或 Base64..."></textarea>
+    </div>
+
     <div class="controls">
-        <div class="input-group" style="flex-grow: 0;">
-            <label for="encodingSelect">字符编码</label>
+        <div>
+            <label style="font-size:0.9em">编码格式: </label>
             <select id="encodingSelect">
-                <option value="utf-8">UTF-8 (默认)</option>
+                <option value="utf-8">UTF-8</option>
                 <option value="ascii">ASCII</option>
-                <option value="iso-8859-1">Latin-1 (ISO-8859-1)</option>
-                <option value="gbk">GBK (需浏览器支持)</option>
             </select>
         </div>
-
-        <div style="flex-grow: 1;"></div>
-        
-        <button class="btn btn-primary" id="actionBtn" onclick="b64Action()">⚡ 自动处理 / 切换</button>
+        <button class="btn" onclick="process()">⚡ 自动转换</button>
     </div>
 
     <div class="card">
-        <div class="tips">
-            💡 **提示：** 双击下方的文本框内容，可以快速复制结果到剪切板。
-        </div>
-        <div class="input-group">
-            <label for="outputText">输出结果 (解码或编码)</label>
-            <textarea id="outputText" readonly placeholder="结果将显示在这里..."></textarea>
-            <div id="statusMessage" class="error-message"></div>
-        </div>
+        <label style="display:block;margin-bottom:8px;font-weight:600">处理结果 (双击复制)</label>
+        <textarea id="outputText" readonly placeholder="结果..."></textarea>
+        <div id="status" class="status"></div>
     </div>
 </div>
 
 <script>
-    const inputText = document.getElementById('inputText');
-    const outputText = document.getElementById('outputText');
-    const encodingSelect = document.getElementById('encodingSelect');
-    const statusMessage = document.getElementById('statusMessage');
+    const input = document.getElementById('inputText');
+    const output = document.getElementById('outputText');
+    const status = document.getElementById('status');
+    const encSelect = document.getElementById('encodingSelect');
 
-    // Base64 字符集的简单正则检查
-    const BASE64_REGEX = /^[A-Za-z0-9+/=]*$/;
-
-    window.onload = function() {
-        // 监听回车键，触发查询
-        document.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault(); 
-                b64Action();
-            }
-        });
+    function process() {
+        const val = input.value.trim();
+        const enc = encSelect.value;
+        if(!val) { status.textContent = '❌ 请输入内容'; return; }
         
-        // 监听双击事件，复制到剪切板
-        outputText.addEventListener('dblclick', function() {
-            copyToClipboard(outputText.value);
-        });
-    }
-
-    /**
-     * 将文本复制到剪切板，并给出反馈
-     * @param {string} text 
-     */
-    async function copyToClipboard(text) {
-        if (!text) {
-            statusMessage.textContent = '❌ 剪切板复制失败：输出框内容为空。';
-            return;
-        }
+        // 简单判断：如果符合 Base64 格式，优先尝试解码
+        const isB64 = /^[A-Za-z0-9+/=]+$/.test(val) && (val.length % 4 === 0);
         
-        try {
-            // 使用现代 Clipboard API
-            await navigator.clipboard.writeText(text);
-            
-            // 成功反馈
-            const originalStatus = statusMessage.textContent;
-            statusMessage.style.color = 'var(--success)';
-            statusMessage.textContent = '📋 复制成功！内容已存入剪切板。';
-            
-            // 几秒后恢复原状
-            setTimeout(() => {
-                statusMessage.style.color = 'var(--danger)';
-                statusMessage.textContent = originalStatus;
-            }, 3000);
-
-        } catch (err) {
-            // 失败反馈
-            statusMessage.textContent = '❌ 剪切板复制失败，请手动选择复制。';
-            console.error('Copy failed: ', err);
-            
-            // 尝试旧方法（选中内容并复制）作为备用
-            outputText.select();
-            document.execCommand('copy');
-        }
-    }
-
-
-    /**
-     * 检查字符串是否可能是有效的 Base64 编码
-     * @param {string} str 
-     * @returns {boolean}
-     */
-    function isBase64(str) {
-        if (!str || str.length === 0) return false;
-        
-        // 1. 检查字符集
-        if (!BASE64_REGEX.test(str)) {
-            return false;
-        }
-
-        // 2. 检查长度是否是 4 的倍数
-        if (str.length % 4 !== 0) {
-            return false;
-        }
-        
-        return true; 
-    }
-
-    /**
-     * 执行编码或解码的主逻辑
-     */
-    function b64Action() {
-        const input = inputText.value.trim();
-        const encoding = encodingSelect.value;
-        statusMessage.textContent = '';
-        outputText.value = '';
-
-        if (!input) {
-            statusMessage.textContent = '请输入内容。';
-            return;
-        }
-
-        // 核心逻辑：尝试解码。如果看起来像 Base64 且解码成功，则解码；否则编码。
-        let action = 'Encode';
-        if (isBase64(input)) {
-            action = 'Decode';
-        }
-        
-        if (action === 'Decode') {
+        if (isB64) {
             try {
-                const binaryString = atob(input);
-                
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-                
-                const decoder = new TextDecoder(encoding);
-                outputText.value = decoder.decode(bytes);
-                statusMessage.textContent = `✅ 成功：已按 ${encoding} 编码进行 Base64 解码。`;
-
-            } catch (e) {
-                statusMessage.textContent = `⚠️ 解码失败 (${e.message})，尝试编码...`;
-                encodeInput(input, encoding);
-            }
-        } else {
-            encodeInput(input, encoding);
+                const bin = atob(val);
+                const bytes = new Uint8Array(bin.length);
+                for(let i=0; i<bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                output.value = new TextDecoder(enc).decode(bytes);
+                status.textContent = '✅ 解码成功';
+                status.style.color = 'green';
+                return;
+            } catch(e) {}
+        }
+        
+        // 否则编码
+        try {
+            const bytes = new TextEncoder(enc).encode(val);
+            let bin = '';
+            for(let i=0; i<bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+            output.value = btoa(bin);
+            status.textContent = '✅ 编码成功';
+            status.style.color = 'green';
+        } catch(e) {
+            status.textContent = '❌ 转换失败';
+            status.style.color = 'red';
         }
     }
     
-    /**
-     * 执行 Base64 编码
-     * @param {string} input 
-     * @param {string} encoding 
-     */
-    function encodeInput(input, encoding) {
-        try {
-            const encoder = new TextEncoder(encoding);
-            const bytes = encoder.encode(input);
-            
-            let binaryString = '';
-            for (let i = 0; i < bytes.length; i++) {
-                binaryString += String.fromCharCode(bytes[i]);
-            }
-            
-            outputText.value = btoa(binaryString);
-            statusMessage.textContent = `✅ 成功：已按 ${encoding} 编码进行 Base64 编码。`;
-
-        } catch (e) {
-            statusMessage.textContent = `❌ 编码失败：不支持 ${encoding} 或数据错误 (${e.message})。`;
-        }
-    }
+    output.addEventListener('dblclick', () => {
+        output.select(); document.execCommand('copy');
+        status.textContent = '📋 已复制';
+    });
 </script>
-
 </body>
 </html>
