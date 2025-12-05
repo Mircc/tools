@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>在线图像水印工具 - 纯前端的水印工具，您的隐私安全无虑</title>
+    <title>在线图像水印工具 - 安全工具箱</title>
     <style>
-        /* 样式保持不变，仅添加性能相关微调 */
         :root {
             --primary: #2563eb;
             --bg: #f8fafc;
@@ -19,15 +18,25 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #f8fafc;
-            color: #334155;
+            background: var(--bg);
+            color: var(--text-color);
             margin: 0;
-            padding: 20px;
             line-height: 1.5;
         }
 
-        .container { max-width: 1100px; margin: 0 auto; }
-        h1 { color: #1e293b; text-align: center; margin-bottom: 20px; }
+        /* --- Navbar --- */
+        .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1000; }
+        .nav-container { max-width: 1200px; margin: 0 auto; height: 60px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { font-weight: 700; font-size: 1.15rem; color: var(--primary); text-decoration: none; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-link { text-decoration: none; color: #64748b; font-weight: 500; font-size: 0.9rem; transition: color 0.2s; }
+        .nav-link:hover { color: var(--primary); }
+        .nav-link.active { color: var(--primary); font-weight: 600; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        .container { max-width: 1100px; margin: 20px auto; padding: 0 20px; }
+        .g-hd { text-align: center; margin-bottom: 30px; }
+        h1 { color: #1e293b; margin-bottom: 10px; }
 
         .card {
             background: #ffffff;
@@ -37,71 +46,42 @@
             margin-bottom: 20px;
         }
         
-        /* 核心：两栏布局 */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-        @media (min-width: 768px) {
-            .main-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
+        .main-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 768px) { .main-grid { grid-template-columns: 1fr 1fr; } }
         
         .input-group { width: 100%; margin-bottom: 1rem; }
         .input-group label { display: block; font-size: 0.9em; font-weight: 600; margin-bottom: 5px; color: #475569; }
-
-        input[type="text"], select {
-            width: 100%; height: 40px; padding: 10px 12px;
-            border: 1px solid #e2e8f0; border-radius: 6px;
-            font-size: 14px; box-sizing: border-box; background-color: #ffffff;
-        }
-        
+        input[type="text"], select { width: 100%; height: 40px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; box-sizing: border-box; }
         .color-input-container { display: flex; gap: 10px; }
-        #fontColorPicker { border: 1px solid #e2e8f0; width: 40px; height: 40px; border-radius: 6px; cursor: pointer; padding: 2px; margin: 0; }
-
+        #fontColorPicker { border: 1px solid #e2e8f0; width: 40px; height: 40px; border-radius: 6px; cursor: pointer; padding: 2px; }
         .range-container { margin-bottom: 1rem; }
         .range-input { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; cursor: pointer; margin-top: 5px; }
-        
-        .btn-primary { 
-            padding: 10px 20px; border: none; border-radius: 6px;
-            font-weight: 600; cursor: pointer; white-space: nowrap;
-            transition: all 0.2s; height: 40px; background: #2563eb; color: white; 
-        }
+        .btn-primary { padding: 10px 20px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; height: 40px; background: #2563eb; color: white; transition: all 0.2s; }
         .btn-primary:hover { background: #1d4ed8; }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-download { background: #0294a7 !important; }
-        .btn-download:hover { background: #027a8e !important; }
-
-        .upload-placeholder {
-            border: 2px dashed #e2e8f0; border-radius: 6px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s;
-        }
-        .upload-placeholder:hover { border-color: #2563eb; background-color: #f0f7ff; }
+        .upload-placeholder { border: 2px dashed #e2e8f0; border-radius: 6px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s; }
         .upload-area { position: relative; }
         .upload-area input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10; }
-        
-        .preview-area {
-            min-height: 250px; border: 1px solid #e2e8f0; border-radius: 6px;
-            background: #e9ecef; display: flex; align-items: center; justify-content: center;
-            overflow: hidden; max-height: 80vh; margin-top: 10px; position: relative;
-        }
-        
-        #myCanvas { max-width: 100%; max-height: 100%; height: auto; width: auto; display: none; cursor: pointer; }
-        
-        .privacy-tip {
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            background: var(--success-bg); color: var(--success-text); 
-            padding: 6px 15px; border-radius: 9999px; font-size: 0.875rem; font-weight: 600;
-            width: fit-content; margin: 0 auto 20px;
-        }
+        .preview-area { min-height: 250px; border: 1px solid #e2e8f0; border-radius: 6px; background: #e9ecef; display: flex; align-items: center; justify-content: center; overflow: hidden; max-height: 80vh; position: relative; }
+        #myCanvas { max-width: 100%; max-height: 100%; display: none; }
+        .privacy-tip { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--success-bg); color: var(--success-text); padding: 6px 15px; border-radius: 99px; font-size: 0.875rem; font-weight: 600; width: fit-content; margin: 0 auto; }
         .privacy-tip svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
-
-        .message { text-align: center; color: #64748b; padding: 10px 0; font-size: 0.95em; }
-        .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.7); display: flex; justify-content: center; align-items: center; z-index: 20; display: none; }
     </style>
 </head>
 <body>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">🛡️ 安全工具箱</a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">首页</a>
+            <a href="watermark.html" class="nav-link active">在线水印</a>
+            <a href="dns.html" class="nav-link">DNS查询</a>
+            <a href="jasonformat.html" class="nav-link">JSON工具</a>
+            <a href="base64.html" class="nav-link">Base64</a>
+        </div>
+    </div>
+</nav>
 
 <div class="container">
     <div class="g-hd">
@@ -114,58 +94,57 @@
 
     <div class="main-grid">
         <div class="card">
-            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #1e293b;">水印设置</h2>
-
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">水印设置</h2>
             <div class="input-group">
                 <label>图片上传</label>
                 <div class="upload-area">
                     <input id="imageFile" type="file" accept="image/png,image/jpeg,image/gif">
-                    <div class="upload-placeholder" id="uploadPlaceholder">
-                        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 2rem; height: 2rem; margin: 0 auto 0.5rem; color: #9ca3af;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <p style="font-weight: 600; color: #1e293b;">点击选择或拖放图片</p>
-                        <p class="message" id="imageStatus" style="font-size: 0.8em; padding: 0;">支持大图高性能处理</p>
+                    <div class="upload-placeholder">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">🖼️</div>
+                        <p style="font-weight: 600;">点击选择或拖放图片</p>
+                        <p id="imageStatus" style="font-size: 0.8em; color: #64748b;">支持大图高性能处理</p>
                     </div>
                 </div>
             </div>
 
-            <h3 style="font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.8rem; color: #1e293b;">参数调整</h3>
+            <h3 style="font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.8rem;">参数调整</h3>
             <div class="input-group">
                 <label for="watermarkText">水印文字</label>
                 <input id="watermarkText" type="text" value="请勿用于其他用途">
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div class="input-group" style="margin-bottom: 0;">
-                    <label for="fontColorText">颜色 (Hex)</label>
+                <div class="input-group">
+                    <label>颜色 (Hex)</label>
                     <div class="color-input-container">
-                        <input type="text" id="fontColorText" value="#0000FF" maxlength="7" style="padding: 0.75rem 0.5rem;">
+                        <input type="text" id="fontColorText" value="#0000FF" maxlength="7">
                         <input type="color" id="fontColorPicker" value="#0000FF">
                     </div>
                 </div>
-                <div class="range-container" style="margin-bottom: 0;">
-                    <label for="alphaRange">透明度</label>
+                <div class="range-container">
+                    <label>透明度</label>
                     <input class="range-input" id="alphaRange" type="range" min="0.05" max="1" step="0.05" value="0.15">
                 </div>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" class="mt-4">
-                <div class="range-container" style="margin-bottom: 0;">
-                    <label for="angleRange">旋转角度</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="range-container">
+                    <label>旋转角度</label>
                     <input class="range-input" id="angleRange" type="range" min="-90" max="90" step="3" value="45">
                 </div>
-                <div class="range-container" style="margin-bottom: 0;">
-                    <label for="spaceRange">平铺间距</label>
+                <div class="range-container">
+                    <label>平铺间距</label>
                     <input class="range-input" id="spaceRange" type="range" min="2" max="10" step="0.5" value="4">
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" class="mt-4">
-                <div class="range-container" style="margin-bottom: 0;">
-                    <label for="sizeRange">字体大小</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="range-container">
+                    <label>字体大小</label>
                     <input class="range-input" id="sizeRange" type="range" min="0.5" max="5" step="0.1" value="1">
                 </div>
-                <div class="input-group" style="margin-bottom: 0;">
-                    <label for="formatSelect">输出格式</label>
+                <div class="input-group">
+                    <label>输出格式</label>
                     <select id="formatSelect">
                         <option value="png">PNG (无损/推荐)</option>
                         <option value="jpeg">JPG (文件更小)</option>
@@ -174,41 +153,33 @@
             </div>
             
             <div style="margin-top: 1.5rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
-                <button class="btn-primary btn-download" id="downloadBtn" disabled style="width: 100%; margin-top: 10px;">
+                <button class="btn-primary btn-download" id="downloadBtn" disabled style="width: 100%;">
                     ⬇️ 高清渲染并下载 (<span id="downloadFormat">PNG</span>)
                 </button>
-                <p id="mobileTip" class="message" style="color: #f97316; margin-top: 10px; display: none;">
-                    ⚠️ 移动端请长按预览图保存 (预览图为高清压缩版)
-                </p>
             </div>
         </div>
 
         <div class="card">
-            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #1e293b;">实时预览 <span style="font-size:0.8em; color:#64748b; font-weight:normal">(缩略图模式)</span></h2>
-            <div class="preview-area" id="graph">
-                <div class="loading-overlay" id="loadingOverlay">处理中...</div>
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">实时预览 <span style="font-size:0.8em; color:#64748b; font-weight:normal">(缩略图)</span></h2>
+            <div class="preview-area">
                 <p id="previewPlaceholder" style="color: #9ca3af;">图片预览区域</p>
-                <canvas id="myCanvas" style="display: none;"></canvas>
+                <canvas id="myCanvas"></canvas>
             </div>
-            <p id="downloadHint" class="message" style="display: none;">预览仅显示缩略图，下载时将生成原图高清水印</p>
+            <p id="downloadHint" style="display: none; font-size: 0.9em; color: #64748b; text-align: center; margin-top: 10px;">预览仅显示缩略图，下载时将生成原图高清水印</p>
         </div>
     </div>
 </div>
 
 <script>
-    // --- 常量与配置 ---
-    const PREVIEW_MAX_WIDTH = 800; // 预览模式最大宽度 (大幅提升渲染性能)
+    const PREVIEW_MAX_WIDTH = 800; 
     const BASE_FONT_SIZE_PX = 60; 
 
-    // --- 元素获取 ---
     const imageFile = document.getElementById('imageFile');
     const myCanvas = document.getElementById('myCanvas');
     const imageStatus = document.getElementById('imageStatus');
     const previewPlaceholder = document.getElementById('previewPlaceholder');
-    const loadingOverlay = document.getElementById('loadingOverlay');
     const downloadHint = document.getElementById('downloadHint');
     
-    // Controls
     const watermarkText = document.getElementById('watermarkText');
     const fontColorText = document.getElementById('fontColorText');
     const fontColorPicker = document.getElementById('fontColorPicker');
@@ -219,59 +190,33 @@
     const formatSelect = document.getElementById('formatSelect');
     const downloadFormat = document.getElementById('downloadFormat');
     const downloadBtn = document.getElementById('downloadBtn');
-    const mobileTip = document.getElementById('mobileTip');
 
-    // 状态变量
-    let originalImage = null; // 存储原始图片对象
+    let originalImage = null; 
     let isImageLoaded = false;
-    let renderTimeout = null; // 用于防抖
+    let renderTimeout = null; 
 
-    // --- 核心：性能优化的防抖函数 ---
     function debounceRender() {
         if (renderTimeout) clearTimeout(renderTimeout);
-        renderTimeout = setTimeout(() => {
-            if (isImageLoaded) drawPreview();
-        }, 50); // 50ms 延迟，保证拖动滑块时的流畅度
+        renderTimeout = setTimeout(() => { if (isImageLoaded) drawPreview(); }, 50);
     }
 
-    // --- 事件监听 ---
     window.onload = function() {
         imageFile.addEventListener('change', handleFileChange);
-        
-        // 绑定所有输入控件到防抖渲染
         const inputs = [watermarkText, fontColorText, fontColorPicker, alphaRange, angleRange, spaceRange, sizeRange];
         inputs.forEach(el => el.addEventListener('input', () => {
-            // 同步颜色
             if (el === fontColorPicker) fontColorText.value = el.value.toUpperCase();
             if (el === fontColorText && /^#[0-9A-F]{6}$/i.test(el.value)) fontColorPicker.value = el.value;
-            
             debounceRender();
         }));
-
-        formatSelect.addEventListener('change', () => {
-            downloadFormat.textContent = formatSelect.value.toUpperCase();
-        });
-
+        formatSelect.addEventListener('change', () => downloadFormat.textContent = formatSelect.value.toUpperCase());
         downloadBtn.addEventListener('click', downloadHighRes);
-        
-        if (/Mobi|Android/i.test(navigator.userAgent)) mobileTip.style.display = 'block';
     }
 
-    // --- 图片加载逻辑 ---
     function handleFileChange(e) {
         const file = e.target.files[0];
-        if (!file) return;
-        
-        if (!file.type.startsWith('image/')) {
-            alert('请上传图片文件！');
-            return;
-        }
-
-        // 清理旧状态
-        if (originalImage) originalImage = null;
-        
-        imageStatus.textContent = `正在读取: ${file.name} ...`;
-        loadingOverlay.style.display = 'flex';
+        if (!file || !file.type.startsWith('image/')) return;
+        originalImage = null;
+        imageStatus.textContent = `读取中: ${file.name}...`;
 
         const reader = new FileReader();
         reader.onload = function(event) {
@@ -280,177 +225,96 @@
                 originalImage = img;
                 isImageLoaded = true;
                 imageStatus.textContent = `✅ 已加载 (${img.naturalWidth} x ${img.naturalHeight})`;
-                
                 previewPlaceholder.style.display = 'none';
                 myCanvas.style.display = 'block';
                 downloadHint.style.display = 'block';
                 downloadBtn.disabled = false;
-                loadingOverlay.style.display = 'none';
-                
-                drawPreview(); // 初始渲染预览图
+                drawPreview();
             };
             img.src = event.target.result;
         };
         reader.readAsDataURL(file);
     }
 
-    // --- 核心：渲染逻辑 (支持预览缩放) ---
-    
-    // 1. 绘制预览图 (降级渲染)
     function drawPreview() {
         if (!originalImage) return;
-        
-        // 计算预览尺寸 (保持长宽比，但在 PREVIEW_MAX_WIDTH 限制内)
         let previewW = originalImage.naturalWidth;
         let previewH = originalImage.naturalHeight;
-        
         if (previewW > PREVIEW_MAX_WIDTH) {
             const ratio = PREVIEW_MAX_WIDTH / previewW;
             previewW = PREVIEW_MAX_WIDTH;
             previewH = previewH * ratio;
         }
-
-        // 设置 Canvas 为预览尺寸
         myCanvas.width = previewW;
         myCanvas.height = previewH;
         
         const ctx = myCanvas.getContext('2d');
         ctx.clearRect(0, 0, previewW, previewH);
-        
-        // 绘制底图
         ctx.drawImage(originalImage, 0, 0, previewW, previewH);
-        
-        // 计算缩放比例 (用于调整字体大小等，使其在预览图中看起来和原图一致)
         const scale = previewW / originalImage.naturalWidth;
-        
         renderWatermark(ctx, previewW, previewH, scale);
     }
 
-    // 2. 渲染水印的核心函数 (复用逻辑)
     function renderWatermark(ctx, width, height, scale = 1) {
         const text = watermarkText.value;
         const color = fontColorText.value;
         const alpha = parseFloat(alphaRange.value);
         const angle = parseFloat(angleRange.value);
-        const sizeFactor = parseFloat(sizeRange.value);
-        const spaceFactor = parseFloat(spaceRange.value);
-
-        // 基础参数调整
-        const fontSize = (BASE_FONT_SIZE_PX * sizeFactor) * scale; // 根据缩放比例调整字体
+        const fontSize = (BASE_FONT_SIZE_PX * parseFloat(sizeRange.value)) * scale;
         const rgba = hexToRgba(color, alpha);
 
-        // --- 性能优化：使用 Pattern (纹理) 平铺 ---
-        // 不再使用双重循环绘制几千次 text，而是绘制一次 text 到小 canvas，然后作为 pattern 填充
-        
-        // 1. 计算单个水印单元的尺寸 (包含间距)
         ctx.font = `${fontSize}px Arial, sans-serif`;
         const textMetric = ctx.measureText(text);
-        const textW = textMetric.width;
-        const textH = fontSize; // 近似高度
-        
-        // 间距逻辑
-        const gapX = (textW * 0.5) * spaceFactor; 
-        const gapY = (textH * 1.0) * spaceFactor;
-        const unitW = textW + gapX;
-        const unitH = textH + gapY;
+        const unitW = textMetric.width + (textMetric.width * 0.5 * parseFloat(spaceRange.value));
+        const unitH = fontSize + (fontSize * parseFloat(spaceRange.value));
 
-        // 2. 创建离屏 Pattern Canvas
-        // 为了处理旋转，Pattern 本身可以是正的，我们在主画布上旋转 Context 填充
-        // 或者更简单的：Pattern 画布包含旋转后的包围盒？不，Pattern 最好是正的，然后 rotate 主画布填充会比较麻烦。
-        // **最佳性能方案**：Pattern 内部绘制正向文字，然后主画布使用 matrix 变换或全屏循环绘制（但在 Pattern 模式下，全屏 fillRect 性能极高）。
-        
-        // 这里为了旋转效果最准确且性能好，我们采用 "离屏绘制单个旋转后的单元，然后作为 Pattern" 是很复杂的。
-        // 简单高性能方案：
-        // 1. 离屏 Canvas 尺寸 = unitW, unitH
-        // 2. 离屏绘制正向文字
-        // 3. 主 Canvas 旋转坐标系 -> fillRect (Pattern) -> 恢复
-        // 但 Pattern 填充是受限于坐标系的。
-        
-        // --- 回退到循环绘制，但进行视口剔除优化 ---
-        // 对于 4K 图，循环绘制几千次 text 依然是瓶颈。
-        // 但由于我们现在是 drawPreview (只有 800px 宽)，循环次数很少，非常快。
-        // 对于 downloadHighRes，虽然慢一点点，但用户可以接受 (是一次性的)。
-        // **因此，核心优化在于 drawPreview 使用了缩小的 Canvas。**
-        
         ctx.fillStyle = rgba;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        
         ctx.save();
-        
-        // 移动到中心旋转
         ctx.translate(width / 2, height / 2);
         ctx.rotate(angle * Math.PI / 180);
         ctx.translate(-width / 2, -height / 2);
 
-        // 覆盖所需的对角线区域
         const diag = Math.sqrt(width*width + height*height);
-        const offset = (diag - width) / 2; // 需要向外扩展的距离
+        const offset = (diag - width) / 2;
         
-        const startX = -offset;
-        const startY = -offset;
-        const endX = width + offset;
-        const endY = height + offset;
-
-        // 优化循环：只绘制视口内的 (虽然 rotate 后比较难判断，但对于几百个点来说 JS 很快)
-        for (let y = startY; y < endY; y += unitH) {
-            // 奇偶行错位，更美观
-            const shift = (Math.floor((y - startY) / unitH) % 2 === 0) ? 0 : unitW / 2;
-            
-            for (let x = startX - unitW; x < endX; x += unitW) {
+        for (let y = -offset; y < height + offset; y += unitH) {
+            const shift = (Math.floor((y + offset) / unitH) % 2 === 0) ? 0 : unitW / 2;
+            for (let x = -offset - unitW; x < width + offset; x += unitW) {
                 ctx.fillText(text, x + shift, y);
             }
         }
-        
         ctx.restore();
     }
 
-    // 3. 高清下载 (使用原图尺寸渲染)
     function downloadHighRes() {
         if (!originalImage) return;
-        
-        // 临时显示加载状态
-        const btnText = downloadBtn.innerHTML;
         downloadBtn.disabled = true;
-        downloadBtn.textContent = '正在渲染高清图...';
+        downloadBtn.textContent = '正在渲染...';
         
-        // 使用 setTimeout 让 UI 有机会刷新
         setTimeout(() => {
-            // 创建一个临时的全尺寸 Canvas
             const hiResCanvas = document.createElement('canvas');
             hiResCanvas.width = originalImage.naturalWidth;
             hiResCanvas.height = originalImage.naturalHeight;
             const ctx = hiResCanvas.getContext('2d');
-            
-            // 绘制原图
             ctx.drawImage(originalImage, 0, 0);
-            
-            // 渲染水印 (scale = 1, 使用原比例)
             renderWatermark(ctx, hiResCanvas.width, hiResCanvas.height, 1);
             
-            // 导出
             const format = formatSelect.value;
-            const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
-            const dataURL = hiResCanvas.toDataURL(mime, format === 'jpeg' ? 0.9 : 1.0);
-            
             const link = document.createElement('a');
             link.download = `Watermark_${Date.now()}.${format}`;
-            link.href = dataURL;
+            link.href = hiResCanvas.toDataURL(format === 'jpeg' ? 'image/jpeg' : 'image/png', 0.9);
             link.click();
             
-            // 恢复按钮
             downloadBtn.disabled = false;
-            downloadBtn.innerHTML = btnText;
+            downloadBtn.innerHTML = `⬇️ 高清渲染并下载 (<span id="downloadFormat">${format.toUpperCase()}</span>)`;
         }, 50);
     }
 
-    // --- 辅助函数 ---
     function hexToRgba(hex, alpha) {
         hex = hex.trim().replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        return `rgba(${parseInt(hex.substring(0,2),16)}, ${parseInt(hex.substring(2,4),16)}, ${parseInt(hex.substring(4,6),16)}, ${alpha})`;
     }
 </script>
 </body>
