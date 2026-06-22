@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维码生成 - 安全工具箱</title>
+    <meta name="description" content="纯前端二维码生成器：文本/WiFi 两种模式，实时预览，自定义尺寸颜色纠错级别，支持 Logo 叠加与 PNG/SVG 下载。">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+            --radius: 16px;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .navbar { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1000px; margin: 0 auto; height: 64px; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { font-weight: 700; font-size: 1.15rem; color: var(--primary); text-decoration: none; }
+        .nav-links { display: flex; gap: 20px; flex-wrap: wrap; justify-content: flex-end; }
+        .nav-link { text-decoration: none; color: var(--text-sub); font-weight: 500; font-size: 0.9rem; transition: color 0.2s; }
+        .nav-link:hover { color: var(--primary); }
+        .nav-link.active { color: var(--primary); font-weight: 600; }
+        @media (max-width: 900px) { .nav-links { display: none; } }
+
+        .main-container { max-width: 960px; margin: 40px auto 60px; padding: 0 20px; }
+        .header-section { text-align: center; margin-bottom: 28px; }
+        h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 10px; color: #0f172a; letter-spacing: -0.02em; }
+        .subtitle { font-size: 1.05rem; color: var(--text-sub); }
+        .privacy-notice {
+            margin-top: 14px; padding: 10px 16px; font-size: 0.82rem; color: #475569;
+            background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+            text-align: left; line-height: 1.55;
+        }
+
+        .tool-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 28px;
+            border: 1px solid #fff;
+            margin-bottom: 24px;
+        }
+
+        .type-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .type-tab {
+            padding: 8px 18px; border: 1px solid var(--border); border-radius: 10px;
+            background: #fff; color: var(--text-sub); font-size: 0.9rem; font-weight: 600;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .type-tab:hover { border-color: var(--primary); color: var(--primary); }
+        .type-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+        .section-title { font-size: 1rem; font-weight: 700; margin: 0 0 14px; }
+        .params-toggle {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 0; border: none; background: none; cursor: pointer;
+            font-size: 1rem; font-weight: 700; color: var(--text-main); text-align: left;
+        }
+        .params-toggle:hover { color: var(--primary); }
+        .params-panel {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.35s ease;
+        }
+        .params-panel.expanded { max-height: 600px; }
+        .params-panel-inner { padding-top: 14px; }
+
+        .work-layout { display: flex; gap: 24px; align-items: flex-start; margin-top: 20px; }
+        .work-input { flex: 1; min-width: 0; }
+        .work-preview { flex: 0 0 auto; }
+
+        .input-section label { display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; color: #475569; }
+        .input-section input[type="text"],
+        .input-section input[type="password"],
+        .input-section textarea,
+        .input-section select {
+            width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 10px;
+            font-size: 0.92rem; background: #f8fafc; box-sizing: border-box; transition: all 0.2s;
+        }
+        .input-section textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; line-height: 1.5; }
+        .input-section input:focus, .input-section textarea:focus, .input-section select:focus {
+            outline: none; border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+        .input-hint { margin-top: 10px; font-size: 0.82rem; color: var(--text-sub); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 4px; }
+
+        .params-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .param-group { display: flex; flex-direction: column; gap: 6px; }
+        .param-group label { font-size: 0.82rem; font-weight: 600; color: var(--text-sub); }
+        .param-group select { padding: 10px 12px; border: 2px solid var(--border); border-radius: 10px; background: #f8fafc; font-size: 0.88rem; }
+        .param-group input[type="color"] { width: 52px; height: 36px; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; padding: 2px; }
+        .param-group input[type="range"] { width: 100%; }
+        .param-input-row { display: flex; align-items: center; gap: 10px; }
+        .param-input-row span { font-size: 0.82rem; color: var(--text-sub); min-width: 56px; }
+        .btn-sm { margin-top: 6px; padding: 4px 10px; font-size: 0.78rem; border: 1px solid #fecaca; border-radius: 6px; color: #dc2626; background: #fef2f2; cursor: pointer; }
+
+        .qr-display { text-align: center; margin-top: 8px; }
+        .qr-container {
+            display: inline-block; padding: 20px; background: #fff;
+            border: 2px solid var(--border); border-radius: 14px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin-bottom: 20px;
+        }
+        .qr-container canvas, .qr-container img { display: block; }
+        .qr-placeholder {
+            width: 256px; height: 256px; display: flex; align-items: center; justify-content: center;
+            color: #94a3b8; font-size: 0.9rem; border: 2px dashed var(--border); border-radius: 10px;
+        }
+
+        .qr-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .btn-primary {
+            padding: 12px 22px; background: var(--primary); color: #fff; border: none;
+            border-radius: 12px; font-size: 0.92rem; font-weight: 600; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); transition: all 0.2s;
+        }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-secondary {
+            padding: 12px 22px; background: #fff; color: var(--text-main); border: 1px solid var(--border);
+            border-radius: 12px; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+        .toast {
+            position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: #1e293b; color: #fff; padding: 12px 28px; border-radius: 12px;
+            font-size: 0.9rem; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, opacity 0.3s ease; z-index: 9999; pointer-events: none; opacity: 0;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 40px; padding-top: 30px; border-top: 1px solid var(--border); }
+
+        @media (max-width: 768px) {
+            .work-layout { flex-direction: column; }
+            .work-preview { width: 100%; }
+        }
+        @media (max-width: 600px) {
+            h1 { font-size: 1.6rem; }
+            .tool-card { padding: 20px; }
+            .params-grid, .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    <link rel="stylesheet" href="css/site-i18n.css" />
+</head>
+<body data-i18n-title-key="qr.title" data-i18n-desc-key="qr.metaDesc">
+
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link active" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+    <div class="header-section">
+        <h1 data-i18n="qr.h1">二维码生成器</h1>
+        <div class="subtitle" data-i18n="qr.subtitle">输入文本 / 填写 WiFi · 实时生成 · 一键下载</div>
+        <p class="privacy-notice" data-i18n="qr.privacy">🔒 本网站无后端，您输入的内容不会被保存、记录或上传。所有处理均在浏览器内完成，请放心使用。</p>
+    </div>
+
+    <div class="tool-card">
+        <div class="type-tabs" id="type-tabs">
+            <button type="button" class="type-tab active" data-type="text" id="tab-text" data-i18n="qr.tabText">📝 文本</button>
+            <button type="button" class="type-tab" data-type="wifi" id="tab-wifi" data-i18n="qr.tabWifi">📶 WiFi</button>
+        </div>
+
+        <div class="work-layout">
+            <div class="work-input">
+                <div class="input-section" id="input-section"></div>
+
+                <div style="margin-top: 24px;">
+                    <button type="button" class="params-toggle" id="params-toggle" aria-expanded="false">
+                        <span id="params-arrow">▶</span>
+                        <span id="params-title">⚙️ <span data-i18n="qr.paramsTitle">参数设置</span></span>
+                    </button>
+                    <div class="params-panel" id="params-panel">
+                        <div class="params-panel-inner">
+                            <div class="params-grid">
+                                <div class="param-group">
+                                    <label for="param-size" data-i18n="qr.labelSize">尺寸</label>
+                                    <div class="param-input-row">
+                                        <input type="range" id="param-size" min="128" max="512" value="256" step="8">
+                                        <span id="param-size-val">256px</span>
+                                    </div>
+                                </div>
+                                <div class="param-group">
+                                    <label for="param-correction" data-i18n="qr.labelCorrection">纠错级别</label>
+                                    <select id="param-correction">
+                                        <option value="L">L — 7% (屏幕展示)</option>
+                                        <option value="M" selected>M — 15% (打印推荐)</option>
+                                        <option value="Q">Q — 25% (户外场景)</option>
+                                        <option value="H">H — 30% (工业 / 有 Logo)</option>
+                                    </select>
+                                </div>
+                                <div class="param-group">
+                                    <label for="param-fg" data-i18n="qr.labelFg">前景色（深色模块）</label>
+                                    <input type="color" id="param-fg" value="#000000">
+                                </div>
+                                <div class="param-group">
+                                    <label for="param-bg" data-i18n="qr.labelBg">背景色</label>
+                                    <input type="color" id="param-bg" value="#ffffff">
+                                </div>
+                                <div class="param-group" style="grid-column: 1 / -1;">
+                                    <label for="param-logo" data-i18n="qr.labelLogo">Logo（可选，建议纠错级别 H）</label>
+                                    <input type="file" id="param-logo" accept="image/png,image/jpeg,image/svg+xml">
+                                    <button type="button" id="btn-remove-logo" class="btn-sm" style="display:none;" data-i18n="qr.btnRemoveLogo">移除 Logo</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="work-preview">
+                <div class="qr-display">
+                    <div class="qr-container" id="qr-container">
+                        <div class="qr-placeholder" id="qr-placeholder" data-i18n="qr.placeholderQR">输入内容后自动生成二维码</div>
+                    </div>
+                    <div class="qr-actions">
+                        <button type="button" id="btn-download-png" class="btn-primary" data-i18n="qr.btnPNG">📥 下载 PNG</button>
+                        <button type="button" id="btn-download-svg" class="btn-secondary" data-i18n="qr.btnSVG">📥 下载 SVG</button>
+                        <button type="button" id="btn-copy" class="btn-secondary" data-i18n="qr.btnCopy">📋 复制图片</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer data-i18n="footer.standard">
+        &copy; 2026 安全工具箱 | 您的数据均在本地浏览器处理，不会上传至服务器。
+    </footer>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
+<script>
+(function () {
+    var currentType = 'text';
+    var logoImage = null;
+    var typeTabs = document.querySelectorAll('.type-tab');
+    var inputSection = document.getElementById('input-section');
+    var qrContainer = document.getElementById('qr-container');
+    var paramSize = document.getElementById('param-size');
+    var paramCorrection = document.getElementById('param-correction');
+    var paramFg = document.getElementById('param-fg');
+    var paramBg = document.getElementById('param-bg');
+    var paramLogo = document.getElementById('param-logo');
+    var btnRemoveLogo = document.getElementById('btn-remove-logo');
+    var toast = document.getElementById('toast');
+    var paramsToggle = document.getElementById('params-toggle');
+    var paramsPanel = document.getElementById('params-panel');
+    var paramsArrow = document.getElementById('params-arrow');
+
+    function t(key) {
+        return SiteI18n.t('qr.' + key);
+    }
+
+    function updateUIText() {
+        paramCorrection.options[0].textContent = t('corrL');
+        paramCorrection.options[1].textContent = t('corrM');
+        paramCorrection.options[2].textContent = t('corrQ');
+        paramCorrection.options[3].textContent = t('corrH');
+        if (!getEncodedContent()) {
+            qrContainer.innerHTML = '<div class="qr-placeholder" id="qr-placeholder">' + t('placeholderQR') + '</div>';
+        }
+    }
+
+    function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(function () { toast.classList.remove('show'); }, 2000);
+    }
+
+    function bindInputs() {
+        inputSection.querySelectorAll('input, textarea, select').forEach(function (el) {
+            el.addEventListener('input', regenerate);
+            el.addEventListener('change', regenerate);
+        });
+    }
+
+    function saveInputState() {
+        if (currentType === 'wifi') {
+            return {
+                type: 'wifi',
+                enc: (document.getElementById('input-wifi-enc') || {}).value,
+                ssid: (document.getElementById('input-wifi-ssid') || {}).value,
+                pwd: (document.getElementById('input-wifi-pwd') || {}).value,
+                hidden: (document.getElementById('input-wifi-hidden') || {}).value
+            };
+        }
+        var el = document.getElementById('input-main');
+        return { type: 'text', text: el ? el.value : '' };
+    }
+
+    function restoreInputState(state) {
+        if (!state) return;
+        if (state.type === 'wifi') {
+            var enc = document.getElementById('input-wifi-enc');
+            var ssid = document.getElementById('input-wifi-ssid');
+            var pwd = document.getElementById('input-wifi-pwd');
+            var hidden = document.getElementById('input-wifi-hidden');
+            if (enc && state.enc != null) enc.value = state.enc;
+            if (ssid && state.ssid != null) ssid.value = state.ssid;
+            if (pwd && state.pwd != null) pwd.value = state.pwd;
+            if (hidden && state.hidden != null) hidden.value = state.hidden;
+        } else {
+            var main = document.getElementById('input-main');
+            if (main && state.text != null) main.value = state.text;
+        }
+    }
+
+    function renderInputForm(type) {
+        if (type === 'wifi') {
+            inputSection.innerHTML =
+                '<div class="form-grid">' +
+                '<div><label for="input-wifi-enc">' + t('labelEnc') + '</label><select id="input-wifi-enc">' +
+                '<option value="WPA">' + t('optWPA') + '</option><option value="WEP">' + t('optWEP') + '</option>' +
+                '<option value="nopass">' + t('optNopass') + '</option></select></div>' +
+                '<div><label for="input-wifi-ssid">' + t('labelSSID') + '</label><input type="text" id="input-wifi-ssid" placeholder="MyWiFi"></div>' +
+                '<div><label for="input-wifi-pwd">' + t('labelPwd') + '</label><input type="password" id="input-wifi-pwd"></div>' +
+                '<div><label for="input-wifi-hidden">' + t('labelHidden') + '</label><select id="input-wifi-hidden">' +
+                '<option value="false">' + t('optHiddenNo') + '</option><option value="true">' + t('optHiddenYes') + '</option></select></div>' +
+                '</div>';
+        } else {
+            inputSection.innerHTML =
+                '<label for="input-main">' + t('labelContent') + '</label>' +
+                '<textarea id="input-main" placeholder="' + t('placeholderText').replace(/"/g, '&quot;') + '"></textarea>' +
+                '<p class="input-hint">' + t('hintText') + '</p>';
+        }
+        bindInputs();
+    }
+
+    function refreshInputForm() {
+        var state = saveInputState();
+        renderInputForm(currentType);
+        restoreInputState(state);
+        regenerate();
+    }
+
+    function getEncodedContent() {
+        if (currentType === 'wifi') {
+            var enc = (document.getElementById('input-wifi-enc') || {}).value || 'WPA';
+            var ssid = (document.getElementById('input-wifi-ssid') || {}).value || '';
+            var pwd = (document.getElementById('input-wifi-pwd') || {}).value || '';
+            var hidden = (document.getElementById('input-wifi-hidden') || {}).value || 'false';
+            if (!ssid.trim()) return '';
+            return 'WIFI:T:' + enc + ';S:' + ssid + ';P:' + pwd + ';H:' + hidden + ';;';
+        }
+        var el = document.getElementById('input-main');
+        return el ? el.value.trim() : '';
+    }
+
+    function applyLogo() {
+        var canvas = qrContainer.querySelector('canvas');
+        if (!canvas || !logoImage) return;
+        var ctx = canvas.getContext('2d');
+        var logoSize = canvas.width * 0.22;
+        var logoX = (canvas.width - logoSize) / 2;
+        var logoY = (canvas.height - logoSize) / 2;
+        ctx.fillStyle = paramBg.value || '#ffffff';
+        ctx.fillRect(logoX - 4, logoY - 4, logoSize + 8, logoSize + 8);
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(logoX, logoY, logoSize, logoSize, logoSize * 0.15);
+        else ctx.rect(logoX, logoY, logoSize, logoSize);
+        ctx.clip();
+        ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+        ctx.restore();
+    }
+
+    function regenerate() {
+        if (typeof QRCode === 'undefined') {
+            qrContainer.innerHTML = '<div class="qr-placeholder">' + t('libraryLoadFailed') + '</div>';
+            return;
+        }
+        var content = getEncodedContent();
+        if (!content) {
+            qrContainer.innerHTML = '<div class="qr-placeholder">' + t('placeholderQR') + '</div>';
+            return;
+        }
+        qrContainer.innerHTML = '';
+        var size = parseInt(paramSize.value, 10);
+        var correction = QRCode.CorrectLevel[paramCorrection.value];
+        new QRCode(qrContainer, {
+            text: content,
+            width: size,
+            height: size,
+            colorDark: paramFg.value,
+            colorLight: paramBg.value,
+            correctLevel: correction
+        });
+        if (logoImage) setTimeout(applyLogo, 100);
+    }
+
+    function updateParamLabels() {
+        document.getElementById('param-size-val').textContent = paramSize.value + 'px';
+    }
+
+    typeTabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            typeTabs.forEach(function (tEl) { tEl.classList.remove('active'); });
+            tab.classList.add('active');
+            currentType = tab.dataset.type;
+            renderInputForm(currentType);
+            regenerate();
+        });
+    });
+
+    paramsToggle.addEventListener('click', function () {
+        var expanded = paramsPanel.classList.toggle('expanded');
+        paramsArrow.textContent = expanded ? '▼' : '▶';
+        paramsToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+
+    [paramSize, paramCorrection, paramFg, paramBg].forEach(function (el) {
+        el.addEventListener('input', function () { updateParamLabels(); regenerate(); });
+        el.addEventListener('change', function () { updateParamLabels(); regenerate(); });
+    });
+
+    paramLogo.addEventListener('change', function (e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+            var img = new Image();
+            img.onload = function () {
+                logoImage = img;
+                btnRemoveLogo.style.display = 'inline-block';
+                regenerate();
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    btnRemoveLogo.addEventListener('click', function () {
+        logoImage = null;
+        paramLogo.value = '';
+        btnRemoveLogo.style.display = 'none';
+        regenerate();
+    });
+
+    document.getElementById('btn-download-png').addEventListener('click', function () {
+        var canvas = qrContainer.querySelector('canvas');
+        if (!canvas) return;
+        var link = document.createElement('a');
+        link.download = 'qrcode.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+
+    document.getElementById('btn-download-svg').addEventListener('click', function () {
+        var canvas = qrContainer.querySelector('canvas');
+        if (!canvas) return;
+        var dataURL = canvas.toDataURL('image/png');
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + canvas.width + '" height="' + canvas.height + '" viewBox="0 0 ' + canvas.width + ' ' + canvas.height + '"><image href="' + dataURL + '" width="' + canvas.width + '" height="' + canvas.height + '"/></svg>';
+        var blob = new Blob([svg], { type: 'image/svg+xml' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.download = 'qrcode.svg';
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('btn-copy').addEventListener('click', function () {
+        var canvas = qrContainer.querySelector('canvas');
+        if (!canvas) return;
+        if (!navigator.clipboard || !window.ClipboardItem) {
+            showToast(t('clipboardUnsupported'));
+            return;
+        }
+        canvas.toBlob(function (blob) {
+            navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () {
+                showToast(t('toastCopied'));
+            }).catch(function () { showToast(t('toastFailed')); });
+        });
+    });
+
+    window.pageI18nRefresh = function () {
+        SiteI18n.applyDOM();
+        updateUIText();
+        refreshInputForm();
+    };
+
+    renderInputForm('text');
+    updateParamLabels();
+})();
+</script>
+<script>
+SiteI18n.init('qr');
+pageI18nRefresh();
+</script>
+</body>
+</html>

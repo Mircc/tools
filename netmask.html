@@ -66,7 +66,7 @@
             transition: color 0.2s;
         }
         .nav-link:hover { color: var(--primary); }
-        .nav-link.current { color: var(--primary); font-weight: 600; }
+        .nav-link.active { color: var(--primary); font-weight: 600; }
         @media (max-width: 768px) { .nav-links { display: none; } }
 
         /* --- 主容器 --- */
@@ -212,16 +212,19 @@
         footer { text-align: center; color: var(--text-sub); font-size: 0.8rem; margin-top: 60px; padding-bottom: 30px; border-top: 1px solid var(--border); padding-top: 30px; }
     </style>
 </head>
-<body>
+<body data-i18n-title-key="netmask.title" data-i18n-desc-key="netmask.metaDesc">
 
 <nav class="navbar">
     <div class="nav-container">
-        <a href="#" class="nav-logo">🔒 安全工具箱</a>
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
         <div class="nav-links">
-            <a href="#" class="nav-link">限时密信</a>
-            <a href="watermark.html" class="nav-link">在线水印</a>
-            <a href="dns.html" class="nav-link">DNS 查询</a>
-            <a href="#" class="nav-link current">子网计算</a>
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
         </div>
     </div>
 </nav>
@@ -229,35 +232,35 @@
 <div class="main-container">
     
     <div class="header-section">
-        <h1>子网掩码计算器</h1>
-        <div class="subtitle">IPv4 / IPv6 智能计算 · 自动识别超网与子网</div>
+        <h1 data-i18n="netmask.h1">子网掩码计算器</h1>
+        <div class="subtitle" data-i18n="netmask.subtitle">IPv4 / IPv6 智能计算 · 自动识别超网与子网</div>
     </div>
 
     <div class="tool-card-main">
         
         <div class="mode-toggle">
-            <button class="mode-button active" data-mode="cidr">CIDR/掩码位计算</button>
-            <button class="mode-button" data-mode="range">IP 范围反推</button>
+            <button class="mode-button active" data-mode="cidr" data-i18n="netmask.modeCidr">CIDR/掩码位计算</button>
+            <button class="mode-button" data-mode="range" data-i18n="netmask.modeRange">IP 范围反推</button>
         </div>
 
         <div id="modeCidr" class="mode-content">
             <div class="input-group">
-                <label for="cidrCombinedInput">输入 IP 地址和掩码位 (如 192.168.1.1/24 或 2001:db8::1/64)</label>
-                <input type="text" id="cidrCombinedInput" placeholder="192.168.1.1/24" class="ip-input">
+                <label for="cidrCombinedInput" data-i18n="netmask.inputPh">输入 IP 地址和掩码位，如 192.168.1.0/24</label>
+                <input type="text" id="cidrCombinedInput" data-i18n-placeholder="netmask.cidrPh" placeholder="192.168.1.1/24" class="ip-input">
             </div>
-            <button id="calcCidrBtn" class="btn-action">🔍 计算子网信息</button>
+            <button id="calcCidrBtn" class="btn-action" data-i18n="netmask.calcBtn">🔍 计算子网信息</button>
         </div>
 
         <div id="modeRange" class="mode-content" style="display: none;">
             <div class="input-group">
-                <label for="firstIpInput">起始 IP 地址</label>
-                <input type="text" id="firstIpInput" placeholder="例如: 192.168.4.1" class="ip-input">
+                <label for="firstIpInput" data-i18n="netmask.startIp">起始 IP 地址</label>
+                <input type="text" id="firstIpInput" data-i18n-placeholder="netmask.startPh" placeholder="例如: 192.168.4.1" class="ip-input">
             </div>
             <div class="input-group">
-                <label for="lastIpInput">结束 IP 地址</label>
-                <input type="text" id="lastIpInput" placeholder="例如: 192.168.9.254" class="ip-input">
+                <label for="lastIpInput" data-i18n="netmask.endIp">结束 IP 地址</label>
+                <input type="text" id="lastIpInput" data-i18n-placeholder="netmask.endPh" placeholder="例如: 192.168.9.254" class="ip-input">
             </div>
-            <button id="calcRangeBtn" class="btn-action">↩️ 反推最小包围子网</button>
+            <button id="calcRangeBtn" class="btn-action" data-i18n="netmask.reverseBtn">↩️ 反推最小包围子网</button>
         </div>
 
         <div id="resultPanel" class="result-panel">
@@ -267,12 +270,18 @@
         </div>
     </div>
 
-    <footer>
+    <footer data-i18n="footer.netmask">
         网络工具 | 纯前端计算 | 您的数据不会上传
     </footer>
 </div>
 
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/i18n-extra-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
 <script>
+    var lastCalcMode = null;
+
     // --- 核心工具函数 ---
 
     function showError(message, resultError, resultPanel, resultOutput, resultNote) {
@@ -401,7 +410,7 @@
 
         const version = getIPVersion(ipStr);
         if (version === 'Invalid') {
-             showError("无法识别的 IP 地址格式。", resultError, resultPanel, resultOutput);
+             showError(SiteI18n.t('netmask.errInvalidIp'), resultError, resultPanel, resultOutput);
              return;
         }
 
@@ -409,11 +418,11 @@
         if (prefix === null) prefix = version === 'IPv4' ? 32 : 128;
 
         if (version === 'IPv4' && (isNaN(prefix) || prefix < 0 || prefix > 32)) {
-            showError("IPv4 掩码位必须在 0 到 32 之间。", resultError, resultPanel, resultOutput);
+            showError(SiteI18n.t('netmask.errV4Mask'), resultError, resultPanel, resultOutput);
             return;
         }
         if (version === 'IPv6' && (isNaN(prefix) || prefix < 0 || prefix > 128)) {
-            showError("IPv6 前缀长度必须在 0 到 128 之间。", resultError, resultPanel, resultOutput);
+            showError(SiteI18n.t('netmask.errV6Mask'), resultError, resultPanel, resultOutput);
             return;
         }
 
@@ -434,13 +443,13 @@
                 else { firstIp = intToIp(networkInt + 1); lastIp = intToIp(broadcastInt - 1); }
 
                 renderResults(resultOutput, [
-                    { l: "IP 版本", v: "IPv4" },
-                    { l: "网络地址", v: intToIp(networkInt) },
-                    { l: "子网掩码", v: getV4MaskIp(prefix) },
-                    { l: "可用 IP 数量", v: availableHosts.toLocaleString() },
-                    { l: "首个可用 IP", v: firstIp },
-                    { l: "最后可用 IP", v: lastIp },
-                    { l: "广播地址", v: intToIp(broadcastInt) }
+                    { l: SiteI18n.t('netmask.ipVersion'), v: "IPv4" },
+                    { l: SiteI18n.t('netmask.networkAddr'), v: intToIp(networkInt) },
+                    { l: SiteI18n.t('netmask.subnetMask'), v: getV4MaskIp(prefix) },
+                    { l: SiteI18n.t('netmask.usableCount'), v: availableHosts.toLocaleString() },
+                    { l: SiteI18n.t('netmask.firstUsable'), v: firstIp },
+                    { l: SiteI18n.t('netmask.lastUsable'), v: lastIp },
+                    { l: SiteI18n.t('netmask.broadcast'), v: intToIp(broadcastInt) }
                 ]);
 
             } else { // IPv6
@@ -460,16 +469,17 @@
                 }
 
                 renderResults(resultOutput, [
-                    { l: "IP 版本", v: "IPv6" },
-                    { l: "网络前缀", v: `${bigIntToCompressedIPv6(networkBigInt)}/${prefix}` },
-                    { l: "总地址数", v: `2^${hostBits}` },
-                    { l: "首个地址", v: firstIp },
-                    { l: "最后一个地址", v: lastIp },
-                    { l: "范围结束", v: bigIntToCompressedIPv6(lastBigInt) }
+                    { l: SiteI18n.t('netmask.ipVersion'), v: "IPv6" },
+                    { l: SiteI18n.t('netmask.prefix'), v: `${bigIntToCompressedIPv6(networkBigInt)}/${prefix}` },
+                    { l: SiteI18n.t('netmask.totalAddrs'), v: `2^${hostBits}` },
+                    { l: SiteI18n.t('netmask.firstAddr'), v: firstIp },
+                    { l: SiteI18n.t('netmask.lastAddr'), v: lastIp },
+                    { l: SiteI18n.t('netmask.rangeEnd'), v: bigIntToCompressedIPv6(lastBigInt) }
                 ]);
             }
             resultPanel.style.display = 'block';
-        } catch (e) { showError("计算错误", resultError, resultPanel); }
+            lastCalcMode = 'cidr';
+        } catch (e) { showError(SiteI18n.t('netmask.errCalc'), resultError, resultPanel); }
     }
 
     // =================================================================
@@ -491,7 +501,7 @@
 
         const ver = getIPVersion(firstIpStr);
         if (ver === 'Invalid' || getIPVersion(lastIpStr) !== ver) {
-            showError("请输入有效的、版本一致的起始和结束 IP。", resultError, resultPanel);
+            showError(SiteI18n.t('netmask.errIpMismatch'), resultError, resultPanel);
             return;
         }
 
@@ -499,7 +509,7 @@
             if (ver === 'IPv4') {
                 const start = ipToInt(firstIpStr);
                 const end = ipToInt(lastIpStr);
-                if (start >= end) { showError("起始 IP 必须小于结束 IP。", resultError, resultPanel); return; }
+                if (start >= end) { showError(SiteI18n.t('netmask.errRange'), resultError, resultPanel); return; }
 
                 // --- 算法更新：寻找最小包围子网 ---
                 // 1. 计算两个IP的异或值，找到最高不同位
@@ -527,23 +537,23 @@
                 const isSubSet = !isExactMatch;
 
                 if (isSubSet) {
-                    resultNote.textContent = `💡 注意：您输入的范围 (${firstIpStr} - ${lastIpStr}) 不是一个标准的 CIDR 子网边界。下方结果是能包含此范围的【最小公共子网】。`;
+                    resultNote.textContent = SiteI18n.t('netmask.rangeNoteV4', { start: firstIpStr, end: lastIpStr });
                     resultNote.style.display = 'block';
                 }
 
                 renderResults(resultOutput, [
-                    { l: "计算结果 (CIDR)", v: `/${cidr}` },
-                    { l: "包含该范围的网络", v: `${intToIp(networkInt)}/${cidr}` },
-                    { l: "子网掩码", v: getV4MaskIp(cidr) },
-                    { l: "网络地址", v: intToIp(networkInt) },
-                    { l: "广播地址", v: intToIp(broadcastInt) },
-                    { l: "标准可用范围", v: `${intToIp(networkInt+1)} - ${intToIp(broadcastInt-1)}` }
+                    { l: SiteI18n.t('netmask.resultCidr'), v: `/${cidr}` },
+                    { l: SiteI18n.t('netmask.enclosingNetwork'), v: `${intToIp(networkInt)}/${cidr}` },
+                    { l: SiteI18n.t('netmask.subnetMask'), v: getV4MaskIp(cidr) },
+                    { l: SiteI18n.t('netmask.networkAddr'), v: intToIp(networkInt) },
+                    { l: SiteI18n.t('netmask.broadcast'), v: intToIp(broadcastInt) },
+                    { l: SiteI18n.t('netmask.standardRange'), v: `${intToIp(networkInt+1)} - ${intToIp(broadcastInt-1)}` }
                 ]);
 
             } else { // IPv6
                 const start = ipV6ToBigInt(normalizeIPv6(firstIpStr));
                 const end = ipV6ToBigInt(normalizeIPv6(lastIpStr));
-                if (start >= end) { showError("起始 IP 必须小于结束 IP。", resultError, resultPanel); return; }
+                if (start >= end) { showError(SiteI18n.t('netmask.errRange'), resultError, resultPanel); return; }
 
                 let prefix = 128;
                 while (prefix > 0) {
@@ -560,19 +570,20 @@
                 // 检查是否完美匹配 (简单对比首尾)
                 // IPv6 比较复杂，这里简单提示如果是子集
                 if (network !== start || lastAddr !== end) {
-                    resultNote.textContent = `💡 注意：您输入的范围是下方计算出的【最小公共前缀】的子集。`;
+                    resultNote.textContent = SiteI18n.t('netmask.rangeNoteV6');
                     resultNote.style.display = 'block';
                 }
 
                 renderResults(resultOutput, [
-                    { l: "计算结果 (Prefix)", v: `/${prefix}` },
-                    { l: "网络前缀", v: `${bigIntToCompressedIPv6(network)}/${prefix}` },
-                    { l: "完整范围起始", v: bigIntToCompressedIPv6(network) },
-                    { l: "完整范围结束", v: bigIntToCompressedIPv6(lastAddr) }
+                    { l: SiteI18n.t('netmask.resultCidr'), v: `/${prefix}` },
+                    { l: SiteI18n.t('netmask.prefix'), v: `${bigIntToCompressedIPv6(network)}/${prefix}` },
+                    { l: SiteI18n.t('netmask.fullRangeStart'), v: bigIntToCompressedIPv6(network) },
+                    { l: SiteI18n.t('netmask.fullRangeEnd'), v: bigIntToCompressedIPv6(lastAddr) }
                 ]);
             }
             resultPanel.style.display = 'block';
-        } catch(e) { showError("计算错误: " + e.message, resultError, resultPanel); }
+            lastCalcMode = 'range';
+        } catch(e) { showError(SiteI18n.t('netmask.errCalc') + ': ' + e.message, resultError, resultPanel); }
     }
 
     function renderResults(container, items) {
@@ -591,6 +602,7 @@
         document.getElementById('modeCidr').style.display = mode === 'cidr' ? 'block' : 'none';
         document.getElementById('modeRange').style.display = mode === 'range' ? 'block' : 'none';
         document.getElementById('resultPanel').style.display = 'none';
+        lastCalcMode = null;
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -609,6 +621,13 @@
         
         switchMode('cidr');
     });
+
+    pageI18nRefresh = function () {
+        if (lastCalcMode === 'cidr') calculateCidrDetails();
+        else if (lastCalcMode === 'range') calculateRangeDetails();
+    };
+
+    SiteI18n.init('netmask');
 </script>
 </body>
 </html>

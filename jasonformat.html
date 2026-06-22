@@ -7,8 +7,6 @@
     <style>
         :root { --primary: #2563eb; --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0; --success: #10b981; --danger: #ef4444; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: #1e293b; margin: 0; line-height: 1.6; }
-        
-        /* Navbar */
         .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1000; }
         .nav-container { max-width: 1200px; margin: 0 auto; height: 60px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
         .nav-logo { font-weight: 700; font-size: 1.15rem; color: var(--primary); text-decoration: none; }
@@ -17,69 +15,72 @@
         .nav-link:hover { color: var(--primary); }
         .nav-link.active { color: var(--primary); font-weight: 600; }
         @media (max-width: 768px) { .nav-links { display: none; } }
-
         .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
         h1 { text-align: center; font-size: 2rem; margin-bottom: 10px; }
         .card { background: var(--card); padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        
         .controls-bar { display: flex; gap: 10px; margin-bottom: 20px; }
         .btn { padding: 8px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; color: white; transition: opacity 0.2s; }
         .btn:hover { opacity: 0.9; }
         .btn-primary { background: var(--primary); }
         .btn-danger { background: var(--danger); }
         .btn-secondary { background: #6b7280; }
-
         .json-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
         @media(min-width: 768px) { .json-grid { grid-template-columns: 1fr 1fr; } }
-        
         textarea { width: 100%; min-height: 450px; padding: 15px; border: 1px solid var(--border); border-radius: 8px; font-family: monospace; box-sizing: border-box; resize: vertical; }
         textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
         .status-msg { margin-bottom: 15px; padding: 10px; border-radius: 6px; font-size: 0.9rem; display: none; }
         .status-valid { background: #d1fae5; color: #065f46; }
         .status-error { background: #fee2e2; color: #991b1b; }
+        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 40px; }
     </style>
 </head>
-<body>
+<body data-i18n-title-key="json.title">
 
 <nav class="navbar">
     <div class="nav-container">
-        <a href="index.html" class="nav-logo">🛡️ 安全工具箱</a>
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
         <div class="nav-links">
-            <a href="index.html" class="nav-link">首页</a>
-            <a href="watermark.html" class="nav-link">在线水印</a>
-            <a href="dns.html" class="nav-link">DNS查询</a>
-            <a href="jasonformat.html" class="nav-link active">JSON工具</a>
-            <a href="base64.html" class="nav-link">Base64</a>
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
         </div>
     </div>
 </nav>
 
 <div class="container">
-    <h1>JSON 格式化工具</h1>
+    <h1 data-i18n="json.h1">JSON 格式化工具</h1>
     <div class="card">
         <div class="controls-bar">
-            <button class="btn btn-primary" id="formatBtn">✨ 格式化</button>
-            <button class="btn btn-secondary" id="minifyBtn">↔️ 压缩</button>
-            <button class="btn btn-danger" id="clearBtn">🗑️ 清空</button>
+            <button class="btn btn-primary" id="formatBtn" data-i18n="json.formatBtn">✨ 格式化</button>
+            <button class="btn btn-secondary" id="minifyBtn" data-i18n="json.minifyBtn">↔️ 压缩</button>
+            <button class="btn btn-danger" id="clearBtn" data-i18n="json.clearBtn">🗑️ 清空</button>
         </div>
         <div id="statusOutput" class="status-msg"></div>
         <div class="json-grid">
             <div>
-                <label style="font-weight:600;display:block;margin-bottom:5px">输入 (支持自动校验)</label>
-                <textarea id="inputJson" placeholder="在此粘贴 JSON..."></textarea>
+                <label style="font-weight:600;display:block;margin-bottom:5px" data-i18n="json.inputLabel">输入 (支持自动校验)</label>
+                <textarea id="inputJson" data-i18n-placeholder="json.inputPh" placeholder="在此粘贴 JSON..."></textarea>
             </div>
             <div>
-                <label style="font-weight:600;display:block;margin-bottom:5px">输出 (双击复制)</label>
-                <textarea id="outputJson" readonly placeholder="结果..."></textarea>
+                <label style="font-weight:600;display:block;margin-bottom:5px" data-i18n="json.outputLabel">输出 (双击复制)</label>
+                <textarea id="outputJson" readonly data-i18n-placeholder="json.outputPh" placeholder="结果..."></textarea>
             </div>
         </div>
     </div>
+    <footer data-i18n="footer.standard">© 2026 安全工具箱 | 您的数据均在本地浏览器处理，不会上传至服务器。</footer>
 </div>
 
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
 <script>
-    const input = document.getElementById('inputJson');
-    const output = document.getElementById('outputJson');
-    const status = document.getElementById('statusOutput');
+    var input = document.getElementById('inputJson');
+    var output = document.getElementById('outputJson');
+    var status = document.getElementById('statusOutput');
 
     function showStatus(msg, isErr) {
         status.textContent = msg;
@@ -88,32 +89,30 @@
     }
 
     function process(minify) {
-        const val = input.value.trim();
-        if(!val) return showStatus('⚠️ 内容为空', true);
+        var val = input.value.trim();
+        if (!val) return showStatus(SiteI18n.t('json.empty'), true);
         try {
-            const obj = JSON.parse(val);
+            var obj = JSON.parse(val);
             output.value = JSON.stringify(obj, null, minify ? 0 : 2);
-            showStatus('✅ JSON 有效', false);
-        } catch(e) {
-            showStatus('❌ 格式错误: ' + e.message, true);
+            showStatus(SiteI18n.t('json.valid'), false);
+        } catch (e) {
+            showStatus(SiteI18n.t('json.formatErr') + e.message, true);
         }
     }
 
-    document.getElementById('formatBtn').onclick = () => process(false);
-    document.getElementById('minifyBtn').onclick = () => process(true);
-    document.getElementById('clearBtn').onclick = () => { input.value=''; output.value=''; status.style.display='none'; };
-    
-    input.addEventListener('input', () => {
-        if(!input.value.trim()) { status.style.display='none'; return; }
-        try { JSON.parse(input.value); showStatus('✅ JSON 有效', false); } 
-        catch(e) { showStatus('❌ 语法错误', true); }
+    document.getElementById('formatBtn').onclick = function () { process(false); };
+    document.getElementById('minifyBtn').onclick = function () { process(true); };
+    document.getElementById('clearBtn').onclick = function () { input.value = ''; output.value = ''; status.style.display = 'none'; };
+    input.addEventListener('input', function () {
+        if (!input.value.trim()) { status.style.display = 'none'; return; }
+        try { JSON.parse(input.value); showStatus(SiteI18n.t('json.valid'), false); }
+        catch (e) { showStatus(SiteI18n.t('json.syntaxErr'), true); }
     });
-
-    output.addEventListener('dblclick', () => {
-        output.select();
-        document.execCommand('copy');
-        showStatus('📋 已复制到剪贴板', false);
+    output.addEventListener('dblclick', function () {
+        output.select(); document.execCommand('copy');
+        showStatus(SiteI18n.t('json.copied'), false);
     });
+    SiteI18n.init('json');
 </script>
 </body>
 </html>

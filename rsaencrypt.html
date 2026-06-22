@@ -32,6 +32,7 @@
         .nav-links { display: flex; gap: 20px; }
         .nav-link { text-decoration: none; color: var(--text-sub); font-weight: 500; font-size: 0.95rem; transition: color 0.2s; }
         .nav-link:hover { color: var(--primary); }
+        .nav-link.active { color: var(--primary); font-weight: 600; }
         @media (max-width: 768px) { .nav-links { display: none; } }
 
         /* --- Content --- */
@@ -74,32 +75,34 @@
         .divider { height: 1px; background: var(--border); margin: 25px 0; }
     </style>
 </head>
-<body>
+<body data-i18n-title-key="rsa.title">
 
 <nav class="navbar">
     <div class="nav-container">
-        <a href="index.html" class="nav-logo">🛡️ 安全工具箱</a>
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
         <div class="nav-links">
-            <a href="index.html" class="nav-link">首页</a>
-            <a href="GeneralEncryption.html" class="nav-link">通用加密</a>
-            <a href="rsaencrypt.html" class="nav-link active">RSA工具</a>
-            <a href="jasonformat.html" class="nav-link">JSON格式化</a>
-            <a href="netmask.html" class="nav-link">网络工具</a>
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
         </div>
     </div>
 </nav>
 
 <div class="container">
-    <h1>RSA 加密/解密工具</h1>
+    <h1 data-i18n="rsa.h1">RSA 加密/解密工具</h1>
     
-    <div id="envWarning" class="error-banner">
+    <div id="envWarning" class="error-banner" data-i18n="rsa.httpsErr">
         ❌ 错误：Web Crypto API 需要 HTTPS 或 localhost 环境。
     </div>
     
     <div class="card">
         <div class="flex-row">
             <div class="input-wrapper" style="flex: 0 0 auto; width: 150px;">
-                <label for="keySize">密钥位数</label>
+                <label for="keySize" data-i18n="rsa.keyBits">密钥位数</label>
                 <select id="keySize">
                     <option value="2048" selected>2048 bits</option>
                     <option value="3072">3072 bits</option>
@@ -107,30 +110,42 @@
                 </select>
             </div>
             <div class="input-wrapper" style="flex: 0 0 auto; width: 150px;">
-                <label for="keyFormat">格式</label>
-                <select id="keyFormat" disabled title="目前仅支持标准 PEM 格式">
+                <label for="keyFormat" data-i18n="rsa.format">格式</label>
+                <select id="keyFormat" disabled title="PEM">
                     <option value="pem" selected>PEM (Base64)</option>
                 </select>
             </div>
             <div class="input-wrapper">
-                <button id="generateKeyBtn" class="btn btn-primary" style="width: 100%;">⚡ 生成新密钥对</button>
+                <button id="generateKeyBtn" class="btn btn-primary" style="width: 100%;" data-i18n="rsa.genBtn">⚡ 生成新密钥对</button>
             </div>
         </div>
         <div id="keyStatus" class="status-bar text-success" style="margin-bottom: 15px; margin-top: -10px;"></div>
 
         <div class="grid-2">
             <div class="input-wrapper">
-                <label for="pemPublicKey">公钥 (Public Key) - 用于加密</label>
-                <textarea id="pemPublicKey" placeholder="在此生成或粘贴公钥 (SPKI PEM格式)..."></textarea>
+                <label for="pemPublicKey" data-i18n="rsa.pubKey">公钥 (Public Key) - 用于加密</label>
+                <textarea id="pemPublicKey" placeholder="SPKI PEM..."></textarea>
             </div>
             <div class="input-wrapper">
-                <label for="pemPrivateKey">私钥 (Private Key) - 用于解密</label>
-                <textarea id="pemPrivateKey" placeholder="在此生成或粘贴私钥 (PKCS#8 PEM格式)..."></textarea>
+                <label for="pemPrivateKey" data-i18n="rsa.privKey">私钥 (Private Key) - 用于解密</label>
+                <textarea id="pemPrivateKey" placeholder="PKCS#8 PEM..."></textarea>
             </div>
         </div>
 
         <div class="divider"></div>
 
         <div class="input-wrapper">
-            <label for="contentInput">数据内容 (自动识别加密/解密)</label>
-            <textarea
+            <label for="contentInput" data-i18n="rsa.dataLabel">数据内容 (自动识别加密/解密)</label>
+            <textarea id="contentInput" rows="6" placeholder="..."></textarea>
+        </div>
+    </div>
+    <footer data-i18n="footer.standard" style="text-align:center;color:#94a3b8;font-size:0.85rem;margin-top:40px;">© 2026 安全工具箱</footer>
+</div>
+
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/i18n-extra-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
+<script>SiteI18n.init('rsa');</script>
+</body>
+</html>

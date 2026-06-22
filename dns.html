@@ -57,61 +57,66 @@
         .st-err { background: #fee2e2; color: #b91c1c; }
         .st-wait { background: #f1f5f9; color: #64748b; }
         .tips { font-size: 0.9em; color: #64748b; background: #fff7ed; padding: 15px; border-radius: 8px; border-left: 4px solid #f97316; margin-bottom: 20px; }
+        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 40px; }
     </style>
 </head>
-<body>
+<body data-i18n-title-key="dns.title">
 
 <nav class="navbar">
     <div class="nav-container">
-        <a href="index.html" class="nav-logo">🛡️ 安全工具箱</a>
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
         <div class="nav-links">
-            <a href="index.html" class="nav-link">首页</a>
-            <a href="watermark.html" class="nav-link">在线水印</a>
-            <a href="dns.html" class="nav-link active">DNS查询</a>
-            <a href="jasonformat.html" class="nav-link">JSON工具</a>
-            <a href="base64.html" class="nav-link">Base64</a>
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link active" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
         </div>
     </div>
 </nav>
 
 <div class="container">
-    <h1>HTTPDNS/DNS 统一验证工具</h1>
+    <h1 data-i18n="dns.h1">HTTPDNS/DNS 统一验证工具</h1>
 
     <div class="card">
         <div class="query-box-top">
             <div class="input-group domain-group">
-                <label for="domainInput">查询域名 (支持 IP 自动转换 HTTPDNS)</label>
-                <input type="text" id="domainInput" value="www.google.com" placeholder="请输入域名">
+                <label for="domainInput" data-i18n="dns.domainLabel">查询域名 (支持 IP 自动转换 HTTPDNS)</label>
+                <input type="text" id="domainInput" value="www.google.com" data-i18n-placeholder="dns.domainPh" placeholder="请输入域名">
             </div>
-            <button class="btn btn-primary" id="queryBtn" onclick="startQuery()">🚀 开始查询</button>
+            <button class="btn btn-primary" id="queryBtn" onclick="startQuery()" data-i18n="dns.queryBtn">🚀 开始查询</button>
         </div>
         <div id="customServerWrapper" style="display: none; margin-top: 10px;">
             <div class="input-group">
-                <label>自定义 DNS/DoH 服务器 (选填)</label>
-                <input type="text" id="customServerInput" placeholder="例如: 8.8.8.8 或 https://dns.alidns.com/resolve">
+                <label data-i18n="dns.customLabel">自定义 DNS/DoH 服务器 (选填)</label>
+                <input type="text" id="customServerInput" data-i18n-placeholder="dns.customPh" placeholder="例如: 8.8.8.8 或 https://dns.alidns.com/resolve">
             </div>
         </div>
     </div>
     
-    <div class="tips">
-        <strong>⚠️ 提示：</strong> 浏览器限制了原生 UDP/DNS 调用。输入 **IP 地址** 时，工具会自动转换为标准的 `https://IP/dns-query` 格式进行测试。内置列表包含 Google, Cloudflare 和 AliDNS。
+    <div class="tips" data-i18n="dns.tips">
+        ⚠️ 提示： 浏览器限制了原生 UDP/DNS 调用。输入 IP 地址时，工具会自动转换为标准的 https://IP/dns-query 格式进行测试。内置列表包含 Google、Cloudflare 和 AliDNS。
     </div>
 
     <div class="card">
-        <h2>查询结果</h2>
+        <h2 data-i18n="dns.results">查询结果</h2>
         <table id="resultTable">
             <thead>
                 <tr>
-                    <th style="width: 45%">服务器地址</th>
-                    <th style="width: 15%">状态</th>
-                    <th style="width: 40%">解析结果 / 耗时</th>
+                    <th style="width: 45%" data-i18n="dns.thServer">服务器地址</th>
+                    <th style="width: 15%" data-i18n="dns.thStatus">状态</th>
+                    <th style="width: 40%" data-i18n="dns.thResult">解析结果 / 耗时</th>
                 </tr>
             </thead>
             <tbody id="resultBody">
-                <tr><td colspan="3" style="text-align:center; color:#94a3b8; padding: 20px;">暂无数据，请点击开始查询</td></tr>
+                <tr><td colspan="3" style="text-align:center; color:#94a3b8; padding: 20px;" data-i18n="dns.noData">暂无数据，请点击开始查询</td></tr>
             </tbody>
         </table>
     </div>
+
+    <footer data-i18n="footer.standard">© 2026 安全工具箱 | 您的数据均在本地浏览器处理，不会上传至服务器。</footer>
 </div>
 
 <script>
@@ -143,25 +148,25 @@
 
     async function startQuery() {
         const domain = document.getElementById('domainInput').value.trim();
-        if (!domain) return alert('请输入域名');
+        if (!domain) return alert(SiteI18n.t('dns.alertDomain'));
 
         const btn = document.getElementById('queryBtn');
         const tbody = document.getElementById('resultBody');
         btn.disabled = true;
-        btn.innerHTML = '查询中...';
+        btn.textContent = SiteI18n.t('dns.querying');
         tbody.innerHTML = '';
 
         const servers = prepareServers();
         servers.forEach((s, i) => {
             const tr = document.createElement('tr');
             tr.id = `row-${i}`;
-            tr.innerHTML = `<td>${s}</td><td><span class="status-badge st-wait">Pending</span></td><td>-</td>`;
+            tr.innerHTML = `<td>${s}</td><td><span class="status-badge st-wait">${SiteI18n.t('dns.stPending')}</span></td><td>-</td>`;
             tbody.appendChild(tr);
         });
 
         await Promise.all(servers.map((s, i) => doFetch(s, domain, i)));
         btn.disabled = false;
-        btn.innerHTML = '🚀 开始查询';
+        btn.textContent = SiteI18n.t('dns.queryBtn');
     }
 
     async function doFetch(urlStr, domain, idx) {
@@ -180,18 +185,22 @@
             const time = Math.round(performance.now() - start);
 
             if (data.Answer) {
-                statusCell.innerHTML = `<span class="status-badge st-ok">Success</span>`;
+                statusCell.innerHTML = `<span class="status-badge st-ok">${SiteI18n.t('dns.stOk')}</span>`;
                 const ips = data.Answer.filter(r => r.type === 1).map(r => r.data).join(', ');
-                resCell.innerHTML = `<strong>${ips || '无A记录'}</strong> <span style="font-size:0.8em;color:#999">(${time}ms)</span>`;
+                resCell.innerHTML = `<strong>${ips || SiteI18n.t('dns.noA')}</strong> <span style="font-size:0.8em;color:#999">(${time}ms)</span>`;
             } else {
-                statusCell.innerHTML = `<span class="status-badge st-ok">No Answer</span>`;
+                statusCell.innerHTML = `<span class="status-badge st-ok">${SiteI18n.t('dns.stNoAnswer')}</span>`;
                 resCell.textContent = `Status: ${data.Status} (${time}ms)`;
             }
         } catch (e) {
-            statusCell.innerHTML = `<span class="status-badge st-err">Error</span>`;
+            statusCell.innerHTML = `<span class="status-badge st-err">${SiteI18n.t('dns.stErr')}</span>`;
             resCell.innerHTML = `<span style="color:#b91c1c;font-size:0.9em">${e.message}</span>`;
         }
     }
 </script>
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
+<script>SiteI18n.init('dns');</script>
 </body>
 </html>

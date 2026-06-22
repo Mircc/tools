@@ -90,54 +90,84 @@
         /* 布局特定调整 */
         #revealInputs { display: none; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        /* --- 统一导航栏样式 --- */
+        .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1000; }
+        .nav-container { max-width: 1200px; margin: 0 auto; height: 60px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { font-weight: 700; font-size: 1.15rem; color: #2563eb; text-decoration: none; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-link { text-decoration: none; color: #64748b; font-weight: 500; font-size: 0.9rem; transition: color 0.2s; }
+        .nav-link:hover { color: #2563eb; }
+        .nav-link.active { color: #2563eb; font-weight: 600; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 40px; padding: 30px 0; border-top: 1px solid var(--border); }
     </style>
 </head>
-<body>
+<body data-i18n-title-key="texthide.title">
+
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
+        </div>
+    </div>
+</nav>
 
 <div class="container">
-    <h1>文字隐藏工具</h1>
+    <h1 data-i18n="texthide.h1">文字隐藏工具</h1>
 
     <div class="card">
         <div id="tabControls" class="tab-controls">
-            <button class="tab-btn active" data-mode="hide">文本隐藏 (插入)</button>
-            <button class="tab-btn" data-mode="reveal">提取内容 (解密)</button>
+            <button class="tab-btn active" data-mode="hide" data-i18n="texthide.tabHide">文本隐藏 (插入)</button>
+            <button class="tab-btn" data-mode="reveal" data-i18n="texthide.tabExtract">提取内容 (解密)</button>
         </div>
         
         <div class="controls-row">
             <div class="select-wrapper">
-                <p style="font-weight: 600; font-size: 0.9em; color: var(--text-sub);">当前模式：增强隐写 (系统默认)</p>
+                <p style="font-weight: 600; font-size: 0.9em; color: var(--text-sub);" data-i18n="texthide.modeLabel">当前模式：增强隐写 (系统默认)</p>
             </div>
         </div>
         
         <div id="hideInputs" class="input-group">
             <div class="grid-2">
                 <div class="input-group">
-                    <label for="carrierInput">载体文本 (Carrier Text)</label>
-                    <textarea id="carrierInput" placeholder="输入要隐藏内容于其中的文本..."></textarea>
+                    <label for="carrierInput" data-i18n="texthide.carrierLabel">载体文本 (Carrier Text)</label>
+                    <textarea id="carrierInput" data-i18n-placeholder="texthide.carrierPh" placeholder="输入要隐藏内容于其中的文本..."></textarea>
                 </div>
                 <div class="input-group">
-                    <label for="hiddenInput">需隐藏的私密内容 (Secret Text)</label>
-                    <textarea id="hiddenInput" placeholder="输入要隐藏的文本..."></textarea>
+                    <label for="hiddenInput" data-i18n="texthide.secretLabel">需隐藏的私密内容 (Secret Text)</label>
+                    <textarea id="hiddenInput" data-i18n-placeholder="texthide.secretPh" placeholder="输入要隐藏的文本..."></textarea>
                 </div>
             </div>
         </div>
 
         <div id="revealInputs" class="input-group">
-            <label for="cipherInput">粘贴包含隐藏信息的文本</label>
-            <textarea id="cipherInput" placeholder="粘贴从隐藏步骤获得的文本..."></textarea>
+            <label for="cipherInput" data-i18n="texthide.pasteLabel">粘贴包含隐藏信息的文本</label>
+            <textarea id="cipherInput" data-i18n-placeholder="texthide.pastePh" placeholder="粘贴从隐藏步骤获得的文本..."></textarea>
         </div>
         
-        <button class="btn-action" id="mainActionBtn">开始隐藏</button>
+        <button class="btn-action" id="mainActionBtn" data-i18n="texthide.btnHide">开始隐藏</button>
         
         <div id="statusMessage" class="status-message"></div>
 
         <div class="result-box">
-            <label for="outputResult">操作结果</label>
-            <textarea id="outputResult" readonly title="双击复制"></textarea>
+            <label for="outputResult" data-i18n="texthide.resultLabel">操作结果</label>
+            <textarea id="outputResult" readonly data-i18n-title="urltool.dblCopy" title="双击复制"></textarea>
         </div>
     </div>
+
+    <footer data-i18n="footer.standard">© 2026 安全工具箱 | 您的数据均在本地浏览器处理，不会上传至服务器。</footer>
 </div>
 
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
 <script>
     // --- ZWC 字符常量 (固定使用 Base 5 增强模式) ---
     const FIXED_MODE = '5';
@@ -204,7 +234,7 @@
         const charEncodingLength = 7; 
 
         if (binaryDigits.length === 0 || binaryDigits.length % charEncodingLength !== 0) {
-             throw new Error('未检测到有效的零宽度字符序列或编码模式不匹配。');
+             throw new Error(SiteI18n.t('texthide.noZw'));
         }
 
         for (let i = 0; i < binaryDigits.length; i += charEncodingLength) {
@@ -224,7 +254,7 @@
         const zwcLen = zwcSequence.length;
         
         if (carrierLen < zwcLen * 3) {
-             statusMessage.textContent = '⚠️ 载体文本太短，无法有效分散零宽度字符，可能影响伪装性。';
+             statusMessage.textContent = SiteI18n.t('texthide.errShort');
              const mid = Math.floor(carrierLen / 2);
              return carrier.slice(0, mid) + zwcSequence + carrier.slice(mid);
         }
@@ -258,7 +288,7 @@
         hideInputs.style.display = isActiveHide ? 'block' : 'none';
         revealInputs.style.display = isActiveHide ? 'none' : 'block';
         
-        mainActionBtn.textContent = isActiveHide ? '开始隐藏' : '开始提取';
+        mainActionBtn.textContent = isActiveHide ? SiteI18n.t('texthide.btnHide') : SiteI18n.t('texthide.btnExtract');
         mainActionBtn.dataset.mode = mode; 
         
         outputResult.value = ''; 
@@ -275,7 +305,7 @@
             const carrier = carrierInput.value.trim();
             const hidden = hiddenInput.value.trim();
             if (!carrier || !hidden) {
-                statusMessage.textContent = '❌ 载体和隐藏内容都不能为空。';
+                statusMessage.textContent = SiteI18n.t('texthide.errEmpty');
                 statusMessage.className = 'status-message text-error';
                 return;
             }
@@ -285,17 +315,17 @@
                 const ciphertext = insertRandomly(carrier, encodedZWC);
                 
                 outputResult.value = ciphertext;
-                statusMessage.textContent = `✅ 隐藏成功! 密文长度: ${ciphertext.length} 字符 (包含 ${encodedZWC.length} 个零宽度字符)。`;
+                statusMessage.textContent = SiteI18n.t('texthide.hideOk', { len: ciphertext.length });
                 statusMessage.className = 'status-message text-success';
             } catch (e) {
-                statusMessage.textContent = `❌ 隐藏失败: ${e.message}`;
+                statusMessage.textContent = SiteI18n.t('texthide.hideFail') + ': ' + e.message;
                 statusMessage.className = 'status-message text-error';
             }
 
         } else if (mode === 'reveal') {
             const cipher = cipherInput.value;
             if (!cipher) {
-                statusMessage.textContent = '❌ 请粘贴包含隐藏信息的文本。';
+                statusMessage.textContent = SiteI18n.t('texthide.errPaste');
                 statusMessage.className = 'status-message text-error';
                 return;
             }
@@ -304,21 +334,19 @@
                 const chars = ZWC_CHARS[currentMode];
                 const ZWC_PATTERN = new RegExp(`[${chars.join('')}]+`, 'g');
                 
-                // 1. 提取 ZWC 序列 (将所有匹配到的序列拼在一起)
                 const zwcSequenceMatch = cipher.match(ZWC_PATTERN);
                 if (!zwcSequenceMatch || zwcSequenceMatch.length === 0) {
-                     throw new Error('未检测到零宽度字符序列，无法解密。');
+                     throw new Error(SiteI18n.t('texthide.noZw'));
                 }
                 const totalZwcSequence = zwcSequenceMatch.join('');
                 
-                // 2. 解码隐藏内容 (只显示隐藏内容)
                 const decodedContent = textHideDecode(totalZwcSequence, currentMode);
                 
                 outputResult.value = decodedContent;
-                statusMessage.textContent = '✅ 提取成功!';
+                statusMessage.textContent = SiteI18n.t('texthide.extractOk');
                 statusMessage.className = 'status-message text-success';
             } catch (e) {
-                statusMessage.textContent = `❌ 提取失败: ${e.message}`;
+                statusMessage.textContent = SiteI18n.t('texthide.extractFail') + ': ' + e.message;
                 statusMessage.className = 'status-message text-error';
             }
         }
@@ -332,7 +360,7 @@
         document.execCommand('copy');
         
         const statusEl = statusMessage; 
-        statusEl.textContent = '📋 已复制到剪切板!';
+        statusEl.textContent = SiteI18n.t('texthide.copied');
         statusEl.className = 'status-message text-success';
         
         setTimeout(() => {
@@ -369,6 +397,15 @@
         // 初始设置
         switchTab('hide');
     });
+
+    pageI18nRefresh = function () {
+        const mode = mainActionBtn.dataset.mode || 'hide';
+        mainActionBtn.textContent = mode === 'hide'
+            ? SiteI18n.t('texthide.btnHide')
+            : SiteI18n.t('texthide.btnExtract');
+    };
+
+    SiteI18n.init('texthide');
 </script>
 </body>
 </html>

@@ -1,0 +1,40 @@
+/* Site-wide language switcher (navbar) */
+.site-lang-switcher {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-left: 12px;
+    flex-shrink: 0;
+}
+.site-lang-btn {
+    padding: 3px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    color: #64748b;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1.4;
+}
+.site-lang-btn:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+.site-lang-btn.active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+}
+.nav-container {
+    flex-wrap: wrap;
+    gap: 8px;
+}
+@media (max-width: 768px) {
+    .site-lang-switcher {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin: 4px 0 0;
+    }
+}

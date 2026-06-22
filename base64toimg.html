@@ -59,6 +59,8 @@
             transition: color 0.2s;
         }
         .nav-link:hover { color: var(--primary); }
+        .nav-link.active { color: var(--primary); font-weight: 600; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
 
         /* --- 主布局 --- */
         .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
@@ -155,60 +157,73 @@
             padding: 12px; border-radius: 8px; margin-bottom: 20px;
             border-left: 4px solid var(--primary);
         }
+        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 40px; }
     </style>
 </head>
-<body>
+<body data-i18n-title-key="base64img.title">
 
 <nav class="navbar">
     <div class="nav-container">
-        <a href="index.html" class="nav-logo">🔒 安全工具箱</a>
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
         <div class="nav-links">
-            <a href="index.html" class="nav-link">首页</a>
-            <a href="watermark.html" class="nav-link">在线水印</a>
-            <a href="dns.html" class="nav-link">DNS 查询</a>
-            <a href="base64.html" class="nav-link">Base64</a>
-            <a href="#" class="nav-link" style="color: var(--primary);">图片Base64</a>
-            <a href="RESTfulAPI.html" class="nav-link">API 调试</a>
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
         </div>
     </div>
 </nav>
 
 <div class="container">
-    <h1>图片 Base64 转换工具</h1>
+    <h1 data-i18n="base64img.h1">图片 Base64 转换工具</h1>
 
     <div class="card">
-        <h3>📤 图片转 Base64</h3>
+        <h3 data-i18n="base64img.sec1">📤 图片转 Base64</h3>
         <div class="upload-zone" id="dropZone">
             <input type="file" id="fileInput" accept="image/*">
             <span class="upload-icon">🖼️</span>
-            <span>点击上传或将图片拖拽至此</span>
+            <span data-i18n="base64img.uploadHint">点击上传或将图片拖拽至此</span>
         </div>
         
         <div style="margin-top: 20px;">
-            <label style="display:block; margin-bottom:8px; font-weight:600; font-size:0.9em;">转换结果 (Data URI)</label>
-            <textarea id="imgOutputText" readonly placeholder="图片 Base64 编码将显示在这里... (双击复制)" title="双击复制"></textarea>
+            <label style="display:block; margin-bottom:8px; font-weight:600; font-size:0.9em;" data-i18n="base64img.resultLabel">转换结果 (Data URI)</label>
+            <textarea id="imgOutputText" readonly data-i18n-placeholder="base64img.resultPh" placeholder="图片 Base64 编码将显示在这里... (双击复制)" title="双击复制"></textarea>
             <div id="imgStatus" class="status-msg"></div>
         </div>
     </div>
 
     <div class="card">
-        <h3>📥 Base64 转图片预览</h3>
-        <div class="tips">
+        <h3 data-i18n="base64img.sec2">📥 Base64 转图片预览</h3>
+        <div class="tips" data-i18n="base64img.tip">
             💡 提示：粘贴 Base64 字符串到下方，点击转换(或按 Enter)即可还原图片。
         </div>
         
         <textarea id="inputStr" placeholder="在此粘贴 data:image/png;base64,..."></textarea>
-        <button class="btn-primary" id="convertBtn">🔄 还原图片</button>
+        <button class="btn-primary" id="convertBtn" data-i18n="base64img.restoreBtn">🔄 还原图片</button>
         
         <div class="preview-box">
-            <span class="empty-preview" id="emptyTip">图片预览区域</span>
+            <span class="empty-preview" id="emptyTip" data-i18n="base64img.previewArea">图片预览区域</span>
             <img id="imgPreview" alt="Preview">
         </div>
         <div id="convertStatus" class="status-msg"></div>
     </div>
+
+    <footer data-i18n="footer.standard">© 2026 安全工具箱 | 您的数据均在本地浏览器处理，不会上传至服务器。</footer>
 </div>
 
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
 <script>
+    var imgStatusState = '';
+    var convertStatusState = '';
+    var lastImgKb = '';
+    var lastRestoreW = 0;
+    var lastRestoreH = 0;
+
     window.onload = function() {
         // --- 元素获取 ---
         const fileInput = document.getElementById('fileInput');
@@ -247,12 +262,14 @@
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
-                imgStatus.textContent = '❌ 请上传有效的图片文件';
+                imgStatusState = 'errInvalidImg';
+                imgStatus.textContent = SiteI18n.t('base64img.errInvalidImg');
                 imgStatus.className = 'status-msg text-error';
                 return;
             }
 
-            imgStatus.textContent = '正在转换...';
+            imgStatusState = 'converting';
+            imgStatus.textContent = SiteI18n.t('base64img.converting');
             imgStatus.className = 'status-msg';
             imgOutputText.value = '';
 
@@ -260,11 +277,14 @@
             reader.onload = function(event) {
                 const base64 = event.target.result;
                 imgOutputText.value = base64;
-                imgStatus.textContent = `✅ 转换成功! 大小: ${(file.size/1024).toFixed(2)} KB`;
+                imgStatusState = 'convertOk';
+                lastImgKb = (file.size/1024).toFixed(2);
+                imgStatus.textContent = SiteI18n.t('base64img.convertOk', { kb: lastImgKb });
                 imgStatus.className = 'status-msg text-success';
             };
             reader.onerror = function() {
-                imgStatus.textContent = '❌ 读取文件失败';
+                imgStatusState = 'errRead';
+                imgStatus.textContent = SiteI18n.t('base64img.errRead');
                 imgStatus.className = 'status-msg text-error';
             };
             reader.readAsDataURL(file);
@@ -288,7 +308,8 @@
         convertBtn.addEventListener('click', () => {
             const val = inputStr.value.trim();
             if (!val) {
-                convertStatus.textContent = '请先粘贴 Base64 字符串';
+                convertStatusState = 'errPasteB64';
+                convertStatus.textContent = SiteI18n.t('base64img.errPasteB64');
                 convertStatus.className = 'status-msg text-error';
                 return;
             }
@@ -305,13 +326,20 @@
             
             // 监听图片加载状态
             imgPreview.onload = function() {
-                convertStatus.textContent = `✅ 图片还原成功 (${imgPreview.naturalWidth}x${imgPreview.naturalHeight})`;
+                convertStatusState = 'restoreOkSize';
+                lastRestoreW = imgPreview.naturalWidth;
+                lastRestoreH = imgPreview.naturalHeight;
+                convertStatus.textContent = SiteI18n.t('base64img.restoreOkSize', {
+                    w: lastRestoreW,
+                    h: lastRestoreH
+                });
                 convertStatus.className = 'status-msg text-success';
             };
             imgPreview.onerror = function() {
                 imgPreview.style.display = 'none';
                 emptyTip.style.display = 'block';
-                convertStatus.textContent = '❌ 无效的 Base64 图片数据';
+                convertStatusState = 'errInvalidB64';
+                convertStatus.textContent = SiteI18n.t('base64img.errInvalidB64');
                 convertStatus.className = 'status-msg text-error';
             };
         });
@@ -322,14 +350,41 @@
             try {
                 textarea.select();
                 await navigator.clipboard.writeText(textarea.value);
-                const oldText = statusEl.textContent;
-                statusEl.textContent = '📋 已复制到剪切板！';
-                setTimeout(() => statusEl.textContent = oldText, 2000);
+                const oldKey = imgStatusState;
+                imgStatusState = 'copied';
+                imgStatus.textContent = SiteI18n.t('base64img.copied');
+                setTimeout(function() { refreshImgStatus(oldKey); }, 2000);
             } catch (err) {
                 document.execCommand('copy');
-                statusEl.textContent = '已选中，请手动复制';
+                imgStatusState = 'selectCopy';
+                imgStatus.textContent = SiteI18n.t('base64img.selectCopy');
             }
         }
+
+        function refreshImgStatus(key, vars) {
+            if (!key) return;
+            imgStatus.textContent = SiteI18n.t('base64img.' + key, vars);
+        }
+
+        function refreshConvertStatus(key, vars) {
+            if (!key) return;
+            convertStatus.textContent = SiteI18n.t('base64img.' + key, vars);
+        }
+
+        pageI18nRefresh = function() {
+            if (imgStatusState === 'convertOk' && lastImgKb) {
+                refreshImgStatus('convertOk', { kb: lastImgKb });
+            } else if (imgStatusState) {
+                refreshImgStatus(imgStatusState);
+            }
+            if (convertStatusState === 'restoreOkSize' && lastRestoreW) {
+                refreshConvertStatus('restoreOkSize', { w: lastRestoreW, h: lastRestoreH });
+            } else if (convertStatusState) {
+                refreshConvertStatus(convertStatusState);
+            }
+        };
+
+        SiteI18n.init('base64img');
     };
 </script>
 

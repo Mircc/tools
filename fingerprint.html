@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>浏览器指纹检测 - 安全工具箱</title>
+    <meta name="description" content="纯前端浏览器指纹检测：浏览器/系统信息、Canvas/WebGL/AudioContext 指纹、字体枚举、代理与机器人检测、指纹伪装识别，数据均在本地处理。">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+            --radius: 16px;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            --ok: #16a34a;
+            --warn: #f59e0b;
+            --err: #dc2626;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* --- 统一导航栏样式 --- */
+        .navbar { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1100px; margin: 0 auto; height: 64px; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { font-weight: 700; font-size: 1.15rem; color: var(--primary); text-decoration: none; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-link { text-decoration: none; color: var(--text-sub); font-weight: 500; font-size: 0.9rem; transition: color 0.2s; }
+        .nav-link:hover { color: var(--primary); }
+        .nav-link.active { color: var(--primary); font-weight: 600; }
+        @media (max-width: 860px) { .nav-links { display: none; } }
+
+        .main-container { max-width: 1000px; margin: 40px auto 60px; padding: 0 20px; }
+
+        .header-section { text-align: center; margin-bottom: 32px; }
+        h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 10px; color: #0f172a; letter-spacing: -0.02em; }
+        .subtitle { font-size: 1.05rem; color: var(--text-sub); }
+
+        .toolbar { display: flex; justify-content: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+        .btn { padding: 12px 22px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 12px; background: var(--primary); color: #fff; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); }
+        .btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-ghost { background: #fff; color: var(--text-main); border: 1px solid var(--border); box-shadow: none; }
+        .btn-ghost:hover { background: #f8fafc; }
+
+        /* 隐私提示 */
+        .notice { background: #fff7ed; border: 1px solid #fdba74; color: #c2410c; padding: 12px 16px; border-radius: 12px; font-size: 0.88rem; margin-bottom: 24px; }
+        .notice code { background: #ffedd5; padding: 1px 6px; border-radius: 4px; }
+
+        /* 摘要卡片 */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .summary-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+        .summary-card .label { font-size: 0.8rem; color: var(--text-sub); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+        .summary-card .value { font-size: 1.15rem; font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 8px; word-break: break-word; }
+
+        /* 伪装横幅 */
+        .spoof-banner { border-radius: var(--radius); padding: 16px 20px; margin-bottom: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: var(--card-bg); box-shadow: var(--shadow); }
+        .spoof-banner.ok { border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
+        .spoof-banner.warn { border-color: #fde68a; background: #fffbeb; color: #b45309; }
+        .spoof-banner.err { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+
+        /* 综合指纹 */
+        .fp-box { background: #0f172a; color: #e2e8f0; border-radius: var(--radius); padding: 20px 24px; margin-bottom: 28px; box-shadow: var(--shadow); }
+        .fp-box .label { font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .fp-box .hash { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 1.4rem; letter-spacing: 2px; margin-top: 8px; word-break: break-all; }
+
+        /* 详情面板 */
+        .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); overflow: hidden; }
+        .panel > summary { cursor: pointer; list-style: none; padding: 16px 20px; font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 10px; user-select: none; }
+        .panel > summary::-webkit-details-marker { display: none; }
+        .panel > summary .chev { margin-left: auto; color: var(--text-sub); transition: transform 0.2s; font-size: 0.9rem; }
+        .panel[open] > summary .chev { transform: rotate(90deg); }
+        .panel .panel-body { padding: 0 20px 18px; }
+
+        .kv { width: 100%; border-collapse: collapse; }
+        .kv tr { border-top: 1px solid var(--border); }
+        .kv tr:first-child { border-top: none; }
+        .kv th { text-align: left; font-weight: 600; color: var(--text-sub); padding: 10px 12px 10px 0; width: 38%; vertical-align: top; font-size: 0.9rem; }
+        .kv td { padding: 10px 0; word-break: break-word; font-size: 0.92rem; }
+        .kv td pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.82rem; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px; max-height: 240px; overflow: auto; }
+        .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+        .tag { display: inline-block; font-size: 0.85rem; }
+        .tag-ok { color: var(--ok); }
+        .tag-warn { color: var(--warn); }
+        .tag-err { color: var(--err); }
+        .pill-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        .pill { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; border-radius: 99px; padding: 2px 10px; font-size: 0.8rem; }
+        .canvas-preview { border: 1px solid var(--border); border-radius: 8px; background: #fff; margin-top: 8px; max-width: 100%; }
+        .flag-item { color: var(--err); font-size: 0.9rem; margin: 4px 0; }
+
+        /* 科普 */
+        .article { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 28px; margin-top: 28px; box-shadow: var(--shadow); }
+        .article h2 { font-size: 1.3rem; margin-top: 0; }
+        .article h3 { font-size: 1.05rem; margin-bottom: 6px; }
+        .article p { color: #475569; font-size: 0.95rem; }
+
+        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 50px; padding-top: 30px; border-top: 1px solid var(--border); }
+
+        .muted { color: var(--text-sub); }
+
+        /* 地图容器 */
+        #geo-map { width: 100%; height: 280px; border-radius: 12px; border: 1px solid var(--border); background: #f1f5f9; overflow: hidden; margin: 12px 0; }
+        #geo-map.loading { display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.9rem; }
+        #geo-map .leaflet-control-attribution { font-size: 10px; }
+        .geo-info { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; font-size: 0.9rem; }
+        .geo-info-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+        .geo-info-row .glabel { color: var(--text-sub); font-weight: 600; flex-shrink: 0; }
+        .net-alert { margin-top: 10px; padding: 12px 14px; border-radius: 10px; font-size: 0.9rem; line-height: 1.5; }
+        .net-alert-warn { background: #fffbeb; border: 1px solid #fde68a; color: #b45309; }
+        .net-alert-ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+        .net-alert-info { background: #f8fafc; border: 1px solid var(--border); color: var(--text-sub); }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/site-i18n.css" />
+</head>
+<body data-i18n-title-key="fp.title" data-i18n-desc-key="fp.metaDesc">
+
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link active" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+    <div class="header-section">
+        <h1 data-i18n="fp.h1">浏览器指纹检测</h1>
+        <div class="subtitle" data-i18n="fp.subtitle">全面检测您的浏览器指纹 · 评估可被追踪与识别的程度</div>
+        <div class="toolbar">
+            <button class="btn" id="reDetectBtn" data-i18n="fp.reDetect">🔄 重新检测</button>
+            <button class="btn btn-ghost" id="copyFpBtn" data-i18n="fp.copyFp">📋 复制指纹</button>
+        </div>
+    </div>
+
+    <div class="notice" data-i18n-html="fp.notice">
+        🔒 本工具在浏览器本地运行，不向本站服务器上传数据。其中 <strong>公网 IP 与 IP 地理位置</strong> 需调用第三方公共 API（<code>ipify</code> / <code>ipapi.co</code>），<strong>WebRTC</strong> 使用公共 STUN 服务器；在离线或内网环境下这些项会显示「不可用」。
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card"><div class="label" data-i18n="fp.sumBrowser">浏览器</div><div class="value" id="sumBrowser" data-i18n="common.detecting">检测中…</div></div>
+        <div class="summary-card"><div class="label" data-i18n="fp.sumLocation">位置</div><div class="value" id="sumLocation" data-i18n="common.detecting">检测中…</div></div>
+        <div class="summary-card"><div class="label" data-i18n="fp.sumProxy">代理 / VPN</div><div class="value" id="sumProxy" data-i18n="common.detecting">检测中…</div></div>
+        <div class="summary-card"><div class="label" data-i18n="fp.sumBot">机器人 / 自动化</div><div class="value" id="sumBot" data-i18n="common.detecting">检测中…</div></div>
+    </div>
+
+    <div class="spoof-banner" id="spoofBanner"><span>🔎</span><span id="spoofText" data-i18n="fp.spoofChecking">指纹伪装检测中…</span></div>
+
+    <div class="fp-box">
+        <div class="label" data-i18n="fp.fpLabel">综合指纹 (本地计算，不上传)</div>
+        <div class="hash" id="fpHash">······</div>
+    </div>
+
+    <div id="detailContainer"></div>
+
+    <div class="article">
+        <h2 data-i18n="fp.articleH2">关于浏览器指纹</h2>
+        <p data-i18n="fp.articleP1">浏览器指纹（Browser Fingerprint）是网站在你不知情的情况下，通过收集浏览器与设备暴露出的大量特征（如 User-Agent、屏幕分辨率、已安装字体、Canvas/WebGL 渲染结果、AudioContext 输出、时区语言等）组合计算出的一个near-unique 标识。即使你清除了 Cookie、使用了无痕模式，指纹依然可能让你被重新识别。</p>
+        <h3 data-i18n="fp.articleH3a">本工具检测什么？</h3>
+        <p data-i18n="fp.articleP2">覆盖浏览器与系统信息、Navigator 属性、网络与 WebRTC、地理位置、时间语言、硬件（AudioContext/内存/CPU/电池/触控/屏幕）、已安装字体、Canvas 指纹与随机噪声、WebGL 指纹与一致性、代理/VPN 线索、机器人/自动化特征，以及指纹伪装（反指纹工具）痕迹。</p>
+        <h3 data-i18n="fp.articleH3b">如何降低被指纹追踪的风险？</h3>
+        <p data-i18n="fp.articleP3">使用主流且配置一致的浏览器（避免“万里挑一”的稀有配置）、开启浏览器自带的抗指纹特性（如 Firefox 的 resistFingerprinting）、谨慎安装会修改指纹的扩展（反而可能更显眼）、必要时配合可信代理并保持时区/语言一致。</p>
+    </div>
+
+    <footer data-i18n="footer.standard">
+        &copy; 2026 安全工具箱 | 您的数据均在本地浏览器处理，不会上传至服务器。
+    </footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/i18n-fingerprint-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
+<script>
+function L(k) { return SiteI18n.t('fp.' + k); }
+var lastResults = null;
+
+/* ===================== MD5 (blueimp-md5, MIT, 同步实现) ===================== */
+var md5 = (function () {
+  function safeAdd(x, y) { var lsw = (x & 0xffff) + (y & 0xffff); var msw = (x >> 16) + (y >> 16) + (lsw >> 16); return (msw << 16) | (lsw & 0xffff); }
+  function rol(num, cnt) { return (num << cnt) | (num >>> (32 - cnt)); }
+  function cmn(q, a, b, x, s, t) { return safeAdd(rol(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b); }
+  function ff(a, b, c, d, x, s, t) { return cmn((b & c) | (~b & d), a, b, x, s, t); }
+  function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & ~d), a, b, x, s, t); }
+  function hh(a, b, c, d, x, s, t) { return cmn(b ^ c ^ d, a, b, x, s, t); }
+  function ii(a, b, c, d, x, s, t) { return cmn(c ^ (b | ~d), a, b, x, s, t); }
+  function binlMD5(x, len) {
+    x[len >> 5] |= 0x80 << (len % 32);
+    x[(((len + 64) >>> 9) << 4) + 14] = len;
+    var i, olda, oldb, oldc, oldd, a = 1732584193, b = -271733879, c = -1732584194, d = 271733878;
+    for (i = 0; i < x.length; i += 16) {
+      olda = a; oldb = b; oldc = c; oldd = d;
+      a = ff(a, b, c, d, x[i], 7, -680876936); d = ff(d, a, b, c, x[i + 1], 12, -389564586); c = ff(c, d, a, b, x[i + 2], 17, 606105819); b = ff(b, c, d, a, x[i + 3], 22, -1044525330);
+      a = ff(a, b, c, d, x[i + 4], 7, -176418897); d = ff(d, a, b, c, x[i + 5], 12, 1200080426); c = ff(c, d, a, b, x[i + 6], 17, -1473231341); b = ff(b, c, d, a, x[i + 7], 22, -45705983);
+      a = ff(a, b, c, d, x[i + 8], 7, 1770035416); d = ff(d, a, b, c, x[i + 9], 12, -1958414417); c = ff(c, d, a, b, x[i + 10], 17, -42063); b = ff(b, c, d, a, x[i + 11], 22, -1990404162);
+      a = ff(a, b, c, d, x[i + 12], 7, 1804603682); d = ff(d, a, b, c, x[i + 13], 12, -40341101); c = ff(c, d, a, b, x[i + 14], 17, -1502002290); b = ff(b, c, d, a, x[i + 15], 22, 1236535329);
+      a = gg(a, b, c, d, x[i + 1], 5, -165796510); d = gg(d, a, b, c, x[i + 6], 9, -1069501632); c = gg(c, d, a, b, x[i + 11], 14, 643717713); b = gg(b, c, d, a, x[i], 20, -373897302);
+      a = gg(a, b, c, d, x[i + 5], 5, -701558691); d = gg(d, a, b, c, x[i + 10], 9, 38016083); c = gg(c, d, a, b, x[i + 15], 14, -660478335); b = gg(b, c, d, a, x[i + 4], 20, -405537848);
+      a = gg(a, b, c, d, x[i + 9], 5, 568446438); d = gg(d, a, b, c, x[i + 14], 9, -1019803690); c = gg(c, d, a, b, x[i + 3], 14, -187363961); b = gg(b, c, d, a, x[i + 8], 20, 1163531501);
+      a = gg(a, b, c, d, x[i + 13], 5, -1444681467); d = gg(d, a, b, c, x[i + 2], 9, -51403784); c = gg(c, d, a, b, x[i + 7], 14, 1735328473); b = gg(b, c, d, a, x[i + 12], 20, -1926607734);
+      a = hh(a, b, c, d, x[i + 5], 4, -378558); d = hh(d, a, b, c, x[i + 8], 11, -2022574463); c = hh(c, d, a, b, x[i + 11], 16, 1839030562); b = hh(b, c, d, a, x[i + 14], 23, -35309556);
+      a = hh(a, b, c, d, x[i + 1], 4, -1530992060); d = hh(d, a, b, c, x[i + 4], 11, 1272893353); c = hh(c, d, a, b, x[i + 7], 16, -155497632); b = hh(b, c, d, a, x[i + 10], 23, -1094730640);
+      a = hh(a, b, c, d, x[i + 13], 4, 681279174); d = hh(d, a, b, c, x[i], 11, -358537222); c = hh(c, d, a, b, x[i + 3], 16, -722521979); b = hh(b, c, d, a, x[i + 6], 23, 76029189);
+      a = hh(a, b, c, d, x[i + 9], 4, -640364487); d = hh(d, a, b, c, x[i + 12], 11, -421815835); c = hh(c, d, a, b, x[i + 15], 16, 530742520); b = hh(b, c, d, a, x[i + 2], 23, -995338651);
+      a = ii(a, b, c, d, x[i], 6, -198630844); d = ii(d, a, b, c, x[i + 7], 10, 1126891415); c = ii(c, d, a, b, x[i + 14], 15, -1416354905); b = ii(b, c, d, a, x[i + 5], 21, -57434055);
+      a = ii(a, b, c, d, x[i + 12], 6, 1700485571); d = ii(d, a, b, c, x[i + 3], 10, -1894986606); c = ii(c, d, a, b, x[i + 10], 15, -1051523); b = ii(b, c, d, a, x[i + 1], 21, -2054922799);
+      a = ii(a, b, c, d, x[i + 8], 6, 1873313359); d = ii(d, a, b, c, x[i + 15], 10, -30611744); c = ii(c, d, a, b, x[i + 6], 15, -1560198380); b = ii(b, c, d, a, x[i + 13], 21, 1309151649);
+      a = ii(a, b, c, d, x[i + 4], 6, -145523070); d = ii(d, a, b, c, x[i + 11], 10, -1120210379); c = ii(c, d, a, b, x[i + 2], 15, 718787259); b = ii(b, c, d, a, x[i + 9], 21, -343485551);
+      a = safeAdd(a, olda); b = safeAdd(b, oldb); c = safeAdd(c, oldc); d = safeAdd(d, oldd);
+    }
+    return [a, b, c, d];
+  }
+  function binl2rstr(input) { var i, output = ''; var len = input.length * 32; for (i = 0; i < len; i += 8) { output += String.fromCharCode((input[i >> 5] >>> (i % 32)) & 0xff); } return output; }
+  function rstr2binl(input) { var i, output = []; output[(input.length >> 2) - 1] = undefined; for (i = 0; i < output.length; i += 1) output[i] = 0; var len = input.length * 8; for (i = 0; i < len; i += 8) output[i >> 5] |= (input.charCodeAt(i / 8) & 0xff) << (i % 32); return output; }
+  function rstrMD5(s) { return binl2rstr(binlMD5(rstr2binl(s), s.length * 8)); }
+  function rstr2hex(input) { var hexTab = '0123456789abcdef', output = '', x, i; for (i = 0; i < input.length; i += 1) { x = input.charCodeAt(i); output += hexTab.charAt((x >>> 4) & 0x0f) + hexTab.charAt(x & 0x0f); } return output; }
+  function utf8(input) { return unescape(encodeURIComponent(input)); }
+  return function (string) { return rstr2hex(rstrMD5(utf8(String(string)))); };
+})();
+
+/* ===================== 工具函数 ===================== */
+function hexToReadable(hex) { return String(hex).replace(/(.{4})/g, '$1 ').trim(); }
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function isPrivateIP(ip) { return /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|169\.254\.|::1|fe80|f[cd])/i.test(ip); }
+
+/* ===================== 浏览器基本信息 ===================== */
+function detectBrowser() {
+  var ua = navigator.userAgent;
+  return {
+    browser: parseBrowser(ua),
+    os: parseOS(ua),
+    platform: navigator.platform || 'N/A',
+    userAgentDataPlatform: (navigator.userAgentData && navigator.userAgentData.platform) || 'N/A',
+    mobile: /Mobi|Android|iPhone|iPad/i.test(ua) ? SiteI18n.t('common.yes') : SiteI18n.t('common.no'),
+    architecture: getArchitecture(ua),
+    renderingEngine: getEngine(ua),
+    gpuRenderer: getGPURenderer(),
+    userAgent: ua,
+    vendor: navigator.vendor || 'N/A',
+    doNotTrack: navigator.doNotTrack || (window.doNotTrack) || 'false',
+    cookiesEnabled: navigator.cookieEnabled,
+    webdriver: navigator.webdriver === true,
+    languages: navigator.languages || [navigator.language]
+  };
+}
+function parseBrowser(ua) {
+  var m;
+  if ((m = ua.match(/Edg\/(\d+\.\d+)/))) return 'Edge ' + m[1];
+  if ((m = ua.match(/OPR\/(\d+\.\d+)/))) return 'Opera ' + m[1];
+  if ((m = ua.match(/Firefox\/(\d+\.\d+)/))) return 'Firefox ' + m[1];
+  if (/Chrome|Chromium/.test(ua) && (m = ua.match(/(?:Chrome|Chromium)\/(\d+\.\d+)/))) return 'Chrome ' + m[1];
+  if (/Safari/.test(ua) && (m = ua.match(/Version\/(\d+\.\d+)/))) return 'Safari ' + m[1];
+  return 'Unknown';
+}
+function parseOS(ua) {
+  if (/Windows NT 10/.test(ua)) return 'Windows 10/11';
+  if (/Windows NT/.test(ua)) return 'Windows';
+  if (/Android/.test(ua)) return 'Android';
+  if (/(iPhone|iPad|iPod)/.test(ua)) return 'iOS';
+  if (/Mac OS X/.test(ua)) return 'macOS';
+  if (/Linux/.test(ua)) return 'Linux';
+  return 'N/A';
+}
+function getArchitecture(ua) {
+  if (/x86_64|Win64|WOW64|x64/.test(ua)) return 'x86_64 (64-bit)';
+  if (/i[3456]86/.test(ua)) return 'x86 (32-bit)';
+  if (/aarch64|arm64/.test(ua)) return 'ARM64';
+  if (/arm/i.test(ua)) return 'ARM';
+  return 'N/A';
+}
+function getEngine(ua) {
+  if (/Edg|Chrome|Chromium|OPR/.test(ua)) return 'Blink';
+  if (/Firefox/.test(ua)) return 'Gecko';
+  if (/Safari/.test(ua)) return 'WebKit';
+  return 'N/A';
+}
+function getGPURenderer() {
+  try {
+    var c = document.createElement('canvas');
+    var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+    if (!gl) return 'N/A';
+    var info = gl.getExtension('WEBGL_debug_renderer_info');
+    return info ? (gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || 'N/A') : 'N/A';
+  } catch (e) { return 'N/A'; }
+}
+
+/* ===================== 时间与语言 ===================== */
+function detectTime() {
+  var now = new Date();
+  var off = now.getTimezoneOffset();
+  return {
+    currentTime: now.toString(),
+    currentTimeISO: now.toISOString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'N/A',
+    utcOffset: -off,
+    utcOffsetString: 'UTC' + (off > 0 ? '-' : '+') + (Math.abs(off) / 60),
+    language: navigator.language || 'N/A',
+    languages: (navigator.languages || []).join(', ') || 'N/A',
+    locale: Intl.DateTimeFormat().resolvedOptions().locale || 'N/A',
+    dateFormat: new Intl.DateTimeFormat().format(now)
+  };
+}
+/* ===================== 硬件指纹 ===================== */
+function detectHardware() {
+  return {
+    audioContextHash: 'N/A',
+    deviceMemory: navigator.deviceMemory || 'N/A',
+    hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
+    maxTouchPoints: navigator.maxTouchPoints || 0,
+    hasTouch: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0),
+    battery: 'N/A',
+    screen: {
+      width: screen.width, height: screen.height,
+      availWidth: screen.availWidth, availHeight: screen.availHeight,
+      colorDepth: screen.colorDepth, pixelDepth: screen.pixelDepth,
+      devicePixelRatio: window.devicePixelRatio
+    },
+    colorGamut: matchMedia('(color-gamut: p3)').matches ? 'P3' : matchMedia('(color-gamut: srgb)').matches ? 'sRGB' : 'N/A'
+  };
+}
+function getAudioContextHash() {
+  return new Promise(function (resolve) {
+    try {
+      var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      if (!OAC) return resolve('N/A');
+      var sr = 44100;
+      var ctx = new OAC(1, sr, sr);
+      var osc = ctx.createOscillator();
+      osc.type = 'triangle'; osc.frequency.value = 10000;
+      var comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -50; comp.knee.value = 40; comp.ratio.value = 12; comp.attack.value = 0; comp.release.value = 0.25;
+      osc.connect(comp); comp.connect(ctx.destination); osc.start(0);
+      var done = false;
+      var finish = function (buf) {
+        if (done) return; done = true;
+        var samples = [];
+        for (var i = 4500; i < 5000; i++) samples.push((buf[i] || 0).toFixed(4));
+        resolve(md5(samples.join('')));
+      };
+      ctx.oncomplete = function (e) { finish(e.renderedBuffer.getChannelData(0)); };
+      var p = ctx.startRendering();
+      if (p && p.then) p.then(function (b) { finish(b.getChannelData(0)); }).catch(function () { resolve('N/A'); });
+      setTimeout(function () { if (!done) resolve('N/A'); }, 3000);
+    } catch (e) { resolve('N/A'); }
+  });
+}
+function detectBattery() {
+  return new Promise(function (resolve) {
+    if (!navigator.getBattery) return resolve('N/A');
+    navigator.getBattery().then(function (b) {
+      resolve({
+        charging: b.charging ? L('charging') : L('notCharging'),
+        level: Math.round(b.level * 100) + '%',
+        chargingTime: b.chargingTime === Infinity ? 'N/A' : b.chargingTime + 's',
+        dischargingTime: b.dischargingTime === Infinity ? 'N/A' : b.dischargingTime + 's'
+      });
+    }).catch(function () { resolve('N/A'); });
+  });
+}
+
+/* ===================== 字体检测 ===================== */
+var FONT_LIST = ['Arial','Arial Black','Courier','Courier New','Comic Sans MS','Georgia','Helvetica','Impact','Times','Times New Roman','Trebuchet MS','Verdana','Palatino Linotype','Lucida Console','Monaco','Consolas','Segoe UI','Calibri','Cambria','Candara','Constantia','Corbel','Franklin Gothic Medium','Tahoma','MS Sans Serif','Microsoft YaHei','Microsoft JhengHei','SimSun','SimHei','NSimSun','FangSong','KaiTi','San Francisco','SF Pro Display','SF Pro Text','Helvetica Neue','Lucida Grande','Apple Color Emoji','Menlo','Andale Mono','PingFang SC','PingFang TC','Hiragino Sans GB','Liberation Sans','Liberation Serif','Liberation Mono','DejaVu Sans','DejaVu Serif','DejaVu Sans Mono','Ubuntu','Noto Sans CJK SC','Noto Sans CJK TC','Meiryo','MS Gothic','MS PGothic','Malgun Gothic','Gulim'];
+async function detectFonts() {
+  if ('queryLocalFonts' in window) {
+    try {
+      var fonts = await window.queryLocalFonts();
+      var names = fonts.map(function (f) { return f.fullName; });
+      return { fonts: names, count: names.length, method: 'Local Font Access API' };
+    } catch (e) { /* 需用户手势/被拒绝，降级 */ }
+  }
+  return detectFontsByCanvas();
+}
+function detectFontsByCanvas() {
+  var canvas = document.createElement('canvas');
+  var ctx = canvas.getContext('2d');
+  canvas.width = 256; canvas.height = 30;
+  var testString = 'mmmmmmmmmmlli@WgQ中文';
+  var size = '24px';
+  var baseFonts = ['monospace', 'sans-serif', 'serif'];
+  var detected = [];
+  var baseline = {};
+  baseFonts.forEach(function (bf) { ctx.font = size + ' ' + bf; baseline[bf] = ctx.measureText(testString).width; });
+  FONT_LIST.forEach(function (font) {
+    var matched = baseFonts.some(function (bf) {
+      ctx.font = size + ' "' + font + '",' + bf;
+      return ctx.measureText(testString).width !== baseline[bf];
+    });
+    if (matched) detected.push(font);
+  });
+  return { fonts: detected, count: detected.length, method: 'Canvas 宽度测量' };
+}
+
+/* ===================== Canvas 指纹 ===================== */
+function drawCanvasFP(ctx, w) {
+  ctx.fillStyle = '#f60'; ctx.fillRect(0, 0, 100, 20);
+  var g = ctx.createLinearGradient(0, 0, w, 0);
+  g.addColorStop(0, '#069'); g.addColorStop(0.5, '#f60'); g.addColorStop(1, '#396');
+  ctx.fillStyle = g; ctx.font = '14px "Arial"'; ctx.textBaseline = 'top';
+  ctx.fillText('Browser Fingerprint 👤 CmF@2024', 2, 17);
+  ctx.fillStyle = 'rgba(102,204,0,0.7)'; ctx.beginPath(); ctx.arc(260, 40, 15, 0, Math.PI * 2, false); ctx.fill();
+  ctx.fillStyle = 'rgba(0,102,153,0.5)'; ctx.beginPath(); ctx.ellipse(290, 40, 8, 12, 0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#c60'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(150, 10); ctx.quadraticCurveTo(185, 30, 220, 10); ctx.stroke();
+}
+function detectCanvas() {
+  var results = { hash: 'N/A', size: 'N/A', supported: false, randomness: 'N/A', dataURL: '' };
+  try {
+    var canvas = document.createElement('canvas');
+    canvas.width = 320; canvas.height = 60;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return results;
+    results.supported = true;
+    results.size = canvas.width + ' x ' + canvas.height;
+    drawCanvasFP(ctx, canvas.width);
+    results.dataURL = canvas.toDataURL();
+    results.hash = md5(results.dataURL);
+    results.randomness = detectCanvasRandomness(canvas);
+    return results;
+  } catch (e) { return results; }
+}
+function detectCanvasRandomness(canvas) {
+  var hashes = [];
+  for (var i = 0; i < 5; i++) hashes.push(md5(canvas.toDataURL()));
+  var unique = new Set(hashes);
+  if (unique.size === 1) return '正常';
+  return '检测到噪声 (' + unique.size + '/5 次不同)';
+}
+
+/* ===================== WebGL 指纹 ===================== */
+function detectWebGL() {
+  var results = { vendor: 'N/A', renderer: 'N/A', webgl2: false, vendorConsistency: 'N/A', gpuRenderHash: 'N/A', webglHash: 'N/A', extensions: [], parameters: {}, shaderPrecision: {} };
+  try {
+    var canvas = document.createElement('canvas');
+    var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return results;
+    var info = gl.getExtension('WEBGL_debug_renderer_info');
+    if (info) { results.vendor = gl.getParameter(info.UNMASKED_VENDOR_WEBGL); results.renderer = gl.getParameter(info.UNMASKED_RENDERER_WEBGL); }
+    var gl2 = canvas.getContext('webgl2'); results.webgl2 = !!gl2;
+    results.vendorConsistency = checkVendorConsistency(gl, info, gl2);
+    results.extensions = gl.getSupportedExtensions() || [];
+    var params = ['MAX_TEXTURE_SIZE','MAX_VIEWPORT_DIMS','MAX_RENDERBUFFER_SIZE','MAX_VERTEX_TEXTURE_IMAGE_UNITS','MAX_TEXTURE_IMAGE_UNITS','MAX_COMBINED_TEXTURE_IMAGE_UNITS','MAX_VERTEX_ATTRIBS','MAX_VARYING_VECTORS','MAX_FRAGMENT_UNIFORM_VECTORS','ALIASED_LINE_WIDTH_RANGE','ALIASED_POINT_SIZE_RANGE'];
+    params.forEach(function (p) { try { var v = gl.getParameter(gl[p]); if (v && v.length !== undefined && typeof v !== 'string') v = Array.from(v).join(','); results.parameters[p] = v; } catch (e) {} });
+    var precs = ['LOW_FLOAT','MEDIUM_FLOAT','HIGH_FLOAT','LOW_INT','MEDIUM_INT','HIGH_INT'];
+    precs.forEach(function (p) { try { var f = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl[p]); if (f) results.shaderPrecision[p] = { rangeMin: f.rangeMin, rangeMax: f.rangeMax, precision: f.precision }; } catch (e) {} });
+    var raw = [results.renderer, results.extensions.slice().sort().join(','), JSON.stringify(results.parameters), JSON.stringify(results.shaderPrecision)].join('|');
+    results.gpuRenderHash = md5(raw);
+    results.webglHash = md5(results.renderer + '|' + results.gpuRenderHash);
+    return results;
+  } catch (e) { return results; }
+}
+function checkVendorConsistency(gl, info, gl2) {
+  var issues = [];
+  if (info) {
+    var un = gl.getParameter(info.UNMASKED_VENDOR_WEBGL);
+    var mk = gl.getParameter(gl.VENDOR);
+    if (mk && un && !String(un).includes(String(mk).replace(/Inc\.?/i, '').trim())) issues.push('Vendor 不一致');
+  }
+  if (!gl2 && gl) issues.push('缺少 WebGL 2.0 支持');
+  return issues.length === 0 ? '正常' : issues.join('; ');
+}
+/* ===================== 网络信息 ===================== */
+async function detectNetwork() {
+  var ip = 'N/A';
+  try {
+    var r = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+    ip = (await r.json()).ip;
+  } catch (e) {
+    try { var r2 = await fetch('https://api.ip.sb/ip', { cache: 'no-store' }); ip = (await r2.text()).trim(); } catch (e2) {}
+  }
+  var webrtcIPs = await getWebRTCIPs();
+  return { ip: ip, webrtcIPs: webrtcIPs, ipAnalysis: analyzeNetworkIP(ip, webrtcIPs) };
+}
+function analyzeNetworkIP(httpIP, webrtcIPs) {
+  webrtcIPs = webrtcIPs || [];
+  if (httpIP === 'N/A' || !webrtcIPs.length) {
+    return { level: 'info', text: webrtcIPs.length ? 'WebRTC 已采集候选 IP，但 HTTP 公网 IP 不可用，无法比对。' : '未采集到 WebRTC 候选 IP（可能被浏览器禁用或网络受限）。' };
+  }
+  var publicWebrtc = webrtcIPs.filter(function (ip) { return !isPrivateIP(ip); });
+  var privateWebrtc = webrtcIPs.filter(function (ip) { return isPrivateIP(ip); });
+  if (publicWebrtc.length > 0 && publicWebrtc.indexOf(httpIP) === -1) {
+    return {
+      level: 'warn',
+      text: '⚠️ 公网 IP (' + httpIP + ') 与 WebRTC 候选公网 IP (' + publicWebrtc.join(', ') + ') 不一致：疑似正在使用代理/VPN；同时 WebRTC 可能暴露了真实出口 IP，存在 IP 泄露风险。'
+    };
+  }
+  if (publicWebrtc.length > 0 && publicWebrtc.indexOf(httpIP) !== -1) {
+    return { level: 'ok', text: '✅ 公网 IP 与 WebRTC 候选公网 IP 一致，未发现明显代理/泄露迹象。' };
+  }
+  if (privateWebrtc.length > 0 && publicWebrtc.length === 0) {
+    return { level: 'ok', text: '✅ HTTP 公网 IP 为 ' + httpIP + '，WebRTC 仅采集到内网候选 IP (' + privateWebrtc.join(', ') + ')，常见于 NAT 环境，属正常情况。' };
+  }
+  return { level: 'info', text: '已采集 HTTP IP 与 WebRTC 候选，但未形成有效公网比对。' };
+}
+function getWebRTCIPs() {
+  return new Promise(function (resolve) {
+    var ips = new Set();
+    var RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+    if (!RTC) return resolve([]);
+    var pc;
+    try { pc = new RTC({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); } catch (e) { return resolve([]); }
+    var done = false;
+    var finish = function () { if (done) return; done = true; try { pc.close(); } catch (e) {} resolve([].concat.apply([], [Array.from(ips)])); };
+    try { pc.createDataChannel(''); } catch (e) {}
+    pc.onicecandidate = function (e) {
+      if (!e.candidate) return finish();
+      var m = (e.candidate.candidate || '').match(/(\d{1,3}(?:\.\d{1,3}){3})|([a-f0-9]{1,4}(?::[a-f0-9]{0,4}){2,})/i);
+      if (m) ips.add(m[0]);
+    };
+    pc.createOffer().then(function (o) { return pc.setLocalDescription(o); }).catch(function () {});
+    setTimeout(finish, 3000);
+  });
+}
+
+/* ===================== 地理位置 ===================== */
+async function detectGeo() {
+  var result = { ipGeo: null, browserGeo: null };
+  result.ipGeo = await detectIPGeo();
+  return result;
+}
+async function detectIPGeo() {
+  try {
+    var r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+    var d = await r.json();
+    if (d.error) return null;
+    return { ip: d.ip, country: d.country_name, region: d.region, city: d.city, postal: d.postal, isp: d.org, timezone: d.timezone, latitude: d.latitude, longitude: d.longitude };
+  } catch (e) { return null; }
+}
+function requestBrowserGeo() {
+  return new Promise(function (resolve) {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        resolve({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          accuracyText: Math.round(pos.coords.accuracy) + ' m'
+        });
+      },
+      function () { resolve(null); },
+      { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
+    );
+  });
+}
+
+/* ===================== 地图渲染 (Leaflet + OpenStreetMap) ===================== */
+var geoMap = null, geoMarker = null, geoAccuracyCircle = null, mapPulseInjected = false;
+
+function resetGeoMap() {
+  if (geoMap) { geoMap.remove(); geoMap = null; geoMarker = null; geoAccuracyCircle = null; }
+  var el = $('geo-map');
+  if (el) { el.className = 'loading'; el.innerHTML = ''; }
+}
+function zoomFromAccuracy(accuracy) {
+  if (!accuracy) return 13;
+  if (accuracy <= 10) return 17;
+  if (accuracy <= 50) return 15;
+  if (accuracy <= 200) return 14;
+  if (accuracy <= 1000) return 13;
+  if (accuracy <= 5000) return 11;
+  return 8;
+}
+function injectMapPulse() {
+  if (mapPulseInjected) return;
+  mapPulseInjected = true;
+  var s = document.createElement('style');
+  s.textContent = '@keyframes map-pulse{0%{transform:scale(1);opacity:.5}100%{transform:scale(3.5);opacity:0}}';
+  document.head.appendChild(s);
+}
+function renderGeoMap(lat, lng, accuracy, popupText) {
+  var container = $('geo-map');
+  if (!container || typeof L === 'undefined') return;
+  resetGeoMap();
+  container.className = '';
+  container.innerHTML = '';
+  injectMapPulse();
+  geoMap = L.map('geo-map', { center: [lat, lng], zoom: zoomFromAccuracy(accuracy), zoomControl: true, scrollWheelZoom: true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(geoMap);
+  var icon = L.divIcon({
+    className: 'custom-marker',
+    html: '<div style="width:20px;height:20px;background:#2563eb;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.3);position:relative"><div style="position:absolute;width:100%;height:100%;background:rgba(37,99,235,.3);border-radius:50%;animation:map-pulse 2s ease-out infinite"></div></div>',
+    iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -12]
+  });
+  geoMarker = L.marker([lat, lng], { icon: icon }).addTo(geoMap);
+  var popup = '<div style="font-size:13px;line-height:1.6"><strong>' + esc(popupText || L('yourLocation')) + '</strong><br>' + L('lat') + ': ' + lat.toFixed(6) + '<br>' + L('lng') + ': ' + lng.toFixed(6) +
+    (accuracy ? '<br>' + L('accuracy') + ': ±' + Math.round(accuracy) + 'm' : '') + '</div>';
+  geoMarker.bindPopup(popup);
+  setTimeout(function () { if (geoMarker) geoMarker.openPopup(); }, 500);
+  if (accuracy) {
+    geoAccuracyCircle = L.circle([lat, lng], { radius: accuracy, color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 0.1, weight: 1.5, dashArray: '4 4' }).addTo(geoMap);
+    geoMap.fitBounds(geoAccuracyCircle.getBounds(), { padding: [30, 30], maxZoom: 16 });
+  } else {
+    geoMap.setView([lat, lng], zoomFromAccuracy(null));
+  }
+  setTimeout(function () { if (geoMap) geoMap.invalidateSize(); }, 200);
+}
+function updateGeoInfoUI(coords, accuracy, source) {
+  var c = $('geoCoords'), a = $('geoAccuracy'), s = $('geoSource');
+  if (c) c.textContent = coords;
+  if (a) a.textContent = accuracy;
+  if (s) s.textContent = source;
+}
+function tryRenderMapFromGeo(geo, browserGeo) {
+  if (browserGeo && browserGeo.latitude != null) {
+    renderGeoMap(browserGeo.latitude, browserGeo.longitude, browserGeo.accuracy, L('browserGps'));
+    updateGeoInfoUI(browserGeo.latitude.toFixed(6) + ', ' + browserGeo.longitude.toFixed(6),
+      browserGeo.accuracyText || ('±' + Math.round(browserGeo.accuracy) + 'm'), '浏览器 Geolocation API');
+    return;
+  }
+  if (geo && geo.ipGeo && geo.ipGeo.latitude != null && geo.ipGeo.longitude != null) {
+    var ig = geo.ipGeo;
+    renderGeoMap(ig.latitude, ig.longitude, null, 'IP: ' + [ig.city, ig.country].filter(Boolean).join(', '));
+    updateGeoInfoUI(ig.latitude.toFixed(6) + ', ' + ig.longitude.toFixed(6), 'N/A (IP)', 'IP (ipapi.co)');
+    return;
+  }
+  var el = $('geo-map');
+  if (el) { el.className = 'loading'; el.textContent = L('noGeo'); }
+}
+
+/* ===================== 机器人 / 自动化检测 ===================== */
+function detectBot() {
+  var flags = [], details = {};
+  details.webdriver = navigator.webdriver === true;
+  if (navigator.webdriver === true) flags.push('navigator.webdriver = true');
+  details.hasChrome = !!window.chrome;
+  var isChromeUA = /Chrome/.test(navigator.userAgent) && !/Edg|OPR/.test(navigator.userAgent);
+  if (!window.chrome && isChromeUA) flags.push('UA 声称是 Chrome 但 window.chrome 不存在');
+  details.pluginsCount = (navigator.plugins && navigator.plugins.length) || 0;
+  if (details.pluginsCount === 0 && isChromeUA) flags.push('navigator.plugins 为空 (Headless 特征)');
+  details.mimeTypesCount = (navigator.mimeTypes && navigator.mimeTypes.length) || 0;
+  details.outerWidth = window.outerWidth; details.outerHeight = window.outerHeight;
+  details.innerWidth = window.innerWidth; details.innerHeight = window.innerHeight;
+  if (window.outerWidth === 0 || window.outerHeight === 0) flags.push('window.outerWidth/Height 为 0 (Headless 特征)');
+  try { details.notificationPermission = (window.Notification && Notification.permission) || 'N/A'; } catch (e) { details.notificationPermission = 'N/A'; }
+  details.languagesEmpty = !(navigator.languages && navigator.languages.length);
+  if (details.languagesEmpty) flags.push('navigator.languages 为空');
+  return { isBot: flags.length >= 3, confidence: flags.length === 0 ? '正常' : (flags.length >= 3 ? '高度可疑' : '中等'), flags: flags, details: details, permissions: {} };
+}
+async function detectPermissions() {
+  var perms = ['camera','microphone','geolocation','notifications','persistent-storage','midi','clipboard-read','clipboard-write'];
+  var out = {};
+  if (!navigator.permissions || !navigator.permissions.query) { perms.forEach(function (p) { out[p] = 'unsupported'; }); return out; }
+  for (var i = 0; i < perms.length; i++) {
+    try { var s = await navigator.permissions.query({ name: perms[i] }); out[perms[i]] = s.state; }
+    catch (e) { out[perms[i]] = 'unsupported'; }
+  }
+  return out;
+}
+
+/* ===================== 代理 / VPN 检测 ===================== */
+function detectProxy(results) {
+  var flags = [];
+  var webrtcIPs = (results.network && results.network.webrtcIPs) || [];
+  var httpIP = results.network && results.network.ip;
+  var publicWebrtc = webrtcIPs.filter(function (ip) { return !isPrivateIP(ip); });
+  if (httpIP && httpIP !== 'N/A' && publicWebrtc.length > 0 && publicWebrtc.indexOf(httpIP) === -1) {
+    flags.push('WebRTC 泄漏：公网出口 IP (' + publicWebrtc.join(', ') + ') 与 HTTP IP (' + httpIP + ') 不一致');
+  }
+  if (results.geo && results.geo.ipGeo && results.geo.ipGeo.timezone && results.time && results.time.timezone) {
+    if (results.geo.ipGeo.timezone !== results.time.timezone) {
+      flags.push('时区不一致：浏览器 ' + results.time.timezone + ' vs IP 归属 ' + results.geo.ipGeo.timezone);
+    }
+  }
+  var lang = results.time && results.time.language;
+  if (lang && results.geo && results.geo.ipGeo && results.geo.ipGeo.country) {
+    var langRegion = (lang.split('-')[1] || '').toUpperCase();
+    var ipCountry = (results.geo.ipGeo.country || '').toUpperCase();
+    if (langRegion && ipCountry && langRegion !== ipCountry && !(langRegion === 'CN' && /CHINA/.test(ipCountry))) {
+      flags.push('语言地区 (' + langRegion + ') 与 IP 归属国家 (' + results.geo.ipGeo.country + ') 不一致');
+    }
+  }
+  return { proxyDetected: flags.length > 0, flags: flags, webrtcIPs: webrtcIPs, httpIP: httpIP };
+}
+
+/* ===================== 指纹伪装 / 反反指纹检测 ===================== */
+function detectSpoof(results) {
+  var flags = [];
+  var ua = results.browser.userAgent, platform = results.browser.platform;
+  if (/Mac OS X/.test(ua) && /Win/.test(platform)) flags.push('UA 显示 macOS 但 platform 显示 Windows');
+  if (/Windows/.test(ua) && /Mac/.test(platform)) flags.push('UA 显示 Windows 但 platform 显示 macOS');
+  if (/Linux/.test(ua) && /Win/.test(platform) && !/Android/.test(ua)) flags.push('UA 显示 Linux 但 platform 显示 Windows');
+  var isMobileUA = /Mobi|Android|iPhone|iPad/i.test(ua);
+  if (isMobileUA && !results.hardware.hasTouch) flags.push('移动端 UA 但无触控支持');
+  if (isMobileUA && results.hardware.maxTouchPoints === 0) flags.push('移动端 UA 但 maxTouchPoints = 0');
+  flags.push.apply(flags, checkNavigatorPrototype());
+  if (results.canvas.randomness !== '正常' && results.canvas.randomness !== 'N/A') flags.push('Canvas 噪声注入: ' + results.canvas.randomness);
+  if (results.webgl.vendorConsistency !== '正常' && results.webgl.vendorConsistency !== 'N/A') flags.push('WebGL: ' + results.webgl.vendorConsistency);
+  if (results.hardware.audioContextHash !== 'N/A' && /^0+$/.test(results.hardware.audioContextHash)) flags.push('AudioContext 输出异常 (全零)');
+  if (screen.width < window.innerWidth || screen.height < window.innerHeight) flags.push('视口尺寸大于屏幕分辨率 (可能伪造/缩放)');
+  var conf = flags.length === 0 ? '未检测到伪装' : flags.length <= 2 ? '轻度可疑' : flags.length <= 4 ? '中度可疑' : '高度可疑';
+  return { spoofed: flags.length > 0, confidence: conf, flags: flags };
+}
+function checkNavigatorPrototype() {
+  var flags = [];
+  var props = ['userAgent','platform','vendor','language','languages','hardwareConcurrency','deviceMemory','webdriver','plugins','mimeTypes','cookieEnabled'];
+  props.forEach(function (prop) {
+    try {
+      if (Object.prototype.hasOwnProperty.call(navigator, prop)) { flags.push('navigator.' + prop + ' 被直接定义 (疑似劫持)'); return; }
+      var d = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(navigator), prop);
+      if (d && d.get && !/\[native code\]/.test(d.get.toString())) flags.push('navigator.' + prop + ' getter 非原生');
+    } catch (e) {}
+  });
+  return flags;
+}
+
+/* ===================== 综合指纹 ===================== */
+function generateFingerprint(results) {
+  var signals = [
+    results.canvas.hash, results.webgl.renderer, results.webgl.webglHash,
+    results.hardware.audioContextHash, results.fonts.count, results.browser.renderingEngine,
+    results.hardware.screen.colorDepth, results.hardware.screen.devicePixelRatio,
+    results.hardware.hardwareConcurrency, navigator.language, results.time.timezone,
+    results.hardware.screen.width + 'x' + results.hardware.screen.height
+  ].filter(function (s) { return s && s !== 'N/A'; });
+  return md5(signals.join('|||'));
+}
+/* ===================== 渲染 ===================== */
+var $ = function (id) { return document.getElementById(id); };
+
+function statusTag(state, text) {
+  var icon = state === 'ok' ? '✅' : state === 'warn' ? '⚠️' : state === 'err' ? '❌' : 'ℹ️';
+  var cls = state === 'ok' ? 'tag-ok' : state === 'warn' ? 'tag-warn' : state === 'err' ? 'tag-err' : '';
+  return '<span class="tag ' + cls + '">' + icon + ' ' + esc(text) + '</span>';
+}
+
+function fmtVal(v) {
+  if (v === true) return SiteI18n.t('common.yes');
+  if (v === false) return SiteI18n.t('common.no');
+  if (v == null || v === '') return '<span class="muted">N/A</span>';
+  if (Array.isArray(v)) return v.length ? esc(v.join(', ')) : '<span class="muted">' + SiteI18n.t('common.empty') + '</span>';
+  if (typeof v === 'object') return '<pre>' + esc(JSON.stringify(v, null, 2)) + '</pre>';
+  return esc(v);
+}
+
+function kvTable(rows) {
+  var html = '<table class="kv">';
+  rows.forEach(function (r) { html += '<tr><th>' + esc(r[0]) + '</th><td>' + (r[2] === 'raw' ? r[1] : fmtVal(r[1])) + '</td></tr>'; });
+  return html + '</table>';
+}
+
+function panel(title, statusHtml, bodyHtml, open) {
+  return '<details class="panel"' + (open ? ' open' : '') + '><summary>' + esc(title) +
+    (statusHtml ? ' ' + statusHtml : '') + '<span class="chev">▶</span></summary>' +
+    '<div class="panel-body">' + bodyHtml + '</div></details>';
+}
+
+function flagsHtml(flags) {
+  if (!flags || !flags.length) return '<p class="tag-ok">' + L('noAnomaly') + '</p>';
+  return flags.map(function (f) { return '<div class="flag-item">⚠️ ' + esc(f) + '</div>'; }).join('');
+}
+
+function mapSpoofConf(c) {
+  if (c === '未检测到伪装') return L('noSpoof');
+  if (c === '轻度可疑') return L('mildSusp');
+  if (c === '中度可疑') return L('modSusp');
+  if (c === '高度可疑') return L('highSusp');
+  return c;
+}
+
+function mapBotConf(c) {
+  if (c === '正常') return SiteI18n.t('common.normal');
+  if (c === '高度可疑') return L('highSusp');
+  return c;
+}
+
+function renderResults(R) {
+  // 摘要卡片
+  $('sumBrowser').innerHTML = esc(R.browser.browser) + ' <span class="muted" style="font-weight:500;font-size:0.85rem">/ ' + esc(R.browser.os) + '</span>';
+  if (R.geo && R.geo.ipGeo) {
+    var g = R.geo.ipGeo;
+    $('sumLocation').innerHTML = esc([g.city, g.region, g.country].filter(Boolean).join(', ') || 'N/A');
+  } else {
+    $('sumLocation').innerHTML = '<span class="muted">' + esc(SiteI18n.t('common.unavailable')) + '</span>';
+  }
+  $('sumProxy').innerHTML = R.proxy.proxyDetected ? statusTag('warn', L('suspicious')) : statusTag('ok', L('notDetected'));
+  $('sumBot').innerHTML = R.bot.isBot ? statusTag('err', mapBotConf(R.bot.confidence)) : (R.bot.flags.length ? statusTag('warn', mapBotConf(R.bot.confidence)) : statusTag('ok', SiteI18n.t('common.normal')));
+
+  // 伪装横幅
+  var banner = $('spoofBanner'), bt = $('spoofText');
+  banner.className = 'spoof-banner ' + (R.spoof.spoofed ? (R.spoof.flags.length > 2 ? 'err' : 'warn') : 'ok');
+  bt.textContent = L('spoofPrefix') + mapSpoofConf(R.spoof.confidence) + (R.spoof.flags.length ? SiteI18n.t('fp.spoofSignals', { n: R.spoof.flags.length }) : '');
+  banner.firstChild.textContent = R.spoof.spoofed ? '⚠️' : '✅';
+
+  // 综合指纹
+  $('fpHash').textContent = hexToReadable(R.fingerprint);
+
+  // 详情面板
+  var html = '';
+
+  html += panel(L('panelBrowser'), '', kvTable([
+    ['浏览器', R.browser.browser], ['操作系统', R.browser.os], ['平台 (platform)', R.browser.platform],
+    ['UA-CH 平台', R.browser.userAgentDataPlatform], ['架构', R.browser.architecture],
+    ['渲染引擎', R.browser.renderingEngine], ['GPU 渲染器', R.browser.gpuRenderer],
+    ['移动设备', /Mobi|Android|iPhone|iPad/i.test(R.browser.userAgent) ? SiteI18n.t('common.yes') : SiteI18n.t('common.no')], ['厂商 (vendor)', R.browser.vendor]
+  ]), true);
+
+  html += panel(L('panelNav'), '', kvTable([
+    ['User-Agent', R.browser.userAgent], ['语言', R.time.language], ['语言列表', R.browser.languages],
+    ['Do Not Track', R.browser.doNotTrack], ['Cookie 启用', R.browser.cookiesEnabled],
+    ['webdriver', R.browser.webdriver]
+  ]));
+
+  var netRows = [['公网 IP (HTTP)', R.network.ip], ['WebRTC 候选 IP', R.network.webrtcIPs.length ? R.network.webrtcIPs : 'N/A']];
+  var netBody = kvTable(netRows);
+  if (R.network.ipAnalysis) {
+    var cls = R.network.ipAnalysis.level === 'warn' ? 'net-alert-warn' : (R.network.ipAnalysis.level === 'ok' ? 'net-alert-ok' : 'net-alert-info');
+    netBody += '<div class="net-alert ' + cls + '"><strong>' + esc(L('ipAnalysis')) + '</strong><br>' + esc(R.network.ipAnalysis.text) + '</div>';
+  }
+  var netStatus = R.network.ipAnalysis && R.network.ipAnalysis.level === 'warn' ? statusTag('warn', L('inconsistent')) :
+    (R.network.ip === 'N/A' ? statusTag('warn', SiteI18n.t('common.unavailable')) : statusTag('ok', 'OK'));
+  html += panel(L('panelNet'), netStatus, netBody);
+
+  var geoRows = [];
+  if (R.geo.ipGeo) {
+    var ig = R.geo.ipGeo;
+    geoRows.push(['IP 国家', ig.country], ['省/区域', ig.region], ['城市', ig.city], ['邮编', ig.postal], ['运营商 (ISP)', ig.isp], ['IP 时区', ig.timezone]);
+    if (ig.latitude != null) geoRows.push(['IP 经纬度', ig.latitude.toFixed(6) + ', ' + ig.longitude.toFixed(6)]);
+  } else {
+    geoRows.push(['IP 地理位置', 'N/A (API 不可用/被拦截)']);
+  }
+  var geoBody = kvTable(geoRows);
+  geoBody += '<div id="geo-map" class="loading">' + esc(L('loadingMap')) + '</div>';
+  geoBody += '<div class="geo-info" id="geo-info">' +
+    '<div class="geo-info-row"><span class="glabel">' + esc(L('coords')) + '</span><span id="geoCoords" class="muted">—</span></div>' +
+    '<div class="geo-info-row"><span class="glabel">' + esc(L('accuracy')) + '</span><span id="geoAccuracy" class="muted">—</span></div>' +
+    '<div class="geo-info-row"><span class="glabel">' + esc(L('source')) + '</span><span id="geoSource" class="muted">—</span></div></div>';
+  geoBody += '<p style="margin-top:10px"><button class="btn btn-ghost" id="geoBtn" style="padding:6px 14px;font-size:0.85rem">' + esc(L('gpsRequest')) + '</button> <span id="geoResult" class="muted"></span></p>';
+  var geoStatus = R.geo.browserGeo ? statusTag('ok', L('browserGps')) : (R.geo.ipGeo ? statusTag('ok', L('ipBased')) : statusTag('warn', SiteI18n.t('common.unavailable')));
+  html += panel(L('panelGeo'), geoStatus, geoBody);
+
+  html += panel(L('panelTime'), '', kvTable([
+    ['当前时间', R.time.currentTime], ['ISO 时间', R.time.currentTimeISO], ['时区', R.time.timezone],
+    ['UTC 偏移', R.time.utcOffsetString + ' (' + R.time.utcOffset + ' 分钟)'], ['区域设置 (locale)', R.time.locale], ['日期格式示例', R.time.dateFormat]
+  ]));
+
+  var s = R.hardware.screen;
+  html += panel(L('panelHw'), '', kvTable([
+    ['AudioContext 哈希', '<span class="mono">' + esc(R.hardware.audioContextHash) + '</span>', 'raw'],
+    ['设备内存', R.hardware.deviceMemory === 'N/A' ? 'N/A' : R.hardware.deviceMemory + ' GB'],
+    ['CPU 逻辑核心', R.hardware.hardwareConcurrency],
+    ['最大触控点', R.hardware.maxTouchPoints], ['支持触控', R.hardware.hasTouch],
+    ['电池', R.hardware.battery],
+    ['屏幕分辨率', s.width + ' x ' + s.height], ['可用区域', s.availWidth + ' x ' + s.availHeight],
+    ['颜色深度', s.colorDepth + ' bit'], ['设备像素比', s.devicePixelRatio], ['色域', R.hardware.colorGamut]
+  ]));
+
+  html += panel(L('panelFonts'), statusTag('ok', R.fonts.count + ' 种'),
+    '<p class="muted">检测方式：' + esc(R.fonts.method) + '</p><div class="pill-list">' +
+    (R.fonts.fonts.length ? R.fonts.fonts.map(function (f) { return '<span class="pill">' + esc(f) + '</span>'; }).join('') : '<span class="muted">未检测到</span>') + '</div>');
+
+  var canvasBody = kvTable([['哈希', '<span class="mono">' + esc(R.canvas.hash) + '</span>', 'raw'], ['画布尺寸', R.canvas.size], ['随机性检测', R.canvas.randomness]]);
+  if (R.canvas.dataURL) canvasBody += '<img class="canvas-preview" src="' + R.canvas.dataURL + '" alt="canvas fingerprint">';
+  html += panel(L('panelCanvas'), R.canvas.randomness === '正常' ? statusTag('ok', '稳定') : statusTag('warn', '检出噪声'), canvasBody);
+
+  html += panel(L('panelWebgl'), R.webgl.vendorConsistency === '正常' ? statusTag('ok', '一致') : statusTag('warn', '异常'), kvTable([
+    ['Vendor', R.webgl.vendor], ['Renderer', R.webgl.renderer], ['支持 WebGL 2.0', R.webgl.webgl2],
+    ['一致性检测', R.webgl.vendorConsistency], ['WebGL 哈希', '<span class="mono">' + esc(R.webgl.webglHash) + '</span>', 'raw'],
+    ['GPU 渲染哈希', '<span class="mono">' + esc(R.webgl.gpuRenderHash) + '</span>', 'raw'],
+    ['扩展数量', (R.webgl.extensions || []).length], ['关键参数', R.webgl.parameters], ['着色器精度', R.webgl.shaderPrecision]
+  ]));
+
+  html += panel(L('panelProxy'), R.proxy.proxyDetected ? statusTag('warn', L('suspicious')) : statusTag('ok', L('notDetected')), flagsHtml(R.proxy.flags));
+
+  var botBody = flagsHtml(R.bot.flags) + kvTable([
+    ['判定', R.bot.isBot ? '疑似自动化' : SiteI18n.t('common.normal')], ['置信度', mapBotConf(R.bot.confidence)],
+    ['插件数量', R.bot.details.pluginsCount], ['MIME 类型数', R.bot.details.mimeTypesCount],
+    ['窗口外尺寸', R.bot.details.outerWidth + ' x ' + R.bot.details.outerHeight],
+    ['窗口内尺寸', R.bot.details.innerWidth + ' x ' + R.bot.details.innerHeight],
+    ['通知权限', R.bot.details.notificationPermission], ['权限状态', R.bot.permissions]
+  ]);
+  html += panel(L('panelBot'), R.bot.isBot ? statusTag('err', L('suspicious')) : (R.bot.flags.length ? statusTag('warn', '注意') : statusTag('ok', SiteI18n.t('common.normal'))), botBody);
+
+  html += panel(L('panelSpoof'), R.spoof.spoofed ? statusTag(R.spoof.flags.length > 2 ? 'err' : 'warn', mapSpoofConf(R.spoof.confidence)) : statusTag('ok', SiteI18n.t('common.normal')),
+    '<p class="muted">综合判定：' + esc(mapSpoofConf(R.spoof.confidence)) + '</p>' + flagsHtml(R.spoof.flags));
+
+  $('detailContainer').innerHTML = html;
+
+  // 地图：优先 IP 定位，浏览器 GPS 授权后覆盖
+  tryRenderMapFromGeo(R.geo, R.geo.browserGeo);
+
+  // 浏览器 GPS 定位按钮
+  var geoBtn = $('geoBtn');
+  if (geoBtn) geoBtn.addEventListener('click', async function () {
+    geoBtn.disabled = true;
+    var out = $('geoResult');
+    out.textContent = L('gpsPending');
+    var g = await requestBrowserGeo();
+    geoBtn.disabled = false;
+    if (g) {
+      R.geo.browserGeo = g;
+      window.__fp.geo.browserGeo = g;
+      out.textContent = L('gpsOk');
+      renderGeoMap(g.latitude, g.longitude, g.accuracy, L('browserGps'));
+      updateGeoInfoUI(g.latitude.toFixed(6) + ', ' + g.longitude.toFixed(6), g.accuracyText, '浏览器 Geolocation API');
+    } else {
+      out.textContent = L('gpsDenied');
+    }
+  });
+}
+
+/* ===================== 编排 ===================== */
+var cache = { network: null, geo: null };
+var running = false;
+
+async function runAllDetections(useCache) {
+  if (running) return; running = true;
+  resetGeoMap();
+  var btn = $('reDetectBtn'); btn.disabled = true; btn.textContent = SiteI18n.t('common.detecting');
+  try {
+    var R = {};
+    R.browser = detectBrowser();
+    R.time = detectTime();
+    R.hardware = detectHardware();
+    R.canvas = detectCanvas();
+    R.webgl = detectWebGL();
+    R.bot = detectBot();
+
+    R.hardware.audioContextHash = await getAudioContextHash();
+    R.hardware.battery = await detectBattery();
+    R.fonts = await detectFonts();
+    R.bot.permissions = await detectPermissions();
+
+    if (useCache && cache.network) { R.network = cache.network; R.geo = cache.geo; }
+    else {
+      var arr = await Promise.all([detectNetwork(), detectGeo()]);
+      R.network = arr[0]; R.geo = arr[1];
+      cache.network = R.network; cache.geo = R.geo;
+    }
+
+    R.proxy = detectProxy(R);
+    R.spoof = detectSpoof(R);
+    R.fingerprint = generateFingerprint(R);
+    lastResults = R;
+    window.__fp = R;
+    renderResults(R);
+  } catch (e) {
+    console.error('检测出错:', e);
+    $('detailContainer').innerHTML = '<div class="notice">' + esc(L('detectErr')) + esc(e.message) + '</div>';
+  } finally {
+    btn.disabled = false; btn.textContent = L('reDetect'); running = false;
+  }
+}
+
+window.addEventListener('load', function () {
+  $('reDetectBtn').addEventListener('click', function () { runAllDetections(true); });
+  $('copyFpBtn').addEventListener('click', function () {
+    var fp = window.__fp && window.__fp.fingerprint;
+    if (!fp) return;
+    navigator.clipboard.writeText(fp).then(function () {
+      var b = $('copyFpBtn'), t = b.textContent; b.textContent = L('copied');
+      setTimeout(function () { b.textContent = L('copyFp'); }, 1500);
+    });
+  });
+  runAllDetections(false);
+});
+
+pageI18nRefresh = function () {
+  if (lastResults) renderResults(lastResults);
+  SiteI18n.applyDOM();
+};
+
+</script>
+<script>SiteI18n.init('fingerprint');</script>
+</body>
+</html>

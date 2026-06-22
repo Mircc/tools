@@ -66,110 +66,149 @@
         #myCanvas { max-width: 100%; max-height: 100%; display: none; }
         .privacy-tip { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--success-bg); color: var(--success-text); padding: 6px 15px; border-radius: 99px; font-size: 0.875rem; font-weight: 600; width: fit-content; margin: 0 auto; }
         .privacy-tip svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+        /* 阶段一：大号上传框 */
+        .upload-placeholder-lg { padding: 60px 30px; }
+
+        /* 预览框可点击 + 操作浮层 */
+        .preview-area { cursor: pointer; }
+        .preview-overlay {
+            position: absolute; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 12px;
+            background: rgba(15, 23, 42, 0.55); opacity: 0; pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .preview-area.show-actions .preview-overlay { opacity: 1; pointer-events: auto; }
+        @media (hover: hover) { .preview-area:hover .preview-overlay { opacity: 1; pointer-events: auto; } }
+        .overlay-btn { padding: 10px 18px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; background: #fff; color: #1e293b; min-width: 150px; transition: background 0.2s; }
+        .overlay-btn:hover { background: #f1f5f9; }
+        .overlay-btn-danger { background: #ef4444; color: #fff; }
+        .overlay-btn-danger:hover { background: #dc2626; }
+
+        /* 放大预览灯箱 */
+        .lightbox { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px; cursor: zoom-out; }
+        .lightbox.open { display: flex; }
+        .lightbox img { max-width: 95%; max-height: 95%; border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); }
+        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 40px; padding: 30px 0; border-top: 1px solid var(--border); }
     </style>
 </head>
-<body>
+<body data-i18n-title-key="watermark.title">
 
 <nav class="navbar">
     <div class="nav-container">
-        <a href="index.html" class="nav-logo">🛡️ 安全工具箱</a>
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
         <div class="nav-links">
-            <a href="index.html" class="nav-link">首页</a>
-            <a href="watermark.html" class="nav-link active">在线水印</a>
-            <a href="dns.html" class="nav-link">DNS查询</a>
-            <a href="jasonformat.html" class="nav-link">JSON工具</a>
-            <a href="base64.html" class="nav-link">Base64</a>
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link active" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
         </div>
     </div>
 </nav>
 
 <div class="container">
     <div class="g-hd">
-        <h1>在线图像水印工具</h1>
+        <h1 data-i18n="watermark.h1">在线图像水印工具</h1>
         <div class="privacy-tip">
             <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-            <span>100% 隐私保护 (纯本地处理)</span>
+            <span data-i18n="watermark.badge">100% 隐私保护 (纯本地处理)</span>
         </div>
     </div>
 
-    <div class="main-grid">
+    <!-- 阶段一：上传图片（未上传时仅显示此框） -->
+    <div class="card" id="uploadStage">
+        <div class="upload-area">
+            <input id="imageFile" type="file" accept="image/png,image/jpeg,image/gif">
+            <div class="upload-placeholder upload-placeholder-lg">
+                <div style="font-size: 3rem; margin-bottom: 12px;">🖼️</div>
+                <p style="font-weight: 600; font-size: 1.05rem;" data-i18n="watermark.uploadHint">点击选择或拖放图片</p>
+                <p id="imageStatus" style="font-size: 0.85em; color: #64748b; margin-top: 6px;">纯前端实现，图片仅在您浏览器本地处理，无外发风险。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阶段二：预览 + 参数调整（上传后显示，上传框转为预览框） -->
+    <div class="main-grid" id="editorStage" style="display: none;">
         <div class="card">
-            <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">水印设置</h2>
-            <div class="input-group">
-                <label>图片上传</label>
-                <div class="upload-area">
-                    <input id="imageFile" type="file" accept="image/png,image/jpeg,image/gif">
-                    <div class="upload-placeholder">
-                        <div style="font-size: 2rem; margin-bottom: 10px;">🖼️</div>
-                        <p style="font-weight: 600;">点击选择或拖放图片</p>
-                        <p id="imageStatus" style="font-size: 0.8em; color: #64748b;">支持大图高性能处理</p>
-                    </div>
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem;" data-i18n="watermark.previewLabel">实时预览 (缩略图)</h2>
+            <div class="preview-area" id="previewBox" data-i18n-title="watermark.previewHint" title="点击图片可放大或删除">
+                <canvas id="myCanvas"></canvas>
+                <div class="preview-overlay" id="previewOverlay">
+                    <button type="button" class="overlay-btn" id="zoomBtn" data-i18n="watermark.zoomBtn">🔍 放大预览</button>
+                    <button type="button" class="overlay-btn overlay-btn-danger" id="deleteBtn" data-i18n="watermark.deleteBtn">🗑️ 删除图片</button>
                 </div>
             </div>
+            <p id="downloadHint" style="display: none; font-size: 0.9em; color: #64748b; text-align: center; margin-top: 10px;" data-i18n="watermark.downloadNote">预览仅显示缩略图，下载时将生成原图高清水印</p>
+        </div>
 
-            <h3 style="font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.8rem;">参数调整</h3>
+        <div class="card">
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem;" data-i18n="watermark.settings">水印设置</h2>
             <div class="input-group">
-                <label for="watermarkText">水印文字</label>
+                <label for="watermarkText" data-i18n="watermark.textLabel">水印文字</label>
                 <input id="watermarkText" type="text" value="请勿用于其他用途">
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="input-group">
-                    <label>颜色 (Hex)</label>
+                    <label data-i18n="watermark.colourLabel">颜色 (Hex)</label>
                     <div class="color-input-container">
                         <input type="text" id="fontColorText" value="#0000FF" maxlength="7">
                         <input type="color" id="fontColorPicker" value="#0000FF">
                     </div>
                 </div>
                 <div class="range-container">
-                    <label>透明度</label>
+                    <label data-i18n="watermark.opacityLabel">透明度</label>
                     <input class="range-input" id="alphaRange" type="range" min="0.05" max="1" step="0.05" value="0.15">
                 </div>
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="range-container">
-                    <label>旋转角度</label>
+                    <label data-i18n="watermark.rotateLabel">旋转角度</label>
                     <input class="range-input" id="angleRange" type="range" min="-90" max="90" step="3" value="45">
                 </div>
                 <div class="range-container">
-                    <label>平铺间距</label>
+                    <label data-i18n="watermark.spacingLabel">平铺间距</label>
                     <input class="range-input" id="spaceRange" type="range" min="2" max="10" step="0.5" value="4">
                 </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="range-container">
-                    <label>字体大小</label>
+                    <label data-i18n="watermark.fontSizeLabel">字体大小</label>
                     <input class="range-input" id="sizeRange" type="range" min="0.5" max="5" step="0.1" value="1">
                 </div>
                 <div class="input-group">
-                    <label>输出格式</label>
+                    <label data-i18n="watermark.formatLabel">输出格式</label>
                     <select id="formatSelect">
-                        <option value="png">PNG (无损/推荐)</option>
-                        <option value="jpeg">JPG (文件更小)</option>
+                        <option value="png" data-i18n="watermark.pngOpt">PNG (无损/推荐)</option>
+                        <option value="jpeg" data-i18n="watermark.jpgOpt">JPG (文件更小)</option>
                     </select>
                 </div>
             </div>
             
             <div style="margin-top: 1.5rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
                 <button class="btn-primary btn-download" id="downloadBtn" disabled style="width: 100%;">
-                    ⬇️ 高清渲染并下载 (<span id="downloadFormat">PNG</span>)
+                    <span data-i18n="watermark.downloadBtn">⬇️ 高清渲染并下载</span> (<span id="downloadFormat">PNG</span>)
                 </button>
             </div>
         </div>
-
-        <div class="card">
-            <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">实时预览 <span style="font-size:0.8em; color:#64748b; font-weight:normal">(缩略图)</span></h2>
-            <div class="preview-area">
-                <p id="previewPlaceholder" style="color: #9ca3af;">图片预览区域</p>
-                <canvas id="myCanvas"></canvas>
-            </div>
-            <p id="downloadHint" style="display: none; font-size: 0.9em; color: #64748b; text-align: center; margin-top: 10px;">预览仅显示缩略图，下载时将生成原图高清水印</p>
-        </div>
     </div>
+
+    <footer data-i18n="footer.standard">© 2026 安全工具箱 | 您的数据均在本地浏览器处理，不会上传至服务器。</footer>
 </div>
 
+<!-- 放大预览灯箱 -->
+<div class="lightbox" id="lightbox">
+    <img id="lightboxImg" alt="水印预览大图">
+</div>
+
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
 <script>
     const PREVIEW_MAX_WIDTH = 800; 
     const BASE_FONT_SIZE_PX = 60; 
@@ -177,8 +216,14 @@
     const imageFile = document.getElementById('imageFile');
     const myCanvas = document.getElementById('myCanvas');
     const imageStatus = document.getElementById('imageStatus');
-    const previewPlaceholder = document.getElementById('previewPlaceholder');
     const downloadHint = document.getElementById('downloadHint');
+    const uploadStage = document.getElementById('uploadStage');
+    const editorStage = document.getElementById('editorStage');
+    const previewBox = document.getElementById('previewBox');
+    const zoomBtn = document.getElementById('zoomBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightboxImg');
     
     const watermarkText = document.getElementById('watermarkText');
     const fontColorText = document.getElementById('fontColorText');
@@ -193,7 +238,26 @@
 
     let originalImage = null; 
     let isImageLoaded = false;
-    let renderTimeout = null; 
+    let renderTimeout = null;
+    let loadedImageMeta = null;
+
+    function updateDownloadBtnLabel(disabled) {
+        const format = formatSelect.value.toUpperCase();
+        downloadBtn.disabled = !!disabled;
+        downloadBtn.innerHTML = SiteI18n.t('watermark.downloadBtn') + ' (<span id="downloadFormat">' + format + '</span>)';
+    }
+
+    function refreshImageStatus() {
+        if (!isImageLoaded) {
+            imageStatus.textContent = SiteI18n.t('watermark.uploadPrivacy');
+            return;
+        }
+        if (loadedImageMeta && loadedImageMeta.reading) {
+            imageStatus.textContent = SiteI18n.t('watermark.reading', { name: loadedImageMeta.name });
+        } else if (loadedImageMeta) {
+            imageStatus.textContent = SiteI18n.t('watermark.loaded', { w: loadedImageMeta.w, h: loadedImageMeta.h });
+        }
+    }
 
     function debounceRender() {
         if (renderTimeout) clearTimeout(renderTimeout);
@@ -208,15 +272,45 @@
             if (el === fontColorText && /^#[0-9A-F]{6}$/i.test(el.value)) fontColorPicker.value = el.value;
             debounceRender();
         }));
-        formatSelect.addEventListener('change', () => downloadFormat.textContent = formatSelect.value.toUpperCase());
+        formatSelect.addEventListener('change', () => {
+            if (!downloadBtn.disabled) updateDownloadBtnLabel(false);
+            else document.getElementById('downloadFormat').textContent = formatSelect.value.toUpperCase();
+        });
         downloadBtn.addEventListener('click', downloadHighRes);
+
+        previewBox.addEventListener('click', () => previewBox.classList.toggle('show-actions'));
+        zoomBtn.addEventListener('click', (e) => { e.stopPropagation(); openLightbox(); });
+        deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); resetImage(); });
+        lightbox.addEventListener('click', () => lightbox.classList.remove('open'));
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') lightbox.classList.remove('open'); });
+    }
+
+    function openLightbox() {
+        if (!isImageLoaded) return;
+        lightboxImg.src = myCanvas.toDataURL('image/png');
+        lightbox.classList.add('open');
+    }
+
+    function resetImage() {
+        originalImage = null;
+        isImageLoaded = false;
+        loadedImageMeta = null;
+        imageFile.value = '';
+        myCanvas.style.display = 'none';
+        downloadHint.style.display = 'none';
+        downloadBtn.disabled = true;
+        previewBox.classList.remove('show-actions');
+        editorStage.style.display = 'none';
+        uploadStage.style.display = '';
+        refreshImageStatus();
     }
 
     function handleFileChange(e) {
         const file = e.target.files[0];
         if (!file || !file.type.startsWith('image/')) return;
         originalImage = null;
-        imageStatus.textContent = `读取中: ${file.name}...`;
+        loadedImageMeta = { reading: true, name: file.name };
+        refreshImageStatus();
 
         const reader = new FileReader();
         reader.onload = function(event) {
@@ -224,11 +318,14 @@
             img.onload = function() {
                 originalImage = img;
                 isImageLoaded = true;
-                imageStatus.textContent = `✅ 已加载 (${img.naturalWidth} x ${img.naturalHeight})`;
-                previewPlaceholder.style.display = 'none';
+                loadedImageMeta = { w: img.naturalWidth, h: img.naturalHeight };
+                refreshImageStatus();
+                uploadStage.style.display = 'none';
+                editorStage.style.display = '';
                 myCanvas.style.display = 'block';
                 downloadHint.style.display = 'block';
-                downloadBtn.disabled = false;
+                updateDownloadBtnLabel(false);
+                previewBox.classList.remove('show-actions');
                 drawPreview();
             };
             img.src = event.target.result;
@@ -291,7 +388,7 @@
     function downloadHighRes() {
         if (!originalImage) return;
         downloadBtn.disabled = true;
-        downloadBtn.textContent = '正在渲染...';
+        downloadBtn.textContent = SiteI18n.t('watermark.rendering');
         
         setTimeout(() => {
             const hiResCanvas = document.createElement('canvas');
@@ -307,8 +404,7 @@
             link.href = hiResCanvas.toDataURL(format === 'jpeg' ? 'image/jpeg' : 'image/png', 0.9);
             link.click();
             
-            downloadBtn.disabled = false;
-            downloadBtn.innerHTML = `⬇️ 高清渲染并下载 (<span id="downloadFormat">${format.toUpperCase()}</span>)`;
+            updateDownloadBtnLabel(false);
         }, 50);
     }
 
@@ -316,6 +412,14 @@
         hex = hex.trim().replace('#', '');
         return `rgba(${parseInt(hex.substring(0,2),16)}, ${parseInt(hex.substring(2,4),16)}, ${parseInt(hex.substring(4,6),16)}, ${alpha})`;
     }
+
+    pageI18nRefresh = function () {
+        refreshImageStatus();
+        if (isImageLoaded && !downloadBtn.disabled) updateDownloadBtnLabel(false);
+    };
+
+    SiteI18n.init('watermark');
+    refreshImageStatus();
 </script>
 </body>
 </html>

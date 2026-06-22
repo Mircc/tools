@@ -7,8 +7,6 @@
     <style>
         :root { --primary: #2563eb; --bg: #f8fafc; --card: #fff; --border: #e2e8f0; }
         body { font-family: sans-serif; background: var(--bg); color: #334155; margin: 0; line-height: 1.5; }
-
-        /* Navbar */
         .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1000; }
         .nav-container { max-width: 1200px; margin: 0 auto; height: 60px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
         .nav-logo { font-weight: 700; font-size: 1.15rem; color: var(--primary); text-decoration: none; }
@@ -17,106 +15,104 @@
         .nav-link:hover { color: var(--primary); }
         .nav-link.active { color: var(--primary); font-weight: 600; }
         @media (max-width: 768px) { .nav-links { display: none; } }
-
         .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
         h1 { text-align: center; margin-bottom: 20px; color: #1e293b; }
         .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        
         textarea { width: 100%; min-height: 150px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; font-family: monospace; resize: vertical; }
         textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
-        
         .controls { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; }
         .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
         .btn:hover { background: #1d4ed8; }
         select { padding: 8px; border-radius: 6px; border: 1px solid var(--border); }
         .status { font-size: 0.9em; margin-top: 5px; min-height: 1.2em; }
+        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 40px; }
     </style>
 </head>
-<body>
+<body data-i18n-title-key="base64.title">
 
 <nav class="navbar">
     <div class="nav-container">
-        <a href="index.html" class="nav-logo">🛡️ 安全工具箱</a>
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
         <div class="nav-links">
-            <a href="index.html" class="nav-link">首页</a>
-            <a href="watermark.html" class="nav-link">在线水印</a>
-            <a href="dns.html" class="nav-link">DNS查询</a>
-            <a href="jasonformat.html" class="nav-link">JSON工具</a>
-            <a href="base64.html" class="nav-link active">Base64</a>
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link active" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
         </div>
     </div>
 </nav>
 
 <div class="container">
-    <h1>Base64 编/解码工具</h1>
-    
+    <h1 data-i18n="base64.h1">Base64 编/解码工具</h1>
     <div class="card">
-        <label style="display:block;margin-bottom:8px;font-weight:600">输入内容</label>
-        <textarea id="inputText" placeholder="输入文本或 Base64..."></textarea>
+        <label style="display:block;margin-bottom:8px;font-weight:600" data-i18n="base64.inputLabel">输入内容</label>
+        <textarea id="inputText" data-i18n-placeholder="base64.inputPh" placeholder="输入文本或 Base64..."></textarea>
     </div>
-
     <div class="controls">
         <div>
-            <label style="font-size:0.9em">编码格式: </label>
+            <label style="font-size:0.9em" data-i18n="base64.encoding">编码格式: </label>
             <select id="encodingSelect">
                 <option value="utf-8">UTF-8</option>
                 <option value="ascii">ASCII</option>
             </select>
         </div>
-        <button class="btn" onclick="process()">⚡ 自动转换</button>
+        <button class="btn" id="processBtn" data-i18n="base64.autoBtn">⚡ 自动转换</button>
     </div>
-
     <div class="card">
-        <label style="display:block;margin-bottom:8px;font-weight:600">处理结果 (双击复制)</label>
-        <textarea id="outputText" readonly placeholder="结果..."></textarea>
+        <label style="display:block;margin-bottom:8px;font-weight:600" data-i18n="base64.outputLabel">处理结果 (双击复制)</label>
+        <textarea id="outputText" readonly data-i18n-placeholder="base64.outputPh" placeholder="结果..."></textarea>
         <div id="status" class="status"></div>
     </div>
+    <footer data-i18n="footer.standard">© 2026 安全工具箱 | 您的数据均在本地浏览器处理，不会上传至服务器。</footer>
 </div>
 
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
 <script>
-    const input = document.getElementById('inputText');
-    const output = document.getElementById('outputText');
-    const status = document.getElementById('status');
-    const encSelect = document.getElementById('encodingSelect');
+    var input = document.getElementById('inputText');
+    var output = document.getElementById('outputText');
+    var status = document.getElementById('status');
+    var encSelect = document.getElementById('encodingSelect');
 
     function process() {
-        const val = input.value.trim();
-        const enc = encSelect.value;
-        if(!val) { status.textContent = '❌ 请输入内容'; return; }
-        
-        // 简单判断：如果符合 Base64 格式，优先尝试解码
-        const isB64 = /^[A-Za-z0-9+/=]+$/.test(val) && (val.length % 4 === 0);
-        
+        var val = input.value.trim();
+        var enc = encSelect.value;
+        if (!val) { status.textContent = SiteI18n.t('base64.errEmpty'); return; }
+        var isB64 = /^[A-Za-z0-9+/=]+$/.test(val) && (val.length % 4 === 0);
         if (isB64) {
             try {
-                const bin = atob(val);
-                const bytes = new Uint8Array(bin.length);
-                for(let i=0; i<bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                var bin = atob(val);
+                var bytes = new Uint8Array(bin.length);
+                for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
                 output.value = new TextDecoder(enc).decode(bytes);
-                status.textContent = '✅ 解码成功';
+                status.textContent = SiteI18n.t('base64.decodeOk');
                 status.style.color = 'green';
                 return;
-            } catch(e) {}
+            } catch (e) {}
         }
-        
-        // 否则编码
         try {
-            const bytes = new TextEncoder(enc).encode(val);
-            let bin = '';
-            for(let i=0; i<bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-            output.value = btoa(bin);
-            status.textContent = '✅ 编码成功';
+            var bytes2 = new TextEncoder(enc).encode(val);
+            var bin2 = '';
+            for (var j = 0; j < bytes2.length; j++) bin2 += String.fromCharCode(bytes2[j]);
+            output.value = btoa(bin2);
+            status.textContent = SiteI18n.t('base64.encodeOk');
             status.style.color = 'green';
-        } catch(e) {
-            status.textContent = '❌ 转换失败';
+        } catch (e) {
+            status.textContent = SiteI18n.t('base64.convertFail');
             status.style.color = 'red';
         }
     }
-    
-    output.addEventListener('dblclick', () => {
+
+    document.getElementById('processBtn').onclick = process;
+    output.addEventListener('dblclick', function () {
         output.select(); document.execCommand('copy');
-        status.textContent = '📋 已复制';
+        status.textContent = SiteI18n.t('common.copied');
     });
+    SiteI18n.init('base64');
 </script>
 </body>
 </html>

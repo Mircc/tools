@@ -207,6 +207,17 @@
             display: block;
         }
         
+        /* CORS 代理面板 */
+        .proxy-toggle { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #475569; cursor: pointer; }
+        .proxy-toggle input { width: auto; }
+        .proxy-note { margin-top: 12px; font-size: 0.85em; color: #64748b; background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; }
+        .proxy-note p { margin: 0 0 8px; }
+        .proxy-note p:last-child { margin-bottom: 0; }
+        .proxy-note code { background: #e2e8f0; padding: 1px 5px; border-radius: 4px; font-family: monospace; }
+
+        /* 响应元信息（状态/耗时/大小） */
+        #responseMeta { font-size: 0.85em; color: #64748b; margin-left: 12px; }
+
         /* 缓存状态提示 */
         #cacheStatus {
             font-size: 0.8em;
@@ -215,24 +226,49 @@
             margin-top: -10px;
             margin-bottom: 10px;
         }
+        /* --- 统一导航栏样式 --- */
+        .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1000; }
+        .nav-container { max-width: 1200px; margin: 0 auto; height: 60px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { font-weight: 700; font-size: 1.15rem; color: #2563eb; text-decoration: none; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-link { text-decoration: none; color: #64748b; font-weight: 500; font-size: 0.9rem; transition: color 0.2s; }
+        .nav-link:hover { color: #2563eb; }
+        .nav-link.active { color: #2563eb; font-weight: 600; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+        footer { text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 40px; }
     </style>
 </head>
-<body>
+<body data-i18n-title-key="restful.title">
+
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
+        </div>
+    </div>
+</nav>
 
 <div class="container">
-    <h1>在线 RESTful API 调试工具</h1>
+    <h1 data-i18n="restful.h1">在线 RESTful API 调试工具</h1>
     
     <div style="padding: 10px 15px; background: #fffbe7; border: 1px solid #fcd34d; border-radius: 6px; margin-bottom: 20px; font-size: 0.9em; color: #92400e;">
-        ⚠️ **重要提示：** 此工具纯本地运行。若请求其他域名的 API，可能因浏览器 **CORS** 策略被阻止。如遇请求失败，请尝试在本地服务器环境中运行，或请求支持 CORS 的 API。
+        ⚠️ <span data-i18n="restful.corsWarn">重要提示：此工具在浏览器本地运行。受同源策略限制，跨域请求可能被浏览器拦截（CORS）。可启用下方代理转发。</span>
     </div>
     
-    <p id="cacheStatus">配置已启用本地缓存，输入时自动保存。</p>
+    <p id="cacheStatus" data-i18n="restful.cacheHint">配置已启用本地缓存，输入时自动保存。</p>
 
     <div class="main-grid">
-        <div class="card" id="requestConfigCard"> <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #1e293b;">请求配置</h2>
+        <div class="card" id="requestConfigCard"> <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #1e293b;" data-i18n="restful.reqConfig">请求配置</h2>
 
             <div style="margin-bottom: 1.5rem;">
-                <label for="urlInput">URL 地址</label>
+                <label for="urlInput" data-i18n="restful.urlLabel">URL 地址</label>
                 <div class="request-bar">
                     <select id="methodSelect">
                         <option value="GET">GET</option>
@@ -241,28 +277,30 @@
                         <option value="DELETE">DELETE</option>
                         <option value="PATCH">PATCH</option>
                         <option value="HEAD">HEAD</option>
+                        <option value="OPTIONS">OPTIONS</option>
                     </select>
-                    <input id="urlInput" type="text" placeholder="请输入 API URL (例如: https://jsonplaceholder.typicode.com/posts/1)" value="">
-                    <button class="btn-primary" id="sendBtn">发送请求</button>
+                    <input id="urlInput" type="text" data-i18n-placeholder="restful.urlPh" placeholder="请输入 API URL (例如: https://jsonplaceholder.typicode.com/posts/1)" value="">
+                    <button class="btn-primary" id="sendBtn" data-i18n="restful.sendBtn">发送请求</button>
                 </div>
             </div>
 
             <div class="tab-bar" id="requestTabs">
-                <button class="tab-btn active" data-tab="headers">Headers</button>
-                <button class="tab-btn" data-tab="auth">认证 (Auth)</button>
-                <button class="tab-btn" data-tab="body">Body (主体)</button>
-                <button class="tab-btn" data-tab="import">导入 JSON</button>
+                <button class="tab-btn active" data-tab="headers" data-i18n="restful.tabHeaders">Headers</button>
+                <button class="tab-btn" data-tab="auth" data-i18n="restful.tabAuth">认证 (Auth)</button>
+                <button class="tab-btn" data-tab="body" data-i18n="restful.tabBody">Body (主体)</button>
+                <button class="tab-btn" data-tab="proxy" data-i18n="restful.tabProxy">代理 (CORS)</button>
+                <button class="tab-btn" data-tab="import" data-i18n="restful.tabImport">导入 JSON</button>
             </div>
             
             <div class="tab-content active" id="tab-headers">
                 <div class="input-group">
-                    <label for="customUAInput">User-Agent</label>
-                    <input type="text" placeholder="Value (例如: custom-ua-client)" id="customUAInput" value="">
+                    <label for="customUAInput"><span data-i18n="restful.userAgent">User-Agent</span> <span style="font-weight:400; color:#94a3b8;" data-i18n="restful.uaHint">(浏览器安全限制，fetch 会忽略此头，仅经代理转发时可能生效)</span></label>
+                    <input type="text" data-i18n-placeholder="restful.valuePh" placeholder="Value (例如: custom-ua-client)" id="customUAInput" value="">
                 </div>
 
-                <h4 style="font-size: 1em; margin-top: 1rem; margin-bottom: 0.5rem;">自定义 Headers</h4>
+                <h4 style="font-size: 1em; margin-top: 1rem; margin-bottom: 0.5rem;" data-i18n="restful.customHeaders">自定义 Headers</h4>
                 <div class="key-value-actions">
-                    <button class="btn-secondary" id="addHeaderBtn">添加 Header</button>
+                    <button class="btn-secondary" id="addHeaderBtn" data-i18n="restful.addHeader">添加 Header</button>
                 </div>
                 <div id="headersContainer">
                     </div>
@@ -270,80 +308,106 @@
 
             <div class="tab-content" id="tab-auth">
                 <div class="input-group">
-                    <label for="authTypeSelect">认证类型</label>
+                    <label for="authTypeSelect" data-i18n="restful.authType">认证类型</label>
                     <select id="authTypeSelect" style="height: 40px;">
-                        <option value="none">无认证</option>
-                        <option value="bearer">Bearer Token (OAuth 2.0)</option>
-                        <option value="basic">Basic Auth (用户名/密码)</option>
+                        <option value="none" data-i18n="restful.noAuth">无认证</option>
+                        <option value="bearer" data-i18n="restful.bearer">Bearer Token (OAuth 2.0)</option>
+                        <option value="basic" data-i18n="restful.basic">Basic Auth (用户名/密码)</option>
                     </select>
                 </div>
                 
                 <div id="bearerTokenGroup" style="display: none;" class="input-group">
-                    <label for="bearerTokenInput">Bearer Token</label>
-                    <input type="text" id="bearerTokenInput" placeholder="请输入 Token (例如: eyJhbGciOiJIUzI1NiI...)" />
+                    <label for="bearerTokenInput" data-i18n="restful.bearer">Bearer Token</label>
+                    <input type="text" id="bearerTokenInput" data-i18n-placeholder="restful.bearerPh" placeholder="请输入 Token (例如: eyJhbGciOiJIUzI1NiI...)" />
                 </div>
                 
                 <div id="basicAuthGroup" style="display: none;">
                     <div class="input-group">
-                        <label for="basicAuthUsername">用户名</label>
-                        <input type="text" id="basicAuthUsername" placeholder="Username" />
+                        <label for="basicAuthUsername" data-i18n="restful.username">用户名</label>
+                        <input type="text" id="basicAuthUsername" data-i18n-placeholder="restful.username" placeholder="Username" />
                     </div>
                     <div class="input-group">
-                        <label for="basicAuthPassword">密码</label>
-                        <input type="password" id="basicAuthPassword" placeholder="Password" />
+                        <label for="basicAuthPassword" data-i18n="restful.password">密码</label>
+                        <input type="password" id="basicAuthPassword" data-i18n-placeholder="restful.password" placeholder="Password" />
                     </div>
                 </div>
             </div>
             
             <div class="tab-content" id="tab-body">
                 <div class="input-group">
-                    <label for="bodyTypeSelect">Body 类型</label>
+                    <label for="bodyTypeSelect" data-i18n="restful.bodyType">Body 类型</label>
                     <select id="bodyTypeSelect" style="height: 40px;">
-                        <option value="none">无 Body</option>
-                        <option value="json">JSON (application/json)</option>
-                        <option value="text">纯文本 (text/plain)</option>
-                        <option value="form">URL-Encoded 表单 (不建议在此处使用)</option>
+                        <option value="none" data-i18n="restful.noBody">无 Body</option>
+                        <option value="json" data-i18n="restful.bodyJson">JSON (application/json)</option>
+                        <option value="text" data-i18n="restful.bodyText">纯文本 (text/plain)</option>
+                        <option value="form" data-i18n="restful.bodyForm">URL-Encoded 表单 (不建议在此处使用)</option>
                     </select>
                 </div>
                 <div class="input-group" id="bodyTextareaGroup">
-                    <label for="requestBodyTextarea">请求主体内容</label>
-                    <textarea id="requestBodyTextarea" placeholder='{"key": "value", "id": 1}'></textarea>
+                    <label for="requestBodyTextarea" data-i18n="restful.bodyContent">请求主体内容</label>
+                    <textarea id="requestBodyTextarea" data-i18n-placeholder="restful.bodyPh" placeholder='{"key": "value", "id": 1}'></textarea>
                 </div>
             </div>
             
+            <div class="tab-content" id="tab-proxy">
+                <label class="proxy-toggle">
+                    <input type="checkbox" id="proxyEnable">
+                    <span data-i18n="restful.proxyHint">通过 CORS 代理转发请求（解决跨域 CORS 拦截）</span>
+                </label>
+                <div class="input-group" style="margin-top: 12px;">
+                    <label for="proxyUrlInput" data-i18n="restful.proxyPrefix">代理前缀地址</label>
+                    <input type="text" id="proxyUrlInput" placeholder="https://tools.eu.org/proxy?url=" value="https://tools.eu.org/proxy?url=">
+                </div>
+                <div class="proxy-note">
+                    <p><strong data-i18n="restful.proxyHow">工作原理：</strong><span data-i18n="restful.proxyHowText">启用后，实际请求地址为 代理前缀 + encodeURIComponent(目标URL)，由代理服务器代为请求并补全 CORS 响应头，浏览器即可读取结果。</span></p>
+                    <p><strong data-i18n="restful.proxyWhy">为什么需要它：</strong><span data-i18n="restful.proxyWhyText">CORS 由目标 API 服务器控制，静态页面无法绕过。需在 tools.eu.org 上部署代理服务。</span></p>
+                    <p>⚠️ <strong data-i18n="restful.proxyPrivacy">隐私提示：</strong><span data-i18n="restful.proxyPrivacyText">启用代理后，请求 URL、Headers、Body 会经过该代理服务器，请仅使用您自己可控的代理。</span></p>
+                </div>
+            </div>
+
             <div class="tab-content" id="tab-import">
                 <div class="input-group">
-                    <label for="importJsonTextarea">粘贴 HTTPie/Postman JSON 请求配置</label>
-                    <textarea id="importJsonTextarea" placeholder="请粘贴完整的 HTTPie/Postman 导出 JSON 文本到此处..."></textarea>
+                    <label for="importJsonTextarea" data-i18n="restful.importJsonLabel">粘贴 HTTPie/Postman JSON 请求配置</label>
+                    <textarea id="importJsonTextarea" data-i18n-placeholder="restful.importJsonPh" placeholder="请粘贴完整的 HTTPie/Postman 导出 JSON 文本到此处..."></textarea>
                 </div>
-                <button class="btn-primary" id="loadJsonBtn" style="width: 100%;">导入并应用配置</button>
-                <p id="importStatus" style="margin-top: 10px; color: #f97316; font-size: 0.9em;">支持 HTTPie 1.0.0 格式。</p>
+                <button class="btn-primary" id="loadJsonBtn" style="width: 100%;" data-i18n="restful.importBtn">导入并应用配置</button>
+                <p id="importStatus" style="margin-top: 10px; color: #f97316; font-size: 0.9em;" data-i18n="restful.importNote">支持 HTTPie 1.0.0 格式。</p>
             </div>
 
         </div>
 
         <div class="card">
-            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #1e293b;">响应结果</h2>
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #1e293b;" data-i18n="restful.response">响应结果</h2>
 
-            <div style="display: flex; align-items: center;">
-                <label style="font-weight: 600;">HTTP 状态码:</label>
+            <div style="display: flex; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight: 600;" data-i18n="restful.httpStatus">HTTP 状态码:</label>
                 <span id="statusDisplay">--</span>
+                <span id="responseMeta"></span>
             </div>
 
             <div class="response-section">
-                <h3>响应 Headers</h3>
+                <h3 data-i18n="restful.respHeaders">响应 Headers</h3>
                 <pre class="response-viewer" id="responseHeaders"></pre>
             </div>
 
             <div class="response-section">
-                <h3>响应 Body</h3>
-                <pre class="response-viewer" id="responseBody">点击 "发送请求" 查看结果...</pre>
+                <h3 data-i18n="restful.respBody">响应 Body</h3>
+                <pre class="response-viewer" id="responseBody" data-i18n="restful.clickSend">点击 "发送请求" 查看结果...</pre>
             </div>
         </div>
     </div>
+
+    <footer data-i18n="footer.standard">© 2026 安全工具箱 | 您的数据均在本地浏览器处理，不会上传至服务器。</footer>
 </div>
 
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/i18n-extra-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
 <script>
+    var responseIdle = true;
+    var importStatusKey = 'importNote';
+    var lastResponseMeta = null;
     // --- 常量与 DOM 元素引用 ---
     const STORAGE_KEY = 'apiDebuggerConfig'; // localStorage 键名
     const requestConfigCard = document.getElementById('requestConfigCard'); // 用于监听所有输入
@@ -367,9 +431,15 @@
     const bodyTextareaGroup = document.getElementById('bodyTextareaGroup');
 
     const statusDisplay = document.getElementById('statusDisplay');
+    const responseMeta = document.getElementById('responseMeta');
     const responseHeaders = document.getElementById('responseHeaders');
     const responseBody = document.getElementById('responseBody');
     const requestTabs = document.getElementById('requestTabs');
+
+    // CORS 代理元素
+    const proxyEnable = document.getElementById('proxyEnable');
+    const proxyUrlInput = document.getElementById('proxyUrlInput');
+    const DEFAULT_PROXY_URL = 'https://tools.eu.org/proxy?url=';
     
     // Import elements
     const importJsonTextarea = document.getElementById('importJsonTextarea');
@@ -420,7 +490,10 @@
             basicPassword: basicAuthPassword.value, 
             
             bodyType: bodyTypeSelect.value,
-            requestBody: requestBodyTextarea.value
+            requestBody: requestBodyTextarea.value,
+
+            proxyEnabled: proxyEnable.checked,
+            proxyUrl: proxyUrlInput.value
         };
 
         try {
@@ -472,6 +545,10 @@
             requestBodyTextarea.value = config.requestBody || '';
             updateBodyFields();
 
+            // 5. 应用 CORS 代理
+            proxyEnable.checked = !!config.proxyEnabled;
+            proxyUrlInput.value = config.proxyUrl || DEFAULT_PROXY_URL;
+
         } catch (e) {
             console.error('加载本地配置失败:', e);
             localStorage.removeItem(STORAGE_KEY); // 清除损坏的配置
@@ -486,6 +563,8 @@
         customUAInput.value = 'REST-API-Client/1.0 (Web Debugger)';
         authTypeSelect.value = 'none';
         bodyTypeSelect.value = 'none';
+        proxyEnable.checked = false;
+        proxyUrlInput.value = DEFAULT_PROXY_URL;
         
         clearDynamicHeaders();
         addHeaderRow('Accept', 'application/json, text/plain, */*');
@@ -549,7 +628,8 @@
         document.getElementById(`tab-${targetTab}`).classList.add('active');
         
         if (targetTab === 'import') {
-            importStatus.textContent = '支持 HTTPie 1.0.0 格式。';
+            importStatusKey = 'importNote';
+            importStatus.textContent = SiteI18n.t('restful.importNote');
             importStatus.style.color = '#f97316';
         }
     }
@@ -560,9 +640,9 @@
         const row = document.createElement('div');
         row.className = 'key-value-row';
         row.innerHTML = `
-            <input type="text" placeholder="Key (例如: Content-Type)" value="${key}">
-            <input type="text" placeholder="Value" value="${value}">
-            <button class="btn-danger">移除</button>
+            <input type="text" placeholder="${SiteI18n.t('restful.keyPh')}" value="${key}">
+            <input type="text" placeholder="${SiteI18n.t('restful.valuePh')}" value="${value}">
+            <button class="btn-danger">${SiteI18n.t('restful.remove')}</button>
         `;
         
         // 移除按钮事件
@@ -638,7 +718,8 @@
     function handleImportJson() {
         const jsonString = importJsonTextarea.value.trim();
         if (!jsonString) {
-            importStatus.textContent = '❌ 请粘贴 HTTPie/Postman JSON 文本。';
+            importStatusKey = 'importPaste';
+            importStatus.textContent = SiteI18n.t('restful.importPaste');
             importStatus.style.color = '#dc2626';
             return;
         }
@@ -647,13 +728,15 @@
             const data = JSON.parse(jsonString);
             loadRequestFromHttpieJson(data);
             
-            importStatus.textContent = '✅ 配置导入成功！请检查 Headers 和 Body 标签页。';
+            importStatusKey = 'importSuccess';
+            importStatus.textContent = SiteI18n.t('restful.importSuccess');
             importStatus.style.color = '#166534';
             
             document.querySelector('.tab-btn[data-tab="headers"]').click();
 
         } catch (e) {
-            importStatus.textContent = `❌ JSON 解析失败，请检查格式。错误: ${e.message}`;
+            importStatusKey = 'importFail';
+            importStatus.textContent = SiteI18n.t('restful.importFail', { msg: e.message });
             importStatus.style.color = '#dc2626';
         }
     }
@@ -714,7 +797,7 @@
             } else if (body.type === 'form' && body.form && body.form.fields.length > 0) {
                  bodyTypeSelect.value = 'form';
                  requestBodyTextarea.value = JSON.stringify(body.form.fields, null, 2);
-                 alert('Body 包含 Form 字段，已将其 JSON 格式内容填充到 Body 文本区。请确保 Headers 中的 Content-Type 正确。');
+                 alert(SiteI18n.t('restful.formBodyAlert'));
 
             } else {
                 bodyTypeSelect.value = 'none';
@@ -738,7 +821,7 @@
         const method = methodSelect.value;
         
         if (!url) {
-            alert('URL 不能为空！');
+            alert(SiteI18n.t('restful.errUrl'));
             return;
         }
 
@@ -764,34 +847,63 @@
             }
         }
         
-        // 3. 处理 Body
+        // 3. 处理 Body 与 Content-Type
         const bodyType = bodyTypeSelect.value;
         const bodyContent = requestBodyTextarea.value;
         
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && bodyType !== 'none') {
             requestOptions.body = bodyContent;
+
+            // 若用户未在 Headers 中手动指定 Content-Type，则按 Body 类型自动补全
+            const hasContentType = Object.keys(requestOptions.headers)
+                .some(h => h.toLowerCase() === 'content-type');
+            if (!hasContentType) {
+                const ctMap = {
+                    json: 'application/json',
+                    text: 'text/plain;charset=UTF-8',
+                    form: 'application/x-www-form-urlencoded;charset=UTF-8'
+                };
+                if (ctMap[bodyType]) requestOptions.headers['Content-Type'] = ctMap[bodyType];
+            }
         }
 
-        // 4. 清空和更新状态
+        // 4. 计算最终请求地址（可选 CORS 代理）
+        let finalUrl = url;
+        let viaProxy = false;
+        if (proxyEnable.checked) {
+            const base = proxyUrlInput.value.trim();
+            if (!base) {
+                alert(SiteI18n.t('restful.proxyEmptyAlert'));
+                return;
+            }
+            finalUrl = base + encodeURIComponent(url);
+            viaProxy = true;
+        }
+
+        // 5. 清空和更新状态
+        responseIdle = false;
         updateStatus('--', '');
-        responseHeaders.textContent = '正在发送请求...';
-        responseBody.textContent = '等待服务器响应...';
+        responseMeta.textContent = '';
+        responseHeaders.textContent = SiteI18n.t('restful.sending');
+        responseBody.textContent = viaProxy ? SiteI18n.t('restful.sendingProxy') : SiteI18n.t('restful.waiting');
         sendBtn.disabled = true;
 
+        const startTime = performance.now();
         try {
-            const response = await fetch(url, requestOptions);
+            const response = await fetch(finalUrl, requestOptions);
+            const elapsed = Math.round(performance.now() - startTime);
             
-            // 5. 处理状态码
+            // 6. 处理状态码
             updateStatus(response.status, response.statusText);
 
-            // 6. 处理响应 Headers
+            // 7. 处理响应 Headers
             let headerText = '';
             for (const [key, value] of response.headers.entries()) {
                 headerText += `${key}: ${value}\n`;
             }
-            responseHeaders.textContent = headerText || '(无响应头部)';
+            responseHeaders.textContent = headerText || SiteI18n.t('restful.noHeaders');
 
-            // 7. 处理响应 Body
+            // 8. 处理响应 Body
             let bodyText;
             const contentType = response.headers.get('content-type');
             
@@ -801,23 +913,40 @@
                     bodyText = JSON.stringify(json, null, 2);
                 } catch (e) {
                     bodyText = await response.text();
-                    bodyText = `JSON 解析失败。原始内容:\n${bodyText}`;
+                    bodyText = SiteI18n.t('restful.jsonRaw', { raw: bodyText });
                 }
             } else {
                 bodyText = await response.text();
             }
 
-            responseBody.textContent = bodyText || '(无响应主体)';
+            // 9. 响应元信息：耗时 + 大小
+            const sizeBytes = new Blob([bodyText || '']).size;
+            const proxySuffix = viaProxy ? ' · ' + SiteI18n.t('restful.viaProxy') : '';
+            lastResponseMeta = { elapsed: elapsed, size: formatBytes(sizeBytes), proxy: proxySuffix };
+            responseMeta.textContent = SiteI18n.t('restful.elapsed') + ' ' + elapsed + ' ' + SiteI18n.t('restful.ms') + ' · ' + SiteI18n.t('restful.size') + ' ' + formatBytes(sizeBytes) + proxySuffix;
+
+            responseBody.textContent = bodyText || SiteI18n.t('restful.noRespBody');
 
         } catch (error) {
             console.error('Fetch Error:', error);
-            updateStatus('ERR', 'Network Error');
-            responseHeaders.textContent = '无法获取 Headers。';
-            responseBody.textContent = `请求失败：可能是网络错误、URL 错误，或最常见的原因是 **CORS 跨域策略**阻止了请求。\n\n错误信息: ${error.message}`;
+            updateStatus('ERR', SiteI18n.t('restful.networkError'));
+            responseHeaders.textContent = SiteI18n.t('restful.cannotGetHeaders');
+            const proxyTip = proxyEnable.checked
+                ? SiteI18n.t('restful.proxyTipOn')
+                : SiteI18n.t('restful.proxyTipOff');
+            responseBody.textContent = SiteI18n.t('restful.fetchFail') + '\n' + proxyTip + '\n\n' + SiteI18n.t('restful.errMsg', { msg: error.message });
+            lastResponseMeta = null;
 
         } finally {
             sendBtn.disabled = false;
         }
+    }
+
+    // --- 辅助函数：字节大小格式化 ---
+    function formatBytes(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     }
 
     // --- 辅助函数：更新状态显示 (不变) ---
@@ -832,6 +961,30 @@
             statusDisplay.classList.add(`status-${statusClass}xx`);
         }
     }
+
+    function refreshDynamicHeaderRows() {
+        headersContainer.querySelectorAll('.key-value-row').forEach(function(row) {
+            var inputs = row.querySelectorAll('input');
+            if (inputs[0]) inputs[0].placeholder = SiteI18n.t('restful.keyPh');
+            if (inputs[1]) inputs[1].placeholder = SiteI18n.t('restful.valuePh');
+            var btn = row.querySelector('.btn-danger');
+            if (btn) btn.textContent = SiteI18n.t('restful.remove');
+        });
+    }
+
+    pageI18nRefresh = function() {
+        if (responseIdle) {
+            responseBody.textContent = SiteI18n.t('restful.clickSend');
+        } else if (lastResponseMeta) {
+            responseMeta.textContent = SiteI18n.t('restful.elapsed') + ' ' + lastResponseMeta.elapsed + ' ' + SiteI18n.t('restful.ms') + ' · ' + SiteI18n.t('restful.size') + ' ' + lastResponseMeta.size + lastResponseMeta.proxy;
+        }
+        if (importStatusKey && importStatusKey !== 'importFail') {
+            importStatus.textContent = SiteI18n.t('restful.' + importStatusKey);
+        }
+        refreshDynamicHeaderRows();
+    };
+
+    SiteI18n.init('restful');
 </script>
 </body>
 </html>
