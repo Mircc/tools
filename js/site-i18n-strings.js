@@ -12,9 +12,9 @@ window.SiteI18nStrings = {
     },
     footer: {
         standard: {
-            zh: '© 2026 安全工具箱 | 您的数据均在本地浏览器处理，不会上传至服务器。',
-            en: '© 2026 Security Toolbox | All data is processed locally in your browser and never uploaded to a server.',
-            ja: '© 2026 セキュリティツールボックス | データはすべてブラウザ内で処理され、サーバーに送信されません。'
+            zh: '<a href="privacy-policy.html">关于隐私协议</a>',
+            en: '<a href="privacy-policy.html">Privacy Policy</a>',
+            ja: '<a href="privacy-policy.html">プライバシーポリシー</a>'
         },
         netmask: {
             zh: '网络工具 | 纯前端计算 | 您的数据不会上传',
@@ -53,12 +53,24 @@ window.SiteI18nStrings = {
         multiExpired: { zh: '⚠️ 当前信息已超出 48 小时有效期，密钥可能已被销毁。', en: '⚠️ This message has exceeded the 48-hour validity period; the key may have been destroyed.', ja: '⚠️ このメッセージは 48 時間の有効期限を過ぎています。鍵は既に削除されている可能性があります。' },
         syncingMeta: { zh: '正在读取密信信息…', en: 'Loading message info…', ja: 'メッセージ情報を読み込み中…' },
         footer: { zh: '© 2026 安全工具箱 | 明文与密文仅在本地处理，仅随机密钥托管于服务端。', en: '© 2026 Security Toolbox | Plaintext and ciphertext are processed locally; only random keys are stored on the server.', ja: '© 2026 セキュリティツールボックス | 平文と暗号文はローカルで処理され、ランダム鍵のみサーバーに保存されます。' },
-        intro1: { zh: '在互联网上，任何留言信息都可能被永久保存、检索或恶意收集。', en: 'Online, any message may be stored permanently, indexed, or collected maliciously.', ja: 'インターネット上では、あらゆるメッセージが永久に保存・検索・悪意を持って収集される可能性があります。' },
-        introQ: { zh: '如何安全的分享个人信息？', en: 'How can you share personal information safely?', ja: '個人情報を安全に共有するには？' },
-        intro2a: { zh: '用', en: 'Use ', ja: '' },
-        introHighlight: { zh: '"限时密信"', en: '"Ephemeral Message"', ja: '「期限付きメッセージ」' },
-        intro2b: { zh: '给信息加上有效期。互动者需在有效期内方可解密。这样创作者既提供了合作机会，又', en: ' to add an expiry to your information. Recipients can only decrypt within the validity period — enabling collaboration whilst ', ja: 'で情報に有効期限を付けましょう。受信者は期限内にのみ復号できます。協力の機会を提供しつつ、' },
-        intro2c: { zh: '彻底避免了后续的长期骚扰', en: 'avoiding long-term harassment afterwards.', ja: 'その後の長期的な迷惑を根本的に防ぎます。' },
+        scenarioTitle: { zh: '使用场景示例', en: 'Usage scenarios', ja: '利用シーン例' },
+        scenario1Title: { zh: '一、绿泡泡等防风控（传隐私 ID 或 发隐私链接）', en: '1. Anti-risk-control on chat apps (share private IDs or links)', ja: '一、チャットアプリ等のリスク管理回避（プライベート ID やリンクの共有）' },
+        scenario1Item1: {
+            zh: '<strong>避开恶意采集：</strong>明文在本地被加密成一串乱码，且强制要求“人类手动点击”才能提取。这有效阻断了绿泡泡等软件后台机器人的自动“<strong>探测</strong>”与预抓取，避免你的隐私链接或账号被平台有意无意地恶意采集记录，纳入画像。',
+            en: '<strong>Avoid malicious harvesting:</strong> Plaintext is encrypted locally into gibberish, and extraction requires a deliberate human click. This blocks background bots on chat apps from automatically <strong>probing</strong> and pre-fetching your private links or accounts, so platforms cannot quietly log them for profiling.',
+            ja: '<strong>悪意ある収集を回避：</strong>平文はローカルで暗号文に変換され、人間が手動でクリックしないと復号できません。チャットアプリ等のバックグラウンドボットによる自動<strong>探査</strong>と事前取得を防ぎ、プライベートリンクやアカウントがプロファイリング用に記録されるのを防ぎます。'
+        },
+        scenario2Title: { zh: '二、论坛防画像（留绿泡泡/邮箱）', en: '2. Forum anti-profiling (leave chat ID or email)', ja: '二、掲示板でのプロファイリング防止（チャット ID / メール）' },
+        scenario2Item1: {
+            zh: '<strong>阻断长期抓取：</strong>论坛留言最怕被黑产脚本长期监控。使用“阅后即焚”，对方看完后，云端密钥瞬间物理成灰，之后路过的任何爬虫或扫描器只能抓到一个 404 死链。',
+            en: '<strong>Stop long-term scraping:</strong> Forum posts are prime targets for persistent bot monitoring. With read-once messages, the cloud key is destroyed immediately after viewing — any later crawler or scanner only finds a dead 404 link.',
+            ja: '<strong>長期スクレイピングを遮断：</strong>掲示板の書き込みは長期監視の標的になりがちです。「閲覧後即消去」なら、相手が読んだ直後にクラウド鍵が破棄され、後から来るクローラーは 404 の死リンクしか取得できません。'
+        },
+        scenario2Item2: {
+            zh: '<strong>拒绝数字画像：</strong>彻底切断了 OSINT（开源情报）的收集渠道，让攻击者无法交叉比对你的个人信息，从根源杜绝定向社工攻击。',
+            en: '<strong>Refuse digital profiling:</strong> Cuts off OSINT (open-source intelligence) collection channels so attackers cannot cross-match your personal data — blocking targeted social-engineering attacks at the source.',
+            ja: '<strong>デジタルプロファイリングを拒否：</strong>OSINT（公開情報収集）の経路を断ち、攻撃者が個人情報を突き合わせられないようにし、標的型ソーシャルエンジニアリングを根本から防ぎます。'
+        },
         toolsTitle: { zh: '更多纯前端安全工具', en: 'More client-side security tools', ja: 'その他のフロントエンドセキュリティツール' },
         toolWatermark: { zh: '在线水印', en: 'Online watermark', ja: 'オンラインウォーターマーク' },
         toolWatermarkDesc: { zh: '本地图片加水印保护', en: 'Add watermarks to images locally', ja: 'ローカルで画像にウォーターマークを追加' },

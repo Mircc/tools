@@ -87,6 +87,120 @@
             color: var(--text-sub);
             font-weight: 400;
         }
+        .subtitle-row {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .security-help-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 50%;
+            background: #fff;
+            color: var(--text-sub);
+            font-size: 0.82rem;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .security-help-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #eff6ff;
+        }
+        .security-modal[hidden] { display: none !important; }
+        .security-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .security-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+        }
+        .security-modal-panel {
+            position: relative;
+            width: min(680px, 100%);
+            max-height: min(85vh, 820px);
+            overflow: auto;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            padding: 28px 24px 24px;
+            text-align: left;
+        }
+        .security-modal-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 8px;
+            background: #f1f5f9;
+            color: #64748b;
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .security-modal-close:hover { background: #e2e8f0; color: #334155; }
+        .security-modal-content {
+            font-size: 0.92rem;
+            color: #475569;
+            line-height: 1.75;
+        }
+        .security-modal-content h3 {
+            margin: 0 32px 14px 0;
+            font-size: 1.15rem;
+            color: #0f172a;
+        }
+        .security-modal-content h4 {
+            margin: 22px 0 10px;
+            font-size: 0.98rem;
+            color: #1e293b;
+        }
+        .security-modal-content ul {
+            margin: 10px 0;
+            padding-left: 1.2em;
+        }
+        .security-modal-content li { margin-bottom: 10px; }
+        .security-modal-content blockquote {
+            margin: 16px 0 0;
+            padding: 12px 14px;
+            border-left: 3px solid var(--primary);
+            background: #eff6ff;
+            border-radius: 0 8px 8px 0;
+            color: #1e40af;
+        }
+        .security-flow-chart {
+            display: block;
+            margin: 10px 0 0;
+            padding: 14px;
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            line-height: 1.55;
+            overflow-x: auto;
+            white-space: pre;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
 
         /* --- 核心卡片 --- */
         .tool-card-main {
@@ -190,11 +304,51 @@
         /* --- 极简导语 --- */
         .intro-section {
             margin-top: 40px;
-            text-align: center;
+            text-align: left;
             font-size: 0.95rem;
             color: #64748b;
             line-height: 1.8;
             padding: 0 20px;
+            max-width: 720px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .intro-section .scenario-main-title {
+            text-align: center;
+            color: var(--text-main);
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin: 0 0 28px;
+            letter-spacing: 0.02em;
+        }
+        .intro-section .scenario-block {
+            margin-bottom: 24px;
+            padding: 16px 18px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        .intro-section .scenario-block:last-child { margin-bottom: 0; }
+        .intro-section .scenario-subtitle {
+            color: var(--text-main);
+            font-size: 0.92rem;
+            font-weight: 600;
+            margin: 0 0 12px;
+            line-height: 1.5;
+        }
+        .intro-section .scenario-list {
+            margin: 0;
+            padding-left: 1.1em;
+            list-style-type: disc;
+        }
+        .intro-section .scenario-list li {
+            margin-bottom: 10px;
+            font-size: 0.93rem;
+        }
+        .intro-section .scenario-list li:last-child { margin-bottom: 0; }
+        .intro-section .scenario-list li strong {
+            color: #334155;
+            font-weight: 600;
         }
         .highlight { color: var(--primary); font-weight: 600; }
 
@@ -268,7 +422,10 @@
     
     <div class="header-section">
         <h1 data-i18n="index.h1">限时密信</h1>
-        <div class="subtitle" data-i18n="index.subtitle">互联网时代的“阅后即焚” · 个人隐私保护助手</div>
+        <div class="subtitle-row">
+            <span class="subtitle" data-i18n="index.subtitle">互联网时代的“阅后即焚” · 个人隐私保护助手</span>
+            <button type="button" class="security-help-btn" id="securityHelpBtn" data-i18n-aria="index.securityHelpAria" aria-label="为什么这套方案绝对安全？">?</button>
+        </div>
     </div>
 
     <div id="httpsWarning" class="warning-box" data-i18n="index.httpsWarn">
@@ -313,8 +470,20 @@
     </div>
 
     <div class="intro-section">
-        <p><span data-i18n="index.intro1">在互联网上，任何留言信息都可能被永久保存、检索或恶意收集。</span><strong data-i18n="index.introQ">如何安全的分享个人信息？</strong></p>
-        <p style="margin-top: 10px;"><span data-i18n="index.intro2a">用</span><span class="highlight" data-i18n="index.introHighlight">"限时密信"</span><span data-i18n="index.intro2b">给信息加上有效期。互动者需在有效期内方可解密。这样创作者既提供了合作机会，又</span><strong data-i18n="index.intro2c">彻底避免了后续的长期骚扰</strong></p>
+        <h3 class="scenario-main-title" data-i18n="index.scenarioTitle">使用场景示例</h3>
+        <div class="scenario-block">
+            <h5 class="scenario-subtitle" data-i18n="index.scenario1Title">一、绿泡泡等防风控（传隐私 ID 或 发隐私链接）</h5>
+            <ul class="scenario-list">
+                <li data-i18n-html="index.scenario1Item1"><strong>避开恶意采集：</strong>明文在本地被加密成一串乱码，且强制要求“人类手动点击”才能提取。这有效阻断了绿泡泡等软件后台机器人的自动“<strong>探测</strong>”与预抓取，避免你的隐私链接或账号被平台有意无意地恶意采集记录，纳入画像。</li>
+            </ul>
+        </div>
+        <div class="scenario-block">
+            <h5 class="scenario-subtitle" data-i18n="index.scenario2Title">二、论坛防画像（留绿泡泡/邮箱）</h5>
+            <ul class="scenario-list">
+                <li data-i18n-html="index.scenario2Item1"><strong>阻断长期抓取：</strong>论坛留言最怕被黑产脚本长期监控。使用“阅后即焚”，对方看完后，云端密钥瞬间物理成灰，之后路过的任何爬虫或扫描器只能抓到一个 404 死链。</li>
+                <li data-i18n-html="index.scenario2Item2"><strong>拒绝数字画像：</strong>彻底切断了 OSINT（开源情报）的收集渠道，让攻击者无法交叉比对你的个人信息，从根源杜绝定向社工攻击。</li>
+            </ul>
+        </div>
     </div>
 
     <h3 class="tools-title" data-i18n="index.toolsTitle">更多纯前端安全工具</h3>
@@ -356,8 +525,17 @@
     </footer>
 </div>
 
+<div id="securityModal" class="security-modal" hidden>
+    <div class="security-modal-backdrop" id="securityModalBackdrop"></div>
+    <div class="security-modal-panel" role="dialog" aria-modal="true" aria-labelledby="securityModalTitle">
+        <button type="button" class="security-modal-close" id="securityModalClose" data-i18n-aria="index.securityModalClose" aria-label="关闭">&times;</button>
+        <div class="security-modal-content" id="securityModalContent" data-i18n-html="index.securityModalBody"></div>
+    </div>
+</div>
+
 <link rel="stylesheet" href="css/site-i18n.css">
 <script src="js/site-i18n-strings.js"></script>
+<script src="js/i18n-security-modal-strings.js"></script>
 <script src="js/site-i18n-core.js"></script>
 <script>
     const CIPHER_PREFIX = '--sect--';
@@ -892,5 +1070,32 @@
     };
 </script>
 <script>SiteI18n.init('index');</script>
+<script>
+(function () {
+    var modal = document.getElementById('securityModal');
+    var helpBtn = document.getElementById('securityHelpBtn');
+    var closeBtn = document.getElementById('securityModalClose');
+    var backdrop = document.getElementById('securityModalBackdrop');
+    if (!modal || !helpBtn) return;
+
+    function openModal() {
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        closeBtn.focus();
+    }
+    function closeModal() {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+        helpBtn.focus();
+    }
+
+    helpBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', closeModal);
+    document.addEventListener('keydown', function (e) {
+        if (!modal.hidden && e.key === 'Escape') closeModal();
+    });
+})();
+</script>
 </body>
 </html>

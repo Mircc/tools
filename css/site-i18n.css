@@ -38,3 +38,13 @@
         margin: 4px 0 0;
     }
 }
+
+footer a {
+    color: #64748b;
+    text-decoration: none;
+    transition: color 0.15s;
+}
+footer a:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
