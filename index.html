@@ -225,6 +225,11 @@
             padding: 12px 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;
             font-size: 0.95rem; font-weight: 600; line-height: 1.5;
         }
+        .multi-warning {
+            background: #fffbeb; border: 1px solid #fde68a; color: #b45309;
+            padding: 12px 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;
+            font-size: 0.95rem; font-weight: 600; line-height: 1.5;
+        }
         .receive-hint {
             text-align: center; color: var(--text-sub); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.6;
         }
@@ -297,7 +302,7 @@
         <!-- 收信视图 -->
         <div id="receiveView" class="view-hidden">
             <p class="receive-hint" data-i18n="index.receiveHint">检测到有效密信。为保护您的隐私，需手动确认后才会从服务端提取解密密钥。</p>
-            <p id="onceWarning" class="once-warning" data-i18n="index.onceWarning">⚠️ 阅后即焚模式的密信仅有一次阅读机会，提取后密钥将被永久销毁。</p>
+            <p id="receiveNotice" class="multi-warning"></p>
             <button id="extractBtn" class="btn-action" data-i18n="index.btnExtract">🔓 安全提取密信</button>
             <div id="receiveResultPanel" class="result-panel">
                 <div id="receiveResultBox" class="result-box"></div>
@@ -356,8 +361,10 @@
 <script src="js/site-i18n-core.js"></script>
 <script>
     const CIPHER_PREFIX = '--sect--';
+    const CIPHER_PREFIX_V2 = '~';
     const KEY_STORE_URL = 'https://secretkeystore.tools.eu.org';
     const CLIENT_HEADER = 'Niuniu-Toolbox-2026';
+    const MULTI_TTL_MS = 48 * 60 * 60 * 1000;
 
     const sendView = document.getElementById('sendView');
     const receiveView = document.getElementById('receiveView');
@@ -367,6 +374,7 @@
     const resultPanel = document.getElementById('resultPanel');
     const resultBox = document.getElementById('resultBox');
     const resultHint = document.getElementById('resultHint');
+    const receiveNotice = document.getElementById('receiveNotice');
     const extractBtn = document.getElementById('extractBtn');
     const destroyBtn = document.getElementById('destroyBtn');
     const receiveResultPanel = document.getElementById('receiveResultPanel');
@@ -375,6 +383,109 @@
 
     let receiveContext = null;
     let sensitiveBuffers = [];
+    let countdownTimer = null;
+
+    function stopCountdown() {
+        if (countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+        }
+    }
+
+    function parseLinkMeta(searchParams) {
+        if (searchParams.has('o')) return { mode: 'once', createdAt: null };
+        const mode = (searchParams.get('mode') === 'once' || searchParams.get('m') === 'o') ? 'once' : 'multi';
+        const tRaw = searchParams.get('t');
+        let createdAt = null;
+        if (tRaw) {
+            if (/^\d+$/.test(tRaw)) createdAt = Number(tRaw);
+            else if (/^[0-9a-z]+$/i.test(tRaw)) createdAt = parseInt(tRaw, 36) * 1000;
+        }
+        return { mode, createdAt };
+    }
+
+    function encodeTs(ms) { return Math.floor(ms / 1000).toString(36); }
+    function decodeTsMeta(meta) {
+        if (meta === 'o') return { mode: 'once', createdAt: null };
+        return { mode: 'multi', createdAt: parseInt(meta, 36) * 1000 };
+    }
+
+    function uuidToBytes(uuid) {
+        const hex = uuid.replace(/-/g, '');
+        const bytes = new Uint8Array(16);
+        for (let i = 0; i < 16; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+        return bytes;
+    }
+
+    function bytesToUuid(bytes) {
+        const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+        return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
+
+    function compactUuid(uuid) {
+        return arrayBufferToBase64URL(uuidToBytes(uuid).buffer);
+    }
+
+    function expandUuidToken(token) {
+        if (!token) return null;
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) return token;
+        if (/^[0-9a-f]{32}$/i.test(token)) return bytesToUuid(uuidToBytes(token));
+        try {
+            return bytesToUuid(base64URLToUint8Array(token));
+        } catch (e) { return null; }
+    }
+
+    function readLinkId(searchParams) {
+        const raw = searchParams.get('i') || searchParams.get('id');
+        return expandUuidToken(raw) || raw;
+    }
+
+    function formatRemainingParts(ms) {
+        const totalSec = Math.max(0, Math.floor(ms / 1000));
+        return {
+            h: Math.floor(totalSec / 3600),
+            m: Math.floor((totalSec % 3600) / 60),
+            s: totalSec % 60,
+            expired: ms <= 0
+        };
+    }
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+
+    function updateReceiveNotice() {
+        if (!receiveContext) return;
+        stopCountdown();
+
+        if (receiveContext.mode === 'once') {
+            receiveNotice.className = 'once-warning';
+            receiveNotice.textContent = SiteI18n.t('index.onceWarning');
+            return;
+        }
+
+        receiveNotice.className = 'multi-warning';
+        if (!receiveContext.createdAt) {
+            receiveNotice.textContent = SiteI18n.t('index.multiNoTime');
+            return;
+        }
+
+        function tick() {
+            const left = receiveContext.createdAt + MULTI_TTL_MS - Date.now();
+            const parts = formatRemainingParts(left);
+            if (parts.expired) {
+                receiveNotice.textContent = SiteI18n.t('index.multiExpired');
+                stopCountdown();
+                return;
+            }
+            receiveNotice.textContent = SiteI18n.t('index.multiCountdown', {
+                h: parts.h,
+                m: pad2(parts.m),
+                s: pad2(parts.s)
+            });
+        }
+
+        tick();
+        countdownTimer = setInterval(tick, 1000);
+    }
 
     // --- 基础工具 ---
     function arrayBufferToBase64(buffer) {
@@ -384,11 +495,55 @@
         return btoa(binary);
     }
 
+    function arrayBufferToBase64URL(buffer) {
+        return arrayBufferToBase64(buffer).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
     function base64ToUint8Array(base64) {
         const binary = atob(base64);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
         return bytes;
+    }
+
+    function base64URLToUint8Array(base64URL) {
+        let base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) base64 += '=';
+        return base64ToUint8Array(base64);
+    }
+
+    function isLegacyPayload(hash) {
+        return hash.startsWith(CIPHER_PREFIX) || (hash.startsWith(CIPHER_PREFIX_V2) && hash.indexOf('.') === -1);
+    }
+
+    function parseCompactHash(hash) {
+        if (!hash.startsWith(CIPHER_PREFIX_V2)) return null;
+        const body = hash.slice(1);
+        const dot1 = body.indexOf('.');
+        if (dot1 === -1) return null;
+        const idToken = body.slice(0, dot1);
+        const rest = body.slice(dot1 + 1);
+        const id = expandUuidToken(idToken) || idToken;
+        if (!id || !rest) return null;
+
+        const dot2 = rest.indexOf('.');
+        if (dot2 === -1) {
+            return { id, payload: rest, mode: null, createdAt: null };
+        }
+
+        const meta = rest.slice(0, dot2);
+        const cipher = rest.slice(dot2 + 1);
+        if (!cipher) return null;
+        const { mode, createdAt } = decodeTsMeta(meta);
+        return { id, payload: cipher, mode, createdAt };
+    }
+
+    function decodeApiKey(keyStr) {
+        try {
+            const buf = base64URLToUint8Array(keyStr);
+            if (buf.length === 32) return buf;
+        } catch (e) { /* fall through */ }
+        return base64ToUint8Array(keyStr);
     }
 
     function trackBuffer(buf) {
@@ -437,6 +592,13 @@
         return res.json();
     }
 
+    async function fetchKeyInfo(id) {
+        const res = await fetch(`${KEY_STORE_URL}/api/key-info?id=${encodeURIComponent(id)}`);
+        if (res.status === 404) throw new Error(SiteI18n.t('index.keyNotFound'));
+        if (!res.ok) throw new Error(SiteI18n.t('index.fetchKeyFail'));
+        return res.json();
+    }
+
     async function fetchKey(id) {
         const res = await fetch(`${KEY_STORE_URL}/api/get-key?id=${encodeURIComponent(id)}`, {
             headers: { 'X-My-Custom-Client': CLIENT_HEADER }
@@ -459,25 +621,27 @@
 
         const rawKey = await crypto.subtle.exportKey('raw', key);
         const keyB64 = arrayBufferToBase64(rawKey);
-        const payload = CIPHER_PREFIX + arrayBufferToBase64(combined.buffer);
+        const payload = arrayBufferToBase64URL(combined.buffer);
         return { payload, keyB64 };
     }
 
     async function decryptPayload(payload, keyB64) {
-        const raw = payload.startsWith(CIPHER_PREFIX) ? payload.slice(CIPHER_PREFIX.length) : payload;
-        const buf = trackBuffer(base64ToUint8Array(raw));
+        let raw = payload;
+        if (raw.startsWith(CIPHER_PREFIX)) raw = raw.slice(CIPHER_PREFIX.length);
+        else if (raw.startsWith(CIPHER_PREFIX_V2) && raw.indexOf('.') === -1) raw = raw.slice(1);
+        const buf = trackBuffer(base64URLToUint8Array(raw));
         if (buf.length < 13) throw new Error(SiteI18n.t('index.invalidFormat'));
 
         const iv = trackBuffer(buf.slice(0, 12));
         const data = trackBuffer(buf.slice(12));
-        const keyRaw = trackBuffer(base64ToUint8Array(keyB64));
+        const keyRaw = trackBuffer(decodeApiKey(keyB64));
         const cryptoKey = await crypto.subtle.importKey('raw', keyRaw, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
         const decrypted = trackBuffer(new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, cryptoKey, data)));
         return decompressData(decrypted);
     }
 
     function buildShareUrl(id, payload) {
-        return `${location.origin}${location.pathname}?id=${encodeURIComponent(id)}#${payload}`;
+        return `${location.origin}${location.pathname}#~${id}.${payload}`;
     }
 
     function parseShareLink(input) {
@@ -485,13 +649,24 @@
         if (!trimmed) return null;
         try {
             const url = new URL(trimmed, location.origin);
-            const id = url.searchParams.get('id');
             const hash = url.hash.slice(1);
-            if (id && hash.startsWith(CIPHER_PREFIX)) return { id, payload: hash };
+            const compact = parseCompactHash(hash);
+            if (compact) return compact;
+            const id = readLinkId(url.searchParams);
+            if (id && isLegacyPayload(hash)) {
+                const meta = parseLinkMeta(url.searchParams);
+                return { id, payload: hash, mode: meta.mode, createdAt: meta.createdAt };
+            }
         } catch (e) { /* not a URL */ }
-        if (trimmed.startsWith(CIPHER_PREFIX) && trimmed.length > CIPHER_PREFIX.length) {
-            const id = new URLSearchParams(location.search).get('id');
-            if (id) return { id, payload: trimmed };
+        const compact = parseCompactHash(trimmed.startsWith('#') ? trimmed.slice(1) : trimmed);
+        if (compact) return compact;
+        if (isLegacyPayload(trimmed)) {
+            const params = new URLSearchParams(location.search);
+            const id = readLinkId(params);
+            if (id) {
+                const meta = parseLinkMeta(params);
+                return { id, payload: trimmed, mode: meta.mode, createdAt: meta.createdAt };
+            }
         }
         return null;
     }
@@ -520,18 +695,35 @@
     }
 
     // --- 收信视图 ---
-    function showReceiveView(ctx) {
+    async function showReceiveView(ctx) {
         receiveContext = ctx;
         sendView.classList.add('view-hidden');
         receiveView.classList.remove('view-hidden');
         receiveResultPanel.style.display = 'none';
         destroyBtn.classList.add('view-hidden');
         extractBtn.disabled = false;
+        extractBtn.classList.remove('view-hidden');
         extractBtn.textContent = SiteI18n.t('index.btnExtract');
+        receiveNotice.style.display = '';
+
+        if (ctx.mode == null) {
+            receiveNotice.className = 'multi-warning';
+            receiveNotice.textContent = SiteI18n.t('index.syncingMeta');
+            try {
+                const info = await fetchKeyInfo(ctx.id);
+                receiveContext.mode = info.mode === 'once' ? 'once' : 'multi';
+                receiveContext.createdAt = info.c ? info.c * 1000 : null;
+            } catch (e) {
+                receiveContext.mode = 'multi';
+                receiveContext.createdAt = null;
+            }
+        }
+        updateReceiveNotice();
     }
 
     function showSendView() {
         receiveContext = null;
+        stopCountdown();
         secureWipeAll();
         receiveView.classList.add('view-hidden');
         sendView.classList.remove('view-hidden');
@@ -561,6 +753,8 @@
         try {
             const { key } = await fetchKey(receiveContext.id);
             const plaintext = await decryptPayload(receiveContext.payload, key);
+            stopCountdown();
+            receiveNotice.style.display = 'none';
             showReceiveResult(plaintext, false, SiteI18n.t('index.decryptOk'));
             extractBtn.classList.add('view-hidden');
         } catch (e) {
@@ -611,6 +805,7 @@
         });
         if (!receiveView.classList.contains('view-hidden') && !extractBtn.classList.contains('view-hidden')) {
             extractBtn.textContent = SiteI18n.t('index.btnExtract');
+            updateReceiveNotice();
         }
         updateUI();
     }
@@ -625,10 +820,17 @@
     }
 
     function checkUrlOnLoad() {
-        const id = new URLSearchParams(location.search).get('id');
         const hash = location.hash.slice(1);
-        if (id && hash.startsWith(CIPHER_PREFIX)) {
-            showReceiveView({ id, payload: hash });
+        const compact = parseCompactHash(hash);
+        if (compact) {
+            showReceiveView(compact);
+            return true;
+        }
+        const params = new URLSearchParams(location.search);
+        const id = readLinkId(params);
+        if (id && isLegacyPayload(hash)) {
+            const meta = parseLinkMeta(params);
+            showReceiveView({ id, payload: hash, mode: meta.mode, createdAt: meta.createdAt });
             return true;
         }
         return false;
@@ -646,9 +848,9 @@
             return;
         }
 
-        smartBtn.addEventListener('click', () => {
+        smartBtn.addEventListener('click', async () => {
             const parsed = parseShareLink(inputText.value);
-            if (parsed) showReceiveView(parsed);
+            if (parsed) await showReceiveView(parsed);
             else processEncrypt();
         });
         extractBtn.addEventListener('click', processExtract);
