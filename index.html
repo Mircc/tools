@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安全与隐私工具箱 - 一次性隐私数据加解密|在线Base64加解码|在线安全添加水印|在线HTTPDNS检测</title>
+    <meta name="description" content="我们是一个专注于提供安全、简洁、易用的在线小工具的网站，适合追求极致的数据安全保护人群，本站所有服务全部基于纯Web前端页面实现，无后端服务、不会存储您的任何数据，不做来访统计等，目前我们提供在线数据一次性加密服务、图片在线安全水印等服务，未来我们会增加更多安全服务。">
+    
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+            --radius: 16px;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* --- 导航栏 --- */
+        .navbar {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            height: 64px;
+            padding: 0 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-logo {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-sub);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .nav-link:hover { color: var(--primary); }
+        .nav-link.active { color: var(--primary); font-weight: 600; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        /* --- 主容器 --- */
+        .main-container {
+            max-width: 800px;
+            margin: 40px auto 60px;
+            padding: 0 20px;
+        }
+
+        .header-section { text-align: center; margin-bottom: 40px; }
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+        }
+        .subtitle {
+            font-size: 1.05rem;
+            color: var(--text-sub);
+            font-weight: 400;
+        }
+
+        /* --- 核心卡片 --- */
+        .tool-card-main {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 32px;
+            border: 1px solid #fff;
+            position: relative;
+        }
+
+        /* 输入组样式 */
+        .input-wrapper { margin-bottom: 20px; }
+        
+        textarea {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 1rem;
+            background: #f8fafc;
+            color: var(--text-main);
+            font-family: monospace;
+            box-sizing: border-box;
+            transition: all 0.2s;
+            min-height: 150px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+        textarea:focus { outline: none; border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+
+        /* 有效期选择 - 优化布局 */
+        .options-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f1f5f9;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .options-label {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+        select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: #fff;
+            color: var(--text-main);
+            cursor: pointer;
+            outline: none;
+            min-width: 150px;
+            transition: opacity 0.3s; /* for disabling effect */
+        }
+        select:focus { border-color: var(--primary); }
+
+        /* 按钮 */
+        .btn-action {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+        }
+        .btn-action:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-action:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+        /* 结果显示区 */
+        .result-panel {
+            margin-top: 25px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .result-box {
+            padding: 15px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 10px;
+            color: #15803d;
+            font-family: monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            cursor: pointer;
+            position: relative;
+        }
+        .result-box.error { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+        .result-hint { text-align: center; font-size: 0.8rem; color: var(--text-sub); margin-top: 8px; }
+
+        /* --- 极简导语 --- */
+        .intro-section {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: #64748b;
+            line-height: 1.8;
+            padding: 0 20px;
+        }
+        .highlight { color: var(--primary); font-weight: 600; }
+
+        /* --- 更多工具 --- */
+        .tools-title { text-align: center; margin: 60px 0 30px; color: var(--text-main); font-weight: 700; font-size: 1.1rem; }
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+        }
+        .tool-item {
+            background: #fff; padding: 20px; border-radius: 12px;
+            text-decoration: none; border: 1px solid var(--border);
+            transition: all 0.2s; display: flex; flex-direction: column; align-items: center;
+        }
+        .tool-item:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.05); }
+        .tool-icon { font-size: 1.8rem; margin-bottom: 10px; }
+        .tool-name { font-weight: 600; font-size: 0.95rem; color: var(--text-main); margin-bottom: 4px; }
+        .tool-desc { font-size: 0.75rem; color: var(--text-sub); }
+
+        footer { text-align: center; color: #94a3b8; font-size: 0.8rem; margin-top: 60px; padding-bottom: 30px; border-top: 1px solid var(--border); padding-top: 30px; }
+        .warning-box {
+            background: #fff7ed; border: 1px solid #fdba74; color: #c2410c;
+            padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 20px; font-size: 0.9rem; display: none;
+        }
+        .once-warning {
+            background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+            padding: 12px 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;
+            font-size: 0.95rem; font-weight: 600; line-height: 1.5;
+        }
+        .receive-hint {
+            text-align: center; color: var(--text-sub); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.6;
+        }
+        .btn-secondary {
+            width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 600;
+            border: 2px solid var(--primary); border-radius: 12px;
+            background: #fff; color: var(--primary); cursor: pointer; transition: all 0.2s; margin-top: 15px;
+        }
+        .btn-secondary:hover { background: #eff6ff; }
+        .btn-secondary:disabled { opacity: 0.7; cursor: not-allowed; }
+        .btn-destroy {
+            background: #dc2626; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+        }
+        .btn-destroy:hover { background: #b91c1c; }
+        .view-hidden { display: none !important; }
+    </style>
+</head>
+<body data-i18n-title-key="index.title" data-i18n-desc-key="index.metaDesc">
+
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo"><span data-i18n="nav.logo">🛡️ 安全工具箱</span></a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link active" data-i18n="nav.home">首页</a>
+            <a href="watermark.html" class="nav-link" data-i18n="nav.watermark">在线水印</a>
+            <a href="dns.html" class="nav-link" data-i18n="nav.dns">DNS查询</a>
+            <a href="base64.html" class="nav-link" data-i18n="nav.base64">Base64</a>
+            <a href="fingerprint.html" class="nav-link" data-i18n="nav.fingerprint">指纹检测</a>
+            <a href="qr-tool.html" class="nav-link" data-i18n="nav.qrcode">二维码</a>
+            <a href="tools.html" class="nav-link" data-i18n="nav.allTools">全部工具</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+    
+    <div class="header-section">
+        <h1 data-i18n="index.h1">限时密信</h1>
+        <div class="subtitle" data-i18n="index.subtitle">互联网时代的“阅后即焚” · 个人隐私保护助手</div>
+    </div>
+
+    <div id="httpsWarning" class="warning-box" data-i18n="index.httpsWarn">
+        ⚠️ 环境警告： Web Crypto API 需要 HTTPS 安全环境才能运行。
+    </div>
+
+    <div class="tool-card-main">
+        <!-- 发信视图 -->
+        <div id="sendView">
+            <div class="input-wrapper">
+                <textarea id="inputText" data-i18n-placeholder="index.inputPh" placeholder="在此输入您需要保护的信息，点击加密生成分享链接。
+或粘贴完整的密信链接进行收信"></textarea>
+            </div>
+
+            <div class="options-bar">
+                <span class="options-label" data-i18n="index.expireLabel">⏱️ 自动销毁时间 (仅加密有效)</span>
+                <select id="expireMode">
+                    <option value="multi" selected data-i18n="index.expireMulti">48 小时内有效</option>
+                    <option value="once" data-i18n="index.expireOnce">阅后即焚</option>
+                </select>
+            </div>
+
+            <button id="smartBtn" class="btn-action" data-i18n="index.btnEncrypt">🔒 立即加密</button>
+
+            <div id="resultPanel" class="result-panel">
+                <div id="resultBox" class="result-box"></div>
+                <div id="resultHint" class="result-hint"></div>
+            </div>
+        </div>
+
+        <!-- 收信视图 -->
+        <div id="receiveView" class="view-hidden">
+            <p class="receive-hint" data-i18n="index.receiveHint">检测到有效密信。为保护您的隐私，需手动确认后才会从服务端提取解密密钥。</p>
+            <p id="onceWarning" class="once-warning" data-i18n="index.onceWarning">⚠️ 阅后即焚模式的密信仅有一次阅读机会，提取后密钥将被永久销毁。</p>
+            <button id="extractBtn" class="btn-action" data-i18n="index.btnExtract">🔓 安全提取密信</button>
+            <div id="receiveResultPanel" class="result-panel">
+                <div id="receiveResultBox" class="result-box"></div>
+                <div id="receiveResultHint" class="result-hint"></div>
+            </div>
+            <button id="destroyBtn" class="btn-secondary btn-destroy view-hidden" data-i18n="index.btnDestroy">🗑️ 阅毕销毁 / 关闭</button>
+        </div>
+    </div>
+
+    <div class="intro-section">
+        <p><span data-i18n="index.intro1">在互联网上，任何留言信息都可能被永久保存、检索或恶意收集。</span><strong data-i18n="index.introQ">如何安全的分享个人信息？</strong></p>
+        <p style="margin-top: 10px;"><span data-i18n="index.intro2a">用</span><span class="highlight" data-i18n="index.introHighlight">"限时密信"</span><span data-i18n="index.intro2b">给信息加上有效期。互动者需在有效期内方可解密。这样创作者既提供了合作机会，又</span><strong data-i18n="index.intro2c">彻底避免了后续的长期骚扰</strong></p>
+    </div>
+
+    <h3 class="tools-title" data-i18n="index.toolsTitle">更多纯前端安全工具</h3>
+    <div class="tools-grid">
+        <a href="watermark.html" class="tool-item">
+            <div class="tool-icon">🖼️</div>
+            <div class="tool-name" data-i18n="index.toolWatermark">在线水印</div>
+            <div class="tool-desc" data-i18n="index.toolWatermarkDesc">本地图片加水印保护</div>
+        </a>
+        <a href="dns.html" class="tool-item">
+            <div class="tool-icon">🌐</div>
+            <div class="tool-name" data-i18n="index.toolDns">DNS 查询</div>
+            <div class="tool-desc" data-i18n="index.toolDnsDesc">多源 HTTPDNS 调试</div>
+        </a>
+        <a href="base64.html" class="tool-item">
+            <div class="tool-icon">🔠</div>
+            <div class="tool-name" data-i18n="index.toolBase64">Base64 工具</div>
+            <div class="tool-desc" data-i18n="index.toolBase64Desc">快速编码与解码</div>
+        </a>
+        <a href="jasonformat.html" class="tool-item">
+            <div class="tool-icon">📋</div>
+            <div class="tool-name" data-i18n="index.toolJson">JSON 格式化</div>
+            <div class="tool-desc" data-i18n="index.toolJsonDesc">JSON 校验、美化与压缩</div>
+        </a>
+        <a href="url-tool.html" class="tool-item">
+            <div class="tool-icon">🔗</div>
+            <div class="tool-name" data-i18n="index.toolUrl">URL 编解码</div>
+            <div class="tool-desc" data-i18n="index.toolUrlDesc">自动检测 · 实时转换 · 双击复制</div>
+        </a>
+        <a href="RESTfulAPI.html" class="tool-item">
+            <div class="tool-icon">⚡</div>
+            <div class="tool-name" data-i18n="index.toolApi">API 调试</div>
+            <div class="tool-desc" data-i18n="index.toolApiDesc">RESTful 接口测试</div>
+        </a>
+    </div>
+
+    <footer data-i18n="index.footer">
+        &copy; 2026 安全工具箱 | 明文与密文仅在本地处理，仅随机密钥托管于服务端。
+    </footer>
+</div>
+
+<script>
+    const CIPHER_PREFIX = '--sect--';
+    const KEY_STORE_URL = 'https://secretkeystore.tools.eu.org';
+    const CLIENT_HEADER = 'Niuniu-Toolbox-2026';
+
+    const sendView = document.getElementById('sendView');
+    const receiveView = document.getElementById('receiveView');
+    const inputText = document.getElementById('inputText');
+    const expireMode = document.getElementById('expireMode');
+    const smartBtn = document.getElementById('smartBtn');
+    const resultPanel = document.getElementById('resultPanel');
+    const resultBox = document.getElementById('resultBox');
+    const resultHint = document.getElementById('resultHint');
+    const extractBtn = document.getElementById('extractBtn');
+    const destroyBtn = document.getElementById('destroyBtn');
+    const receiveResultPanel = document.getElementById('receiveResultPanel');
+    const receiveResultBox = document.getElementById('receiveResultBox');
+    const receiveResultHint = document.getElementById('receiveResultHint');
+
+    let receiveContext = null;
+    let sensitiveBuffers = [];
+
+    // --- 基础工具 ---
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary);
+    }
+
+    function base64ToUint8Array(base64) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+    }
+
+    function trackBuffer(buf) {
+        if (buf instanceof Uint8Array) sensitiveBuffers.push(buf);
+        return buf;
+    }
+
+    function secureWipeAll() {
+        sensitiveBuffers.forEach(buf => {
+            if (buf instanceof Uint8Array && buf.length) crypto.getRandomValues(buf);
+        });
+        sensitiveBuffers = [];
+    }
+
+    function showToast(msg, isErr) {
+        const target = receiveView.classList.contains('view-hidden') ? resultHint : receiveResultHint;
+        target.textContent = msg;
+        target.style.color = isErr ? '#b91c1c' : '';
+        if (isErr) setTimeout(() => { target.style.color = ''; }, 4000);
+    }
+
+    // --- 压缩 / 解压 ---
+    async function compressText(text) {
+        const input = new Blob([new TextEncoder().encode(text)]).stream();
+        const compressed = input.pipeThrough(new CompressionStream('deflate'));
+        return trackBuffer(new Uint8Array(await new Response(compressed).arrayBuffer()));
+    }
+
+    async function decompressData(compressed) {
+        const input = new Blob([compressed]).stream();
+        const decompressed = input.pipeThrough(new DecompressionStream('deflate'));
+        return await new Response(decompressed).text();
+    }
+
+    // --- 密钥 API ---
+    async function storeKey(keyB64, mode) {
+        const res = await fetch(`${KEY_STORE_URL}/api/store-key`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-My-Custom-Client': CLIENT_HEADER
+            },
+            body: JSON.stringify({ key: keyB64, mode })
+        });
+        if (!res.ok) throw new Error(SiteI18n.t('index.storeKeyFail'));
+        return res.json();
+    }
+
+    async function fetchKey(id) {
+        const res = await fetch(`${KEY_STORE_URL}/api/get-key?id=${encodeURIComponent(id)}`, {
+            headers: { 'X-My-Custom-Client': CLIENT_HEADER }
+        });
+        if (res.status === 404) throw new Error(SiteI18n.t('index.keyNotFound'));
+        if (!res.ok) throw new Error(SiteI18n.t('index.fetchKeyFail'));
+        return res.json();
+    }
+
+    // --- 加解密核心 ---
+    async function buildEncryptedPayload(plaintext) {
+        const compressed = await compressText(plaintext);
+        const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+        const iv = trackBuffer(crypto.getRandomValues(new Uint8Array(12)));
+        const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, compressed);
+
+        const combined = trackBuffer(new Uint8Array(iv.length + ciphertext.byteLength));
+        combined.set(iv, 0);
+        combined.set(new Uint8Array(ciphertext), iv.length);
+
+        const rawKey = await crypto.subtle.exportKey('raw', key);
+        const keyB64 = arrayBufferToBase64(rawKey);
+        const payload = CIPHER_PREFIX + arrayBufferToBase64(combined.buffer);
+        return { payload, keyB64 };
+    }
+
+    async function decryptPayload(payload, keyB64) {
+        const raw = payload.startsWith(CIPHER_PREFIX) ? payload.slice(CIPHER_PREFIX.length) : payload;
+        const buf = trackBuffer(base64ToUint8Array(raw));
+        if (buf.length < 13) throw new Error(SiteI18n.t('index.invalidFormat'));
+
+        const iv = trackBuffer(buf.slice(0, 12));
+        const data = trackBuffer(buf.slice(12));
+        const keyRaw = trackBuffer(base64ToUint8Array(keyB64));
+        const cryptoKey = await crypto.subtle.importKey('raw', keyRaw, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+        const decrypted = trackBuffer(new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, cryptoKey, data)));
+        return decompressData(decrypted);
+    }
+
+    function buildShareUrl(id, payload) {
+        return `${location.origin}${location.pathname}?id=${encodeURIComponent(id)}#${payload}`;
+    }
+
+    function parseShareLink(input) {
+        const trimmed = input.trim();
+        if (!trimmed) return null;
+        try {
+            const url = new URL(trimmed, location.origin);
+            const id = url.searchParams.get('id');
+            const hash = url.hash.slice(1);
+            if (id && hash.startsWith(CIPHER_PREFIX)) return { id, payload: hash };
+        } catch (e) { /* not a URL */ }
+        if (trimmed.startsWith(CIPHER_PREFIX) && trimmed.length > CIPHER_PREFIX.length) {
+            const id = new URLSearchParams(location.search).get('id');
+            if (id) return { id, payload: trimmed };
+        }
+        return null;
+    }
+
+    // --- 发信 ---
+    async function processEncrypt() {
+        const text = inputText.value.trim();
+        const mode = expireMode.value;
+        if (!text) return showUIResult(SiteI18n.t('index.enterContent'), true);
+
+        smartBtn.textContent = SiteI18n.t('index.encrypting');
+        smartBtn.disabled = true;
+
+        try {
+            const { payload, keyB64 } = await buildEncryptedPayload(text);
+            const { id } = await storeKey(keyB64, mode);
+            const shareUrl = buildShareUrl(id, payload);
+            const modeLabel = mode === 'once' ? SiteI18n.t('index.expireOnce') : SiteI18n.t('index.expireMulti');
+            showUIResult(shareUrl, false, SiteI18n.t('index.linkGenerated', { mode: modeLabel, len: shareUrl.length }));
+        } catch (e) {
+            showUIResult(e.message || SiteI18n.t('index.encryptFail'), true);
+        }
+
+        updateUI();
+        smartBtn.disabled = false;
+    }
+
+    // --- 收信视图 ---
+    function showReceiveView(ctx) {
+        receiveContext = ctx;
+        sendView.classList.add('view-hidden');
+        receiveView.classList.remove('view-hidden');
+        receiveResultPanel.style.display = 'none';
+        destroyBtn.classList.add('view-hidden');
+        extractBtn.disabled = false;
+        extractBtn.textContent = SiteI18n.t('index.btnExtract');
+    }
+
+    function showSendView() {
+        receiveContext = null;
+        secureWipeAll();
+        receiveView.classList.add('view-hidden');
+        sendView.classList.remove('view-hidden');
+        receiveResultBox.textContent = '';
+        receiveResultHint.textContent = '';
+        receiveResultPanel.style.display = 'none';
+        destroyBtn.classList.add('view-hidden');
+        inputText.value = '';
+        resultPanel.style.display = 'none';
+        history.replaceState(null, '', location.pathname);
+        updateUI();
+    }
+
+    function showReceiveResult(msg, isErr, hint) {
+        receiveResultPanel.style.display = 'block';
+        receiveResultBox.className = isErr ? 'result-box error' : 'result-box';
+        receiveResultBox.textContent = msg;
+        receiveResultHint.textContent = hint || '';
+        if (!isErr) destroyBtn.classList.remove('view-hidden');
+    }
+
+    async function processExtract() {
+        if (!receiveContext) return;
+        extractBtn.textContent = SiteI18n.t('index.decrypting');
+        extractBtn.disabled = true;
+
+        try {
+            const { key } = await fetchKey(receiveContext.id);
+            const plaintext = await decryptPayload(receiveContext.payload, key);
+            showReceiveResult(plaintext, false, SiteI18n.t('index.decryptOk'));
+            extractBtn.classList.add('view-hidden');
+        } catch (e) {
+            showReceiveResult(e.message || SiteI18n.t('index.decryptFail'), true);
+            extractBtn.disabled = false;
+            extractBtn.textContent = SiteI18n.t('index.btnExtract');
+        }
+    }
+
+    function processDestroy() {
+        secureWipeAll();
+        receiveResultBox.textContent = '';
+        receiveResultHint.textContent = '';
+        receiveResultPanel.style.display = 'none';
+        destroyBtn.classList.add('view-hidden');
+        showSendView();
+    }
+
+    function tryOpenReceiveFromInput() {
+        const parsed = parseShareLink(inputText.value);
+        if (parsed) {
+            showReceiveView(parsed);
+            return true;
+        }
+        return false;
+    }
+
+    // --- 交互 ---
+    function updateUI() {
+        const val = inputText.value.trim();
+        const isLink = !!parseShareLink(val);
+
+        if (isLink) {
+            smartBtn.textContent = SiteI18n.t('index.btnOpenLink');
+            expireMode.disabled = true;
+            expireMode.parentElement.style.opacity = 0.5;
+        } else {
+            smartBtn.textContent = SiteI18n.t('index.btnEncrypt');
+            expireMode.disabled = false;
+            expireMode.parentElement.style.opacity = 1;
+        }
+        smartBtn.disabled = !val;
+    }
+
+    function showUIResult(msg, isErr, info) {
+        resultPanel.style.display = 'block';
+        resultBox.className = isErr ? 'result-box error' : 'result-box';
+        resultHint.textContent = info || (isErr ? '' : SiteI18n.t('index.dblClickCopy'));
+        resultBox.textContent = msg;
+    }
+
+    function checkUrlOnLoad() {
+        const id = new URLSearchParams(location.search).get('id');
+        const hash = location.hash.slice(1);
+        if (id && hash.startsWith(CIPHER_PREFIX)) {
+            showReceiveView({ id, payload: hash });
+            return true;
+        }
+        return false;
+    }
+
+    pageI18nRefresh = function() { updateUI(); };
+
+    window.onload = function() {
+        if (!window.isSecureContext) {
+            document.getElementById('httpsWarning').style.display = 'block';
+            smartBtn.disabled = true;
+            return;
+        }
+        if (typeof CompressionStream === 'undefined' || typeof DecompressionStream === 'undefined') {
+            showUIResult(SiteI18n.t('index.noCompression'), true);
+            smartBtn.disabled = true;
+            return;
+        }
+
+        smartBtn.addEventListener('click', () => {
+            const parsed = parseShareLink(inputText.value);
+            if (parsed) showReceiveView(parsed);
+            else processEncrypt();
+        });
+        extractBtn.addEventListener('click', processExtract);
+        destroyBtn.addEventListener('click', processDestroy);
+        inputText.addEventListener('input', updateUI);
+        inputText.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey && inputText.value.trim()) {
+                e.preventDefault();
+                smartBtn.click();
+            }
+        });
+        resultBox.addEventListener('dblclick', () => {
+            const txt = resultBox.textContent;
+            if (txt && !resultBox.classList.contains('error')) {
+                navigator.clipboard.writeText(txt).then(() => {
+                    const originalHint = resultHint.textContent;
+                    resultHint.textContent = SiteI18n.t('index.copiedClipboard');
+                    setTimeout(() => resultHint.textContent = originalHint, 2000);
+                }).catch(() => showToast(SiteI18n.t('index.copyFail'), true));
+            }
+        });
+        receiveResultBox.addEventListener('dblclick', () => {
+            const txt = receiveResultBox.textContent;
+            if (txt && !receiveResultBox.classList.contains('error')) {
+                navigator.clipboard.writeText(txt).then(() => {
+                    receiveResultHint.textContent = SiteI18n.t('index.copiedClipboard');
+                }).catch(() => showToast(SiteI18n.t('index.copyFail'), true));
+            }
+        });
+
+        if (!checkUrlOnLoad()) updateUI();
+    };
+</script>
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
+<script>SiteI18n.init('index');</script>
+</body>
+</html>
