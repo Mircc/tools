@@ -286,7 +286,7 @@
             <div class="options-bar">
                 <span class="options-label" data-i18n="index.expireLabel">⏱️ 自动销毁时间 (仅加密有效)</span>
                 <select id="expireMode">
-                    <option value="multi" selected data-i18n="index.expireMulti">48 小时内有效</option>
+                    <option value="multi" selected data-i18n="index.expireMulti">48H内有效</option>
                     <option value="once" data-i18n="index.expireOnce">阅后即焚</option>
                 </select>
             </div>
@@ -426,18 +426,23 @@
         return arrayBufferToBase64URL(uuidToBytes(uuid).buffer);
     }
 
-    function expandUuidToken(token) {
-        if (!token) return null;
-        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) return token;
-        if (/^[0-9a-f]{32}$/i.test(token)) return bytesToUuid(uuidToBytes(token));
-        try {
-            return bytesToUuid(base64URLToUint8Array(token));
-        } catch (e) { return null; }
+    function resolveLinkId(idToken) {
+        if (!idToken) return null;
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idToken)) return idToken;
+        if (/^[0-9a-f]{32}$/i.test(idToken)) return bytesToUuid(uuidToBytes(idToken));
+        if (/^\d{4}[0-9A-Za-z]{4,8}$/.test(idToken)) return idToken;
+        if (idToken.length >= 20 && idToken.length <= 24) {
+            try {
+                const bytes = base64URLToUint8Array(idToken);
+                if (bytes.length === 16) return bytesToUuid(bytes);
+            } catch (e) { /* ignore */ }
+        }
+        return idToken;
     }
 
     function readLinkId(searchParams) {
         const raw = searchParams.get('i') || searchParams.get('id');
-        return expandUuidToken(raw) || raw;
+        return resolveLinkId(raw) || raw;
     }
 
     function formatRemainingParts(ms) {
@@ -453,7 +458,7 @@
     function pad2(n) { return String(n).padStart(2, '0'); }
 
     function updateReceiveNotice() {
-        if (!receiveContext) return;
+        if (!receiveContext || receiveContext.metaFailed) return;
         stopCountdown();
 
         if (receiveContext.mode === 'once') {
@@ -523,7 +528,7 @@
         if (dot1 === -1) return null;
         const idToken = body.slice(0, dot1);
         const rest = body.slice(dot1 + 1);
-        const id = expandUuidToken(idToken) || idToken;
+        const id = resolveLinkId(idToken);
         if (!id || !rest) return null;
 
         const dot2 = rest.indexOf('.');
@@ -714,8 +719,10 @@
                 receiveContext.mode = info.mode === 'once' ? 'once' : 'multi';
                 receiveContext.createdAt = info.c ? info.c * 1000 : null;
             } catch (e) {
-                receiveContext.mode = 'multi';
-                receiveContext.createdAt = null;
+                receiveContext.metaFailed = true;
+                receiveNotice.className = 'once-warning';
+                receiveNotice.textContent = SiteI18n.t('index.keyNotFound');
+                return;
             }
         }
         updateReceiveNotice();
