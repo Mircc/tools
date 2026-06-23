@@ -351,6 +351,9 @@
     </footer>
 </div>
 
+<link rel="stylesheet" href="css/site-i18n.css">
+<script src="js/site-i18n-strings.js"></script>
+<script src="js/site-i18n-core.js"></script>
 <script>
     const CIPHER_PREFIX = '--sect--';
     const KEY_STORE_URL = 'https://secretkeystore.tools.eu.org';
@@ -591,7 +594,7 @@
         const isLink = !!parseShareLink(val);
 
         if (isLink) {
-            smartBtn.textContent = SiteI18n.t('index.btnOpenLink');
+            smartBtn.textContent = SiteI18n.t('index.btnDecrypt');
             expireMode.disabled = true;
             expireMode.parentElement.style.opacity = 0.5;
         } else {
@@ -601,6 +604,18 @@
         }
         smartBtn.disabled = !val;
     }
+
+    function refreshPageI18n() {
+        expireMode.querySelectorAll('option[data-i18n]').forEach(function (opt) {
+            opt.textContent = SiteI18n.t(opt.getAttribute('data-i18n'));
+        });
+        if (!receiveView.classList.contains('view-hidden') && !extractBtn.classList.contains('view-hidden')) {
+            extractBtn.textContent = SiteI18n.t('index.btnExtract');
+        }
+        updateUI();
+    }
+
+    pageI18nRefresh = refreshPageI18n;
 
     function showUIResult(msg, isErr, info) {
         resultPanel.style.display = 'block';
@@ -618,8 +633,6 @@
         }
         return false;
     }
-
-    pageI18nRefresh = function() { updateUI(); };
 
     window.onload = function() {
         if (!window.isSecureContext) {
@@ -666,12 +679,9 @@
             }
         });
 
-        if (!checkUrlOnLoad()) updateUI();
+        if (!checkUrlOnLoad()) refreshPageI18n();
     };
 </script>
-<link rel="stylesheet" href="css/site-i18n.css">
-<script src="js/site-i18n-strings.js"></script>
-<script src="js/site-i18n-core.js"></script>
 <script>SiteI18n.init('index');</script>
 </body>
 </html>
