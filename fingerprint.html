@@ -151,7 +151,7 @@
     </div>
 
     <div class="notice" data-i18n-html="fp.notice">
-        🔒 本工具在浏览器本地运行，不向本站服务器上传数据。其中 <strong>公网 IP 与 IP 地理位置</strong> 需调用第三方公共 API（<code>ipify</code> / <code>ipapi.co</code>），<strong>WebRTC</strong> 使用公共 STUN 服务器；在离线或内网环境下这些项会显示「不可用」。
+        🔒 本工具在浏览器本地运行，不向本站服务器上传数据。其中 <strong>公网 IP 与 IP 地理位置</strong> 会依次尝试多个第三方公共 API（如 <code>ipify</code>、<code>ipapi.co</code>、<code>ipwho.is</code>、<code>ip.sb</code>），<strong>WebRTC</strong> 使用公共 STUN 服务器；在离线或内网环境下这些项可能仍显示「不可用」，可改用下方「请求浏览器 GPS」。
     </div>
 
     <div class="summary-grid">
@@ -449,15 +449,25 @@ function detectCanvasRandomness(canvas) {
 
 /* ===================== WebGL 指纹 ===================== */
 function detectWebGL() {
-  var results = { vendor: 'N/A', renderer: 'N/A', webgl2: false, vendorConsistency: 'N/A', gpuRenderHash: 'N/A', webglHash: 'N/A', extensions: [], parameters: {}, shaderPrecision: {} };
+  var results = { vendor: 'N/A', renderer: 'N/A', maskedVendor: 'N/A', webgl2: false, vendorConsistency: 'N/A', gpuRenderHash: 'N/A', webglHash: 'N/A', extensions: [], parameters: {}, shaderPrecision: {} };
   try {
     var canvas = document.createElement('canvas');
     var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     if (!gl) return results;
+    results.maskedVendor = gl.getParameter(gl.VENDOR) || 'N/A';
     var info = gl.getExtension('WEBGL_debug_renderer_info');
-    if (info) { results.vendor = gl.getParameter(info.UNMASKED_VENDOR_WEBGL); results.renderer = gl.getParameter(info.UNMASKED_RENDERER_WEBGL); }
-    var gl2 = canvas.getContext('webgl2'); results.webgl2 = !!gl2;
-    results.vendorConsistency = checkVendorConsistency(gl, info, gl2);
+    if (info) {
+      results.vendor = gl.getParameter(info.UNMASKED_VENDOR_WEBGL) || 'N/A';
+      results.renderer = gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || 'N/A';
+    }
+    // 同一 canvas 取得 webgl 后无法再取 webgl2，必须用独立 canvas
+    try {
+      var c2 = document.createElement('canvas');
+      var gl2 = c2.getContext('webgl2');
+      results.webgl2 = !!gl2;
+      if (gl2 && gl2.getExtension) try { gl2.getExtension('WEBGL_lose_context') && gl2.getExtension('WEBGL_lose_context').loseContext(); } catch (e2) {}
+    } catch (e3) { results.webgl2 = false; }
+    results.vendorConsistency = checkVendorConsistency(gl, info, results);
     results.extensions = gl.getSupportedExtensions() || [];
     var params = ['MAX_TEXTURE_SIZE','MAX_VIEWPORT_DIMS','MAX_RENDERBUFFER_SIZE','MAX_VERTEX_TEXTURE_IMAGE_UNITS','MAX_TEXTURE_IMAGE_UNITS','MAX_COMBINED_TEXTURE_IMAGE_UNITS','MAX_VERTEX_ATTRIBS','MAX_VARYING_VECTORS','MAX_FRAGMENT_UNIFORM_VECTORS','ALIASED_LINE_WIDTH_RANGE','ALIASED_POINT_SIZE_RANGE'];
     params.forEach(function (p) { try { var v = gl.getParameter(gl[p]); if (v && v.length !== undefined && typeof v !== 'string') v = Array.from(v).join(','); results.parameters[p] = v; } catch (e) {} });
@@ -469,15 +479,32 @@ function detectWebGL() {
     return results;
   } catch (e) { return results; }
 }
-function checkVendorConsistency(gl, info, gl2) {
+function checkVendorConsistency(gl, info, results) {
+  // 注意：gl.VENDOR（如 WebKit / Mozilla）与 UNMASKED_VENDOR（如 Google Inc. (NVIDIA)）本就不同，属浏览器正常行为，不能当伪装。
+  // 缺少 WebGL 2.0 是硬件/驱动能力，也不是伪装信号。
   var issues = [];
-  if (info) {
-    var un = gl.getParameter(info.UNMASKED_VENDOR_WEBGL);
-    var mk = gl.getParameter(gl.VENDOR);
-    if (mk && un && !String(un).includes(String(mk).replace(/Inc\.?/i, '').trim())) issues.push('Vendor 不一致');
+  if (!info) return '正常';
+  var unVendor = String(results.vendor || '');
+  var unRenderer = String(results.renderer || '');
+  var softRe = /SwiftShader|llvmpipe|softpipe|Microsoft Basic Render Driver|Mesa OffScreen|Google SwiftShader|software rasterizer/i;
+  if (softRe.test(unRenderer) || softRe.test(unVendor)) {
+    issues.push('检测到软件渲染器 (' + (unRenderer || unVendor) + ')');
   }
-  if (!gl2 && gl) issues.push('缺少 WebGL 2.0 支持');
+  if ((!unVendor || unVendor === 'N/A') && (!unRenderer || unRenderer === 'N/A')) {
+    issues.push('无法读取真实 GPU 信息');
+  }
   return issues.length === 0 ? '正常' : issues.join('; ');
+}
+function fetchWithTimeout(url, ms) {
+  var controller = new AbortController();
+  var timer = setTimeout(function () { try { controller.abort(); } catch (e) {} }, ms || 4500);
+  return fetch(url, { cache: 'no-store', signal: controller.signal, mode: 'cors' }).then(function (r) {
+    clearTimeout(timer);
+    return r;
+  }, function (err) {
+    clearTimeout(timer);
+    throw err;
+  });
 }
 /* ===================== 网络信息 ===================== */
 async function detectNetwork() {
@@ -539,12 +566,74 @@ async function detectGeo() {
   return result;
 }
 async function detectIPGeo() {
-  try {
-    var r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
-    var d = await r.json();
-    if (d.error) return null;
-    return { ip: d.ip, country: d.country_name, region: d.region, city: d.city, postal: d.postal, isp: d.org, timezone: d.timezone, latitude: d.latitude, longitude: d.longitude };
-  } catch (e) { return null; }
+  // 多源回退：单一 API（尤其 ipapi.co）在内网/墙内常被拦或限流
+  var sources = [
+    function () {
+      return fetchWithTimeout('https://ipwho.is/', 4500).then(function (r) {
+        if (!r.ok) throw new Error('http');
+        return r.json();
+      }).then(function (d) {
+        if (d.success === false) throw new Error('fail');
+        return {
+          ip: d.ip, country: d.country, countryCode: d.country_code,
+          region: d.region, city: d.city, postal: d.postal,
+          isp: (d.connection && (d.connection.isp || d.connection.org)) || d.org || '',
+          timezone: (d.timezone && (d.timezone.id || d.timezone)) || '',
+          latitude: d.latitude, longitude: d.longitude, source: 'ipwho.is'
+        };
+      });
+    },
+    function () {
+      return fetchWithTimeout('https://api.ip.sb/geoip', 4500).then(function (r) {
+        if (!r.ok) throw new Error('http');
+        return r.json();
+      }).then(function (d) {
+        if (!d || (!d.country && d.latitude == null)) throw new Error('empty');
+        return {
+          ip: d.ip, country: d.country || d.country_code, countryCode: d.country_code,
+          region: d.region || d.region_code, city: d.city, postal: d.postal_code || d.postal,
+          isp: d.organization || d.isp || d.asn_organization || '',
+          timezone: d.timezone || '',
+          latitude: d.latitude, longitude: d.longitude, source: 'ip.sb'
+        };
+      });
+    },
+    function () {
+      return fetchWithTimeout('https://ipapi.co/json/', 4500).then(function (r) {
+        if (!r.ok) throw new Error('http');
+        return r.json();
+      }).then(function (d) {
+        if (d.error) throw new Error(d.reason || 'error');
+        return {
+          ip: d.ip, country: d.country_name, countryCode: d.country_code || d.country,
+          region: d.region, city: d.city, postal: d.postal, isp: d.org || d.asn || '',
+          timezone: d.timezone || '',
+          latitude: d.latitude, longitude: d.longitude, source: 'ipapi.co'
+        };
+      });
+    },
+    function () {
+      return fetchWithTimeout('https://freeipapi.com/api/json', 4500).then(function (r) {
+        if (!r.ok) throw new Error('http');
+        return r.json();
+      }).then(function (d) {
+        if (!d || (!d.countryName && d.latitude == null)) throw new Error('empty');
+        return {
+          ip: d.ipAddress, country: d.countryName, countryCode: d.countryCode,
+          region: d.regionName, city: d.cityName, postal: d.zipCode,
+          isp: '', timezone: d.timeZones && d.timeZones[0] || '',
+          latitude: d.latitude, longitude: d.longitude, source: 'freeipapi.com'
+        };
+      });
+    }
+  ];
+  for (var i = 0; i < sources.length; i++) {
+    try {
+      var geo = await sources[i]();
+      if (geo && (geo.country || geo.latitude != null)) return geo;
+    } catch (e) { /* try next */ }
+  }
+  return null;
 }
 function requestBrowserGeo() {
   return new Promise(function (resolve) {
@@ -634,7 +723,7 @@ function tryRenderMapFromGeo(geo, browserGeo) {
   if (geo && geo.ipGeo && geo.ipGeo.latitude != null && geo.ipGeo.longitude != null) {
     var ig = geo.ipGeo;
     renderGeoMap(ig.latitude, ig.longitude, null, 'IP: ' + [ig.city, ig.country].filter(Boolean).join(', '));
-    updateGeoInfoUI(ig.latitude.toFixed(6) + ', ' + ig.longitude.toFixed(6), 'N/A (IP)', 'IP (ipapi.co)');
+    updateGeoInfoUI(ig.latitude.toFixed(6) + ', ' + ig.longitude.toFixed(6), 'N/A (IP)', 'IP (' + (ig.source || 'geo API') + ')');
     return;
   }
   var el = $('geo-map');
@@ -686,10 +775,15 @@ function detectProxy(results) {
     }
   }
   var lang = results.time && results.time.language;
-  if (lang && results.geo && results.geo.ipGeo && results.geo.ipGeo.country) {
+  if (lang && results.geo && results.geo.ipGeo && (results.geo.ipGeo.countryCode || results.geo.ipGeo.country)) {
     var langRegion = (lang.split('-')[1] || '').toUpperCase();
-    var ipCountry = (results.geo.ipGeo.country || '').toUpperCase();
-    if (langRegion && ipCountry && langRegion !== ipCountry && !(langRegion === 'CN' && /CHINA/.test(ipCountry))) {
+    var ipCountry = String(results.geo.ipGeo.countryCode || results.geo.ipGeo.country || '').toUpperCase();
+    var countryName = String(results.geo.ipGeo.country || '').toUpperCase();
+    if (langRegion && ipCountry && langRegion !== ipCountry &&
+        !(langRegion === 'CN' && (/CN|CHINA|中国/.test(ipCountry) || /CHINA|中国/.test(countryName))) &&
+        !(langRegion === 'US' && (/US|UNITED STATES|美国/.test(ipCountry) || /UNITED STATES|美国/.test(countryName))) &&
+        !(langRegion === 'GB' && (/GB|UK|UNITED KINGDOM|英国/.test(ipCountry) || /UNITED KINGDOM|英国/.test(countryName))) &&
+        !(langRegion === 'JP' && (/JP|JAPAN|日本/.test(ipCountry) || /JAPAN|日本/.test(countryName)))) {
       flags.push('语言地区 (' + langRegion + ') 与 IP 归属国家 (' + results.geo.ipGeo.country + ') 不一致');
     }
   }
@@ -839,8 +933,9 @@ function renderResults(R) {
     var ig = R.geo.ipGeo;
     geoRows.push(['IP 国家', ig.country], ['省/区域', ig.region], ['城市', ig.city], ['邮编', ig.postal], ['运营商 (ISP)', ig.isp], ['IP 时区', ig.timezone]);
     if (ig.latitude != null) geoRows.push(['IP 经纬度', ig.latitude.toFixed(6) + ', ' + ig.longitude.toFixed(6)]);
+    if (ig.source) geoRows.push(['数据来源', ig.source]);
   } else {
-    geoRows.push(['IP 地理位置', 'N/A (API 不可用/被拦截)']);
+    geoRows.push(['IP 地理位置', 'N/A（多源 API 均不可用/被拦截，可尝试浏览器 GPS）']);
   }
   var geoBody = kvTable(geoRows);
   geoBody += '<div id="geo-map" class="loading">' + esc(L('loadingMap')) + '</div>';
@@ -876,9 +971,10 @@ function renderResults(R) {
   if (R.canvas.dataURL) canvasBody += '<img class="canvas-preview" src="' + R.canvas.dataURL + '" alt="canvas fingerprint">';
   html += panel(L('panelCanvas'), R.canvas.randomness === '正常' ? statusTag('ok', '稳定') : statusTag('warn', '检出噪声'), canvasBody);
 
-  html += panel(L('panelWebgl'), R.webgl.vendorConsistency === '正常' ? statusTag('ok', '一致') : statusTag('warn', '异常'), kvTable([
-    ['Vendor', R.webgl.vendor], ['Renderer', R.webgl.renderer], ['支持 WebGL 2.0', R.webgl.webgl2],
-    ['一致性检测', R.webgl.vendorConsistency], ['WebGL 哈希', '<span class="mono">' + esc(R.webgl.webglHash) + '</span>', 'raw'],
+  html += panel(L('panelWebgl'), R.webgl.vendorConsistency === '正常' ? statusTag('ok', '正常') : statusTag('warn', '异常'), kvTable([
+    ['Vendor (unmasked)', R.webgl.vendor], ['Vendor (masked)', R.webgl.maskedVendor || 'N/A'],
+    ['Renderer', R.webgl.renderer], ['支持 WebGL 2.0', R.webgl.webgl2],
+    ['伪装相关检测', R.webgl.vendorConsistency], ['WebGL 哈希', '<span class="mono">' + esc(R.webgl.webglHash) + '</span>', 'raw'],
     ['GPU 渲染哈希', '<span class="mono">' + esc(R.webgl.gpuRenderHash) + '</span>', 'raw'],
     ['扩展数量', (R.webgl.extensions || []).length], ['关键参数', R.webgl.parameters], ['着色器精度', R.webgl.shaderPrecision]
   ]));

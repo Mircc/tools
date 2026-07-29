@@ -562,6 +562,7 @@
     let receiveContext = null;
     let sensitiveBuffers = [];
     let countdownTimer = null;
+    let readyToCopy = false;
 
     function stopCountdown() {
         if (countdownTimer) {
@@ -854,12 +855,27 @@
         return null;
     }
 
+    function copyResultCipher() {
+        const txt = resultBox.textContent;
+        if (!txt || resultBox.classList.contains('error')) return;
+        navigator.clipboard.writeText(txt).then(() => {
+            const originalHint = resultHint.textContent;
+            resultHint.textContent = SiteI18n.t('index.copiedClipboard');
+            setTimeout(() => {
+                if (resultHint.textContent === SiteI18n.t('index.copiedClipboard')) {
+                    resultHint.textContent = originalHint;
+                }
+            }, 2000);
+        }).catch(() => showToast(SiteI18n.t('index.copyFail'), true));
+    }
+
     // --- 发信 ---
     async function processEncrypt() {
         const text = inputText.value.trim();
         const mode = expireMode.value;
         if (!text) return showUIResult(SiteI18n.t('index.enterContent'), true);
 
+        readyToCopy = false;
         smartBtn.textContent = SiteI18n.t('index.encrypting');
         smartBtn.disabled = true;
 
@@ -868,13 +884,15 @@
             const { id } = await storeKey(keyB64, mode);
             const shareUrl = buildShareUrl(id, payload);
             const modeLabel = mode === 'once' ? SiteI18n.t('index.expireOnce') : SiteI18n.t('index.expireMulti');
-            showUIResult(shareUrl, false, SiteI18n.t('index.linkGenerated', { mode: modeLabel, len: shareUrl.length }));
+            showUIResult(shareUrl, false, SiteI18n.t('index.linkGenerated', { mode: modeLabel }));
+            readyToCopy = true;
+            smartBtn.textContent = SiteI18n.t('index.btnCopyCipher');
+            smartBtn.disabled = false;
         } catch (e) {
             showUIResult(e.message || SiteI18n.t('index.encryptFail'), true);
+            updateUI();
+            smartBtn.disabled = false;
         }
-
-        updateUI();
-        smartBtn.disabled = false;
     }
 
     // --- 收信视图 ---
@@ -910,6 +928,7 @@
         receiveContext = null;
         stopCountdown();
         secureWipeAll();
+        readyToCopy = false;
         receiveView.classList.add('view-hidden');
         sendView.classList.remove('view-hidden');
         receiveResultBox.textContent = '';
@@ -972,6 +991,15 @@
         const val = inputText.value.trim();
         const isLink = !!parseShareLink(val);
 
+        if (readyToCopy && !isLink) {
+            smartBtn.textContent = SiteI18n.t('index.btnCopyCipher');
+            expireMode.disabled = false;
+            expireMode.parentElement.style.opacity = 1;
+            smartBtn.disabled = false;
+            return;
+        }
+
+        readyToCopy = false;
         if (isLink) {
             smartBtn.textContent = SiteI18n.t('index.btnDecrypt');
             expireMode.disabled = true;
@@ -1034,13 +1062,20 @@
         }
 
         smartBtn.addEventListener('click', async () => {
+            if (readyToCopy) {
+                copyResultCipher();
+                return;
+            }
             const parsed = parseShareLink(inputText.value);
             if (parsed) await showReceiveView(parsed);
             else processEncrypt();
         });
         extractBtn.addEventListener('click', processExtract);
         destroyBtn.addEventListener('click', processDestroy);
-        inputText.addEventListener('input', updateUI);
+        inputText.addEventListener('input', () => {
+            readyToCopy = false;
+            updateUI();
+        });
         inputText.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey && inputText.value.trim()) {
                 e.preventDefault();
@@ -1048,14 +1083,7 @@
             }
         });
         resultBox.addEventListener('dblclick', () => {
-            const txt = resultBox.textContent;
-            if (txt && !resultBox.classList.contains('error')) {
-                navigator.clipboard.writeText(txt).then(() => {
-                    const originalHint = resultHint.textContent;
-                    resultHint.textContent = SiteI18n.t('index.copiedClipboard');
-                    setTimeout(() => resultHint.textContent = originalHint, 2000);
-                }).catch(() => showToast(SiteI18n.t('index.copyFail'), true));
-            }
+            if (!resultBox.classList.contains('error')) copyResultCipher();
         });
         receiveResultBox.addEventListener('dblclick', () => {
             const txt = receiveResultBox.textContent;
