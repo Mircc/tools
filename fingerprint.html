@@ -189,7 +189,8 @@
 <script src="js/i18n-fingerprint-strings.js"></script>
 <script src="js/site-i18n-core.js"></script>
 <script>
-function L(k) { return SiteI18n.t('fp.' + k); }
+/* 不可命名为 L：会覆盖 Leaflet 全局命名空间 L */
+function fpT(k) { return SiteI18n.t('fp.' + k); }
 var lastResults = null;
 
 /* ===================== MD5 (blueimp-md5, MIT, 同步实现) ===================== */
@@ -371,7 +372,7 @@ function detectBattery() {
     if (!navigator.getBattery) return resolve('N/A');
     navigator.getBattery().then(function (b) {
       resolve({
-        charging: b.charging ? L('charging') : L('notCharging'),
+        charging: b.charging ? fpT('charging') : fpT('notCharging'),
         level: Math.round(b.level * 100) + '%',
         chargingTime: b.chargingTime === Infinity ? 'N/A' : b.chargingTime + 's',
         dischargingTime: b.dischargingTime === Infinity ? 'N/A' : b.dischargingTime + 's'
@@ -695,8 +696,8 @@ function renderGeoMap(lat, lng, accuracy, popupText) {
     iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -12]
   });
   geoMarker = L.marker([lat, lng], { icon: icon }).addTo(geoMap);
-  var popup = '<div style="font-size:13px;line-height:1.6"><strong>' + esc(popupText || L('yourLocation')) + '</strong><br>' + L('lat') + ': ' + lat.toFixed(6) + '<br>' + L('lng') + ': ' + lng.toFixed(6) +
-    (accuracy ? '<br>' + L('accuracy') + ': ±' + Math.round(accuracy) + 'm' : '') + '</div>';
+  var popup = '<div style="font-size:13px;line-height:1.6"><strong>' + esc(popupText || fpT('yourLocation')) + '</strong><br>' + fpT('lat') + ': ' + lat.toFixed(6) + '<br>' + fpT('lng') + ': ' + lng.toFixed(6) +
+    (accuracy ? '<br>' + fpT('accuracy') + ': ±' + Math.round(accuracy) + 'm' : '') + '</div>';
   geoMarker.bindPopup(popup);
   setTimeout(function () { if (geoMarker) geoMarker.openPopup(); }, 500);
   if (accuracy) {
@@ -715,7 +716,7 @@ function updateGeoInfoUI(coords, accuracy, source) {
 }
 function tryRenderMapFromGeo(geo, browserGeo) {
   if (browserGeo && browserGeo.latitude != null) {
-    renderGeoMap(browserGeo.latitude, browserGeo.longitude, browserGeo.accuracy, L('browserGps'));
+    renderGeoMap(browserGeo.latitude, browserGeo.longitude, browserGeo.accuracy, fpT('browserGps'));
     updateGeoInfoUI(browserGeo.latitude.toFixed(6) + ', ' + browserGeo.longitude.toFixed(6),
       browserGeo.accuracyText || ('±' + Math.round(browserGeo.accuracy) + 'm'), '浏览器 Geolocation API');
     return;
@@ -727,7 +728,7 @@ function tryRenderMapFromGeo(geo, browserGeo) {
     return;
   }
   var el = $('geo-map');
-  if (el) { el.className = 'loading'; el.textContent = L('noGeo'); }
+  if (el) { el.className = 'loading'; el.textContent = fpT('noGeo'); }
 }
 
 /* ===================== 机器人 / 自动化检测 ===================== */
@@ -863,21 +864,21 @@ function panel(title, statusHtml, bodyHtml, open) {
 }
 
 function flagsHtml(flags) {
-  if (!flags || !flags.length) return '<p class="tag-ok">' + L('noAnomaly') + '</p>';
+  if (!flags || !flags.length) return '<p class="tag-ok">' + fpT('noAnomaly') + '</p>';
   return flags.map(function (f) { return '<div class="flag-item">⚠️ ' + esc(f) + '</div>'; }).join('');
 }
 
 function mapSpoofConf(c) {
-  if (c === '未检测到伪装') return L('noSpoof');
-  if (c === '轻度可疑') return L('mildSusp');
-  if (c === '中度可疑') return L('modSusp');
-  if (c === '高度可疑') return L('highSusp');
+  if (c === '未检测到伪装') return fpT('noSpoof');
+  if (c === '轻度可疑') return fpT('mildSusp');
+  if (c === '中度可疑') return fpT('modSusp');
+  if (c === '高度可疑') return fpT('highSusp');
   return c;
 }
 
 function mapBotConf(c) {
   if (c === '正常') return SiteI18n.t('common.normal');
-  if (c === '高度可疑') return L('highSusp');
+  if (c === '高度可疑') return fpT('highSusp');
   return c;
 }
 
@@ -890,13 +891,13 @@ function renderResults(R) {
   } else {
     $('sumLocation').innerHTML = '<span class="muted">' + esc(SiteI18n.t('common.unavailable')) + '</span>';
   }
-  $('sumProxy').innerHTML = R.proxy.proxyDetected ? statusTag('warn', L('suspicious')) : statusTag('ok', L('notDetected'));
+  $('sumProxy').innerHTML = R.proxy.proxyDetected ? statusTag('warn', fpT('suspicious')) : statusTag('ok', fpT('notDetected'));
   $('sumBot').innerHTML = R.bot.isBot ? statusTag('err', mapBotConf(R.bot.confidence)) : (R.bot.flags.length ? statusTag('warn', mapBotConf(R.bot.confidence)) : statusTag('ok', SiteI18n.t('common.normal')));
 
   // 伪装横幅
   var banner = $('spoofBanner'), bt = $('spoofText');
   banner.className = 'spoof-banner ' + (R.spoof.spoofed ? (R.spoof.flags.length > 2 ? 'err' : 'warn') : 'ok');
-  bt.textContent = L('spoofPrefix') + mapSpoofConf(R.spoof.confidence) + (R.spoof.flags.length ? SiteI18n.t('fp.spoofSignals', { n: R.spoof.flags.length }) : '');
+  bt.textContent = fpT('spoofPrefix') + mapSpoofConf(R.spoof.confidence) + (R.spoof.flags.length ? SiteI18n.t('fp.spoofSignals', { n: R.spoof.flags.length }) : '');
   banner.firstChild.textContent = R.spoof.spoofed ? '⚠️' : '✅';
 
   // 综合指纹
@@ -905,14 +906,14 @@ function renderResults(R) {
   // 详情面板
   var html = '';
 
-  html += panel(L('panelBrowser'), '', kvTable([
+  html += panel(fpT('panelBrowser'), '', kvTable([
     ['浏览器', R.browser.browser], ['操作系统', R.browser.os], ['平台 (platform)', R.browser.platform],
     ['UA-CH 平台', R.browser.userAgentDataPlatform], ['架构', R.browser.architecture],
     ['渲染引擎', R.browser.renderingEngine], ['GPU 渲染器', R.browser.gpuRenderer],
     ['移动设备', /Mobi|Android|iPhone|iPad/i.test(R.browser.userAgent) ? SiteI18n.t('common.yes') : SiteI18n.t('common.no')], ['厂商 (vendor)', R.browser.vendor]
   ]), true);
 
-  html += panel(L('panelNav'), '', kvTable([
+  html += panel(fpT('panelNav'), '', kvTable([
     ['User-Agent', R.browser.userAgent], ['语言', R.time.language], ['语言列表', R.browser.languages],
     ['Do Not Track', R.browser.doNotTrack], ['Cookie 启用', R.browser.cookiesEnabled],
     ['webdriver', R.browser.webdriver]
@@ -922,11 +923,11 @@ function renderResults(R) {
   var netBody = kvTable(netRows);
   if (R.network.ipAnalysis) {
     var cls = R.network.ipAnalysis.level === 'warn' ? 'net-alert-warn' : (R.network.ipAnalysis.level === 'ok' ? 'net-alert-ok' : 'net-alert-info');
-    netBody += '<div class="net-alert ' + cls + '"><strong>' + esc(L('ipAnalysis')) + '</strong><br>' + esc(R.network.ipAnalysis.text) + '</div>';
+    netBody += '<div class="net-alert ' + cls + '"><strong>' + esc(fpT('ipAnalysis')) + '</strong><br>' + esc(R.network.ipAnalysis.text) + '</div>';
   }
-  var netStatus = R.network.ipAnalysis && R.network.ipAnalysis.level === 'warn' ? statusTag('warn', L('inconsistent')) :
+  var netStatus = R.network.ipAnalysis && R.network.ipAnalysis.level === 'warn' ? statusTag('warn', fpT('inconsistent')) :
     (R.network.ip === 'N/A' ? statusTag('warn', SiteI18n.t('common.unavailable')) : statusTag('ok', 'OK'));
-  html += panel(L('panelNet'), netStatus, netBody);
+  html += panel(fpT('panelNet'), netStatus, netBody);
 
   var geoRows = [];
   if (R.geo.ipGeo) {
@@ -938,22 +939,22 @@ function renderResults(R) {
     geoRows.push(['IP 地理位置', 'N/A（多源 API 均不可用/被拦截，可尝试浏览器 GPS）']);
   }
   var geoBody = kvTable(geoRows);
-  geoBody += '<div id="geo-map" class="loading">' + esc(L('loadingMap')) + '</div>';
+  geoBody += '<div id="geo-map" class="loading">' + esc(fpT('loadingMap')) + '</div>';
   geoBody += '<div class="geo-info" id="geo-info">' +
-    '<div class="geo-info-row"><span class="glabel">' + esc(L('coords')) + '</span><span id="geoCoords" class="muted">—</span></div>' +
-    '<div class="geo-info-row"><span class="glabel">' + esc(L('accuracy')) + '</span><span id="geoAccuracy" class="muted">—</span></div>' +
-    '<div class="geo-info-row"><span class="glabel">' + esc(L('source')) + '</span><span id="geoSource" class="muted">—</span></div></div>';
-  geoBody += '<p style="margin-top:10px"><button class="btn btn-ghost" id="geoBtn" style="padding:6px 14px;font-size:0.85rem">' + esc(L('gpsRequest')) + '</button> <span id="geoResult" class="muted"></span></p>';
-  var geoStatus = R.geo.browserGeo ? statusTag('ok', L('browserGps')) : (R.geo.ipGeo ? statusTag('ok', L('ipBased')) : statusTag('warn', SiteI18n.t('common.unavailable')));
-  html += panel(L('panelGeo'), geoStatus, geoBody);
+    '<div class="geo-info-row"><span class="glabel">' + esc(fpT('coords')) + '</span><span id="geoCoords" class="muted">—</span></div>' +
+    '<div class="geo-info-row"><span class="glabel">' + esc(fpT('accuracy')) + '</span><span id="geoAccuracy" class="muted">—</span></div>' +
+    '<div class="geo-info-row"><span class="glabel">' + esc(fpT('source')) + '</span><span id="geoSource" class="muted">—</span></div></div>';
+  geoBody += '<p style="margin-top:10px"><button class="btn btn-ghost" id="geoBtn" style="padding:6px 14px;font-size:0.85rem">' + esc(fpT('gpsRequest')) + '</button> <span id="geoResult" class="muted"></span></p>';
+  var geoStatus = R.geo.browserGeo ? statusTag('ok', fpT('browserGps')) : (R.geo.ipGeo ? statusTag('ok', fpT('ipBased')) : statusTag('warn', SiteI18n.t('common.unavailable')));
+  html += panel(fpT('panelGeo'), geoStatus, geoBody);
 
-  html += panel(L('panelTime'), '', kvTable([
+  html += panel(fpT('panelTime'), '', kvTable([
     ['当前时间', R.time.currentTime], ['ISO 时间', R.time.currentTimeISO], ['时区', R.time.timezone],
     ['UTC 偏移', R.time.utcOffsetString + ' (' + R.time.utcOffset + ' 分钟)'], ['区域设置 (locale)', R.time.locale], ['日期格式示例', R.time.dateFormat]
   ]));
 
   var s = R.hardware.screen;
-  html += panel(L('panelHw'), '', kvTable([
+  html += panel(fpT('panelHw'), '', kvTable([
     ['AudioContext 哈希', '<span class="mono">' + esc(R.hardware.audioContextHash) + '</span>', 'raw'],
     ['设备内存', R.hardware.deviceMemory === 'N/A' ? 'N/A' : R.hardware.deviceMemory + ' GB'],
     ['CPU 逻辑核心', R.hardware.hardwareConcurrency],
@@ -963,15 +964,15 @@ function renderResults(R) {
     ['颜色深度', s.colorDepth + ' bit'], ['设备像素比', s.devicePixelRatio], ['色域', R.hardware.colorGamut]
   ]));
 
-  html += panel(L('panelFonts'), statusTag('ok', R.fonts.count + ' 种'),
+  html += panel(fpT('panelFonts'), statusTag('ok', R.fonts.count + ' 种'),
     '<p class="muted">检测方式：' + esc(R.fonts.method) + '</p><div class="pill-list">' +
     (R.fonts.fonts.length ? R.fonts.fonts.map(function (f) { return '<span class="pill">' + esc(f) + '</span>'; }).join('') : '<span class="muted">未检测到</span>') + '</div>');
 
   var canvasBody = kvTable([['哈希', '<span class="mono">' + esc(R.canvas.hash) + '</span>', 'raw'], ['画布尺寸', R.canvas.size], ['随机性检测', R.canvas.randomness]]);
   if (R.canvas.dataURL) canvasBody += '<img class="canvas-preview" src="' + R.canvas.dataURL + '" alt="canvas fingerprint">';
-  html += panel(L('panelCanvas'), R.canvas.randomness === '正常' ? statusTag('ok', '稳定') : statusTag('warn', '检出噪声'), canvasBody);
+  html += panel(fpT('panelCanvas'), R.canvas.randomness === '正常' ? statusTag('ok', '稳定') : statusTag('warn', '检出噪声'), canvasBody);
 
-  html += panel(L('panelWebgl'), R.webgl.vendorConsistency === '正常' ? statusTag('ok', '正常') : statusTag('warn', '异常'), kvTable([
+  html += panel(fpT('panelWebgl'), R.webgl.vendorConsistency === '正常' ? statusTag('ok', '正常') : statusTag('warn', '异常'), kvTable([
     ['Vendor (unmasked)', R.webgl.vendor], ['Vendor (masked)', R.webgl.maskedVendor || 'N/A'],
     ['Renderer', R.webgl.renderer], ['支持 WebGL 2.0', R.webgl.webgl2],
     ['伪装相关检测', R.webgl.vendorConsistency], ['WebGL 哈希', '<span class="mono">' + esc(R.webgl.webglHash) + '</span>', 'raw'],
@@ -979,7 +980,7 @@ function renderResults(R) {
     ['扩展数量', (R.webgl.extensions || []).length], ['关键参数', R.webgl.parameters], ['着色器精度', R.webgl.shaderPrecision]
   ]));
 
-  html += panel(L('panelProxy'), R.proxy.proxyDetected ? statusTag('warn', L('suspicious')) : statusTag('ok', L('notDetected')), flagsHtml(R.proxy.flags));
+  html += panel(fpT('panelProxy'), R.proxy.proxyDetected ? statusTag('warn', fpT('suspicious')) : statusTag('ok', fpT('notDetected')), flagsHtml(R.proxy.flags));
 
   var botBody = flagsHtml(R.bot.flags) + kvTable([
     ['判定', R.bot.isBot ? '疑似自动化' : SiteI18n.t('common.normal')], ['置信度', mapBotConf(R.bot.confidence)],
@@ -988,9 +989,9 @@ function renderResults(R) {
     ['窗口内尺寸', R.bot.details.innerWidth + ' x ' + R.bot.details.innerHeight],
     ['通知权限', R.bot.details.notificationPermission], ['权限状态', R.bot.permissions]
   ]);
-  html += panel(L('panelBot'), R.bot.isBot ? statusTag('err', L('suspicious')) : (R.bot.flags.length ? statusTag('warn', '注意') : statusTag('ok', SiteI18n.t('common.normal'))), botBody);
+  html += panel(fpT('panelBot'), R.bot.isBot ? statusTag('err', fpT('suspicious')) : (R.bot.flags.length ? statusTag('warn', '注意') : statusTag('ok', SiteI18n.t('common.normal'))), botBody);
 
-  html += panel(L('panelSpoof'), R.spoof.spoofed ? statusTag(R.spoof.flags.length > 2 ? 'err' : 'warn', mapSpoofConf(R.spoof.confidence)) : statusTag('ok', SiteI18n.t('common.normal')),
+  html += panel(fpT('panelSpoof'), R.spoof.spoofed ? statusTag(R.spoof.flags.length > 2 ? 'err' : 'warn', mapSpoofConf(R.spoof.confidence)) : statusTag('ok', SiteI18n.t('common.normal')),
     '<p class="muted">综合判定：' + esc(mapSpoofConf(R.spoof.confidence)) + '</p>' + flagsHtml(R.spoof.flags));
 
   $('detailContainer').innerHTML = html;
@@ -1003,17 +1004,17 @@ function renderResults(R) {
   if (geoBtn) geoBtn.addEventListener('click', async function () {
     geoBtn.disabled = true;
     var out = $('geoResult');
-    out.textContent = L('gpsPending');
+    out.textContent = fpT('gpsPending');
     var g = await requestBrowserGeo();
     geoBtn.disabled = false;
     if (g) {
       R.geo.browserGeo = g;
       window.__fp.geo.browserGeo = g;
-      out.textContent = L('gpsOk');
-      renderGeoMap(g.latitude, g.longitude, g.accuracy, L('browserGps'));
+      out.textContent = fpT('gpsOk');
+      renderGeoMap(g.latitude, g.longitude, g.accuracy, fpT('browserGps'));
       updateGeoInfoUI(g.latitude.toFixed(6) + ', ' + g.longitude.toFixed(6), g.accuracyText, '浏览器 Geolocation API');
     } else {
-      out.textContent = L('gpsDenied');
+      out.textContent = fpT('gpsDenied');
     }
   });
 }
@@ -1055,9 +1056,9 @@ async function runAllDetections(useCache) {
     renderResults(R);
   } catch (e) {
     console.error('检测出错:', e);
-    $('detailContainer').innerHTML = '<div class="notice">' + esc(L('detectErr')) + esc(e.message) + '</div>';
+    $('detailContainer').innerHTML = '<div class="notice">' + esc(fpT('detectErr')) + esc(e.message) + '</div>';
   } finally {
-    btn.disabled = false; btn.textContent = L('reDetect'); running = false;
+    btn.disabled = false; btn.textContent = fpT('reDetect'); running = false;
   }
 }
 
@@ -1067,8 +1068,8 @@ window.addEventListener('load', function () {
     var fp = window.__fp && window.__fp.fingerprint;
     if (!fp) return;
     navigator.clipboard.writeText(fp).then(function () {
-      var b = $('copyFpBtn'), t = b.textContent; b.textContent = L('copied');
-      setTimeout(function () { b.textContent = L('copyFp'); }, 1500);
+      var b = $('copyFpBtn'), t = b.textContent; b.textContent = fpT('copied');
+      setTimeout(function () { b.textContent = fpT('copyFp'); }, 1500);
     });
   });
   runAllDetections(false);
