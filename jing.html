@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c0d">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="站桩">
+<meta name="description" content="极简站桩 / 冥想计时器，屏幕常亮，磬声提醒。">
+<title>站桩 · Zen Timer</title>
+<style>
+  :root{
+    --bg-0:#050607;
+    --bg-1:#0a0c0d;
+    --bg-2:#14181a;
+    --ink:#e9e5da;
+    --ink-dim:#8d918c;
+    --ink-faint:#4d514d;
+    --gold:#e3c58a;
+    --gold-soft:rgba(227,197,138,.14);
+    --line:rgba(255,255,255,.08);
+    --card:rgba(255,255,255,.035);
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+    --safe-l:env(safe-area-inset-left,0px);
+    --safe-r:env(safe-area-inset-right,0px);
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+  html,body{height:100%;}
+
+  body{
+    background:
+      radial-gradient(125% 110% at 50% -10%, var(--bg-2) 0%, var(--bg-1) 55%, var(--bg-0) 100%);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    font-variant-numeric:tabular-nums;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:manipulation;
+  }
+
+  /* 呼吸光晕：仅在计时阶段出现 */
+  .aura{
+    position:fixed; left:50%; top:44%;
+    width:min(120vw,760px); aspect-ratio:1;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(circle, rgba(227,197,138,.10) 0%, rgba(227,197,138,.03) 38%, transparent 66%);
+    opacity:0; transition:opacity 1.2s ease;
+    pointer-events:none;
+  }
+  body.phase-run .aura{opacity:1; animation:breathe 8s ease-in-out infinite;}
+  @keyframes breathe{0%,100%{transform:translate(-50%,-50%) scale(.92);}50%{transform:translate(-50%,-50%) scale(1.06);}}
+
+  /* 气机可视化层：全屏 Canvas，位于内容之下、光晕之上 */
+  #qi{
+    position:fixed; inset:0;
+    width:100%; height:100%;
+    z-index:0; pointer-events:none;
+    opacity:0;
+    transition:opacity 1.4s ease;
+  }
+  body.qi-on.phase-prep   #qi,
+  body.qi-on.phase-run    #qi,
+  body.qi-on.phase-paused #qi{opacity:1;}
+
+  /* Canvas 接管呼吸节律时，关掉 CSS 光晕，避免两种节奏打架 */
+  body.qi-on .aura{opacity:0 !important; animation:none;}
+
+  .app{
+    position:relative; z-index:1;
+    min-height:100dvh;
+    display:grid;
+    grid-template-rows:auto 1fr auto;
+    padding:calc(var(--safe-t) + 20px) calc(var(--safe-r) + 20px) calc(var(--safe-b) + 20px) calc(var(--safe-l) + 20px);
+  }
+
+  /* ---------- 顶栏 ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    height:36px;                 /* 容纳 34px 图标按钮与模式切换器 */
+  }
+  /* 模式切换：抱球桩 / 打坐。练习过程中锁定 */
+  .mode-sel{
+    display:flex; gap:2px; padding:3px;
+    border:1px solid var(--line); border-radius:999px;
+    background:var(--card);
+    transition:opacity .3s ease;
+  }
+  .mode-sel button{
+    padding:6px 13px; border:none; border-radius:999px;
+    background:transparent; color:var(--ink-faint);
+    font-size:12px; letter-spacing:.08em; cursor:pointer;
+    transition:color .25s ease, background .25s ease;
+  }
+  .mode-sel button.on{background:rgba(255,255,255,.13); color:var(--ink);}
+  .mode-sel.locked{opacity:.35; pointer-events:none;}
+  .tools{display:flex; gap:6px;}
+  .icon-btn{
+    width:34px; height:34px; display:grid; place-items:center;
+    border:1px solid var(--line); border-radius:50%;
+    background:var(--card); color:var(--ink-dim);
+    font-size:14px; cursor:pointer;
+    transition:color .2s, border-color .2s, background .2s, opacity .25s;
+  }
+  .icon-btn:active{transform:scale(.94);}
+  .icon-btn.off{color:var(--ink-faint); opacity:.5;}
+  .icon-btn[hidden]{display:none;}
+
+  /* ---------- 舞台 ---------- */
+  .stage{
+    display:grid; place-items:center;
+    position:relative;
+  }
+
+  .ring-wrap{
+    position:relative;
+    width:min(74vw,330px);
+    aspect-ratio:1;
+    display:grid; place-items:center;
+  }
+  .ring{position:absolute; inset:0; transform:rotate(-90deg);}
+  .ring circle{fill:none; stroke-linecap:round;}
+  .ring .track{stroke:rgba(255,255,255,.055); stroke-width:3;}
+  .ring .prog{
+    stroke:var(--gold); stroke-width:3;
+    stroke-dasharray:879.6; stroke-dashoffset:879.6;
+    filter:drop-shadow(0 0 6px rgba(227,197,138,.35));
+    transition:stroke-dashoffset .1s linear;
+  }
+  body.phase-prep .ring .prog{stroke:#a8b0a6; filter:none;}
+
+  /* 人形轮廓 + 气流画布：内接于进度环（72% × 96% = 3:4） */
+  .qi-figure{
+    position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    width:72%; height:96%;
+    opacity:0;
+    transition:opacity 1.2s ease;
+  }
+  body.qi-on .qi-figure{opacity:1;}
+  .silhouette{
+    position:absolute; inset:0; width:100%; height:100%; display:block;
+    transition:opacity .65s ease, transform .65s ease;
+  }
+  .silhouette.off{opacity:0; transform:scale(.955);}
+  canvas#qi{position:absolute; inset:0; width:100%; height:100%; pointer-events:none;}
+
+  /* 读数层：默认叠在环心；开启气机后整体移到舞台顶部，给人形让位 */
+  .readout{
+    position:absolute; inset:0; z-index:2; pointer-events:none;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    text-align:center;
+    transition:padding .5s ease;
+  }
+  .label{
+    font-size:11px; letter-spacing:.36em; color:var(--ink-dim);
+    margin-bottom:10px; height:14px;
+    transition:color .9s ease, opacity .3s;
+  }
+  .time{
+    font-size:clamp(4rem,19vw,7.5rem);
+    font-weight:200; line-height:1;
+    letter-spacing:-.02em;
+    transition:opacity .35s ease, transform .35s ease, font-size .5s ease;
+  }
+  .time.prep{color:#cfe0d2;}
+  .sub{
+    margin-top:14px; font-size:12px; letter-spacing:.2em; color:var(--ink-faint);
+    height:16px; transition:opacity .5s ease;
+  }
+
+  /* 开启气机：读数上移让位给人形；准备期数字仍是主角，保持大号 */
+  body.qi-on .readout{justify-content:flex-start; padding-top:max(2px, 1vh);}
+  body.qi-on .readout .time{order:-1; font-size:clamp(2.8rem,13vw,4.2rem);}
+  body.qi-on .readout .label{margin:8px 0 0;}
+  body.qi-on.phase-prep .readout .time{font-size:clamp(3.6rem,14vw,5.2rem);}
+
+  /* 气机模式下进度环转为冷调，与人形气脉同色系 */
+  body.qi-on .ring .prog{
+    stroke:#7fcdf0;
+    filter:drop-shadow(0 0 6px rgba(127,205,240,.35));
+  }
+  /* 打坐为暖金气脉，环随之转色 */
+  body.mode-sitting.qi-on .ring .prog{
+    stroke:#f0c674;
+    filter:drop-shadow(0 0 6px rgba(240,198,116,.35));
+  }
+  body.qi-on.phase-prep .ring .prog{stroke:#a8b0a6; filter:none;}
+
+  /* ---------- 面板 ---------- */
+  .panel{
+    display:flex; flex-direction:column; align-items:center; gap:18px;
+    transition:opacity .4s ease, transform .4s ease;
+  }
+  .panel[hidden]{display:none;}
+
+  .presets{
+    display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px; width:100%; max-width:380px;
+  }
+  .preset{
+    padding:15px 0 13px;
+    border:1px solid var(--line); border-radius:14px;
+    background:var(--card); color:var(--ink-dim);
+    font-size:16px; font-weight:400; letter-spacing:.02em;
+    cursor:pointer;
+    transition:border-color .22s, color .22s, background .22s, transform .12s;
+  }
+  .preset small{display:block; margin-top:3px; font-size:10px; letter-spacing:.24em; color:var(--ink-faint);}
+  .preset:active{transform:scale(.97);}
+  .preset.on{
+    border-color:rgba(227,197,138,.55);
+    background:var(--gold-soft);
+    color:var(--gold);
+  }
+  .preset.on small{color:rgba(227,197,138,.6);}
+
+  /* 第 6 格：手工输入时长。沿用 .preset 的尺寸，只把里面的文字换成输入框 */
+  .preset.custom{
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    cursor:text;
+  }
+  .preset.custom input{
+    width:100%;
+    padding:0; margin:0;
+    border:none; outline:none; background:transparent;
+    color:inherit; font-family:inherit;
+    font-size:16px; font-weight:400; line-height:1.2;
+    text-align:center; font-variant-numeric:tabular-nums;
+    -moz-appearance:textfield; appearance:textfield;
+  }
+  .preset.custom input::-webkit-outer-spin-button,
+  .preset.custom input::-webkit-inner-spin-button{
+    -webkit-appearance:none; margin:0;
+  }
+  .preset.custom small{margin-top:3px;}
+  /* 输入中与选中态共用同一套高亮，视觉上它就是一张被选中的卡片 */
+  .preset.custom:focus-within{
+    border-color:rgba(227,197,138,.55);
+    background:var(--gold-soft);
+    color:var(--gold);
+  }
+  .preset.custom:focus-within small{color:rgba(227,197,138,.6);}
+
+  /* 三位数时长收紧字号，避免撑破环内空间 */
+  .readout .time.long{font-size:clamp(2.8rem,12vw,4.6rem);}
+  body.qi-on .readout .time.long{font-size:clamp(2.2rem,9.5vw,3.4rem);}
+
+  .start{
+    width:100%; max-width:380px;
+    padding:17px 0;
+    border:none; border-radius:16px;
+    background:linear-gradient(180deg,#efe0bb,#d8b877);
+    color:#1a1610; font-size:17px; font-weight:600; letter-spacing:.3em; text-indent:.3em;
+    cursor:pointer;
+    box-shadow:0 8px 26px -12px rgba(227,197,138,.5);
+    transition:transform .12s, box-shadow .22s;
+  }
+  .start:active{transform:scale(.985); box-shadow:0 4px 14px -8px rgba(227,197,138,.4);}
+
+  .controls{display:flex; gap:12px; align-items:center;}
+  .ctrl{
+    padding:12px 26px;
+    border:1px solid var(--line); border-radius:999px;
+    background:var(--card); color:var(--ink-dim);
+    font-size:14px; letter-spacing:.16em; cursor:pointer;
+    transition:color .2s, border-color .2s, transform .12s;
+  }
+  .ctrl:active{transform:scale(.96);}
+  .ctrl.ghost{color:var(--ink-faint); border-color:transparent; background:transparent;}
+
+  .seg-row{display:flex; align-items:center; gap:12px;}
+  .seg-cap{font-size:10px; letter-spacing:.3em; color:var(--ink-faint);}
+  .seg{
+    display:flex; gap:4px; padding:4px;
+    border:1px solid var(--line); border-radius:999px;
+    background:var(--card);
+  }
+  .seg button{
+    padding:8px 18px; border:none; border-radius:999px;
+    background:transparent; color:var(--ink-faint);
+    font-size:12px; letter-spacing:.18em; cursor:pointer;
+    transition:color .2s, background .2s;
+  }
+  .seg button.on{background:rgba(227,197,138,.16); color:var(--gold);}
+
+  .stats{
+    font-size:11px; letter-spacing:.22em; color:var(--ink-faint);
+    height:14px;
+  }
+
+  .hint{
+    margin-top:2px; font-size:11px; letter-spacing:.1em; color:#7a6a4a;
+    text-align:center; line-height:1.6;
+  }
+  .hint[hidden]{display:none;}
+
+  .note{
+    text-align:center; font-size:11px; letter-spacing:.24em; color:var(--ink-faint);
+    line-height:2;
+  }
+
+  @media (max-height:640px){
+    .ring-wrap{width:min(52vw,240px);}
+    .time{font-size:clamp(3.2rem,15vw,5rem);}
+    .presets{gap:8px;}
+    .preset{padding:12px 0 10px;}
+    /* 矮屏：读数上移后要给顶部的数字留出空间，环与人形同步收小 */
+    body.qi-on .ring-wrap{width:min(48vw,182px);}
+    body.qi-on .readout .time{font-size:clamp(1.9rem,8vw,2.6rem);}
+    body.qi-on.phase-prep .readout .time{font-size:clamp(2.6rem,11vw,3.4rem);}
+  }
+</style>
+</head>
+<body class="phase-idle">
+
+<div class="aura"></div>
+<canvas id="qi"></canvas>
+
+<div class="app">
+
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <div class="mode-sel" id="modeSel">
+      <button data-mode="standing" class="on">抱球桩</button>
+      <button data-mode="sitting">打坐</button>
+    </div>
+    <div class="tools">
+      <button class="icon-btn" id="btnFull" title="全屏" hidden>⤢</button>
+      <button class="icon-btn" id="btnBreath" title="气机可视化">气</button>
+      <button class="icon-btn" id="btnSound" title="音效">◍</button>
+    </div>
+  </div>
+
+  <!-- 主体 -->
+  <div class="stage">
+    <div class="ring-wrap">
+
+      <!-- 抱球桩人形轮廓（底层）+ 经络气流画布（顶层） -->
+      <div class="qi-figure" id="qiFigure">
+        <svg class="silhouette" id="svgStanding" viewBox="0 0 360 480" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0"   stop-color="#ffffff" stop-opacity=".30"/>
+              <stop offset=".55" stop-color="#ffffff" stop-opacity=".20"/>
+              <stop offset="1"   stop-color="#ffffff" stop-opacity=".10"/>
+            </linearGradient>
+          </defs>
+
+          <g stroke="url(#bodyGrad)" stroke-width="1.4" stroke-linecap="round" fill="none">
+            <!-- 头 -->
+            <circle cx="180" cy="70" r="28"/>
+            <!-- 颈 -->
+            <path d="M169 98 L169 110 M191 98 L191 110"/>
+            <!-- 双臂环抱（肩 → 外展 → 手） -->
+            <path id="armL" d="M170 106 C158 122, 118 132, 94 152 C78 166, 68 196, 74 232 C79 264, 108 282, 148 286"/>
+            <path id="armR" d="M190 106 C202 122, 242 132, 266 152 C282 166, 292 196, 286 232 C281 264, 252 282, 212 286"/>
+            <!-- 两手相对成抱球印 -->
+            <path d="M148 286 C160 294, 176 297, 180 297"/>
+            <path d="M212 286 C200 294, 184 297, 180 297"/>
+            <!-- 躯干 -->
+            <path d="M160 112 C154 170, 156 232, 162 272"/>
+            <path d="M200 112 C206 170, 204 232, 198 272"/>
+            <!-- 双腿 -->
+            <path d="M162 272 C152 322, 140 382, 136 452"/>
+            <path d="M198 272 C208 322, 220 382, 224 452"/>
+            <!-- 双足 -->
+            <path d="M120 452 C127 446, 141 446, 148 452"/>
+            <path d="M212 452 C219 446, 233 446, 240 452"/>
+          </g>
+
+          <!-- 任脉下行引导（不可见，仅供取点） -->
+          <path id="renmai" d="M180 44 C175 118, 185 210, 180 352"
+                stroke="#4dabf7" stroke-width=".8" stroke-opacity=".07" fill="none"/>
+          <!-- 督脉（脊柱） -->
+          <line x1="180" y1="100" x2="180" y2="356"
+                stroke="#4dabf7" stroke-width=".7" stroke-dasharray="3 5" stroke-opacity=".16"/>
+
+          <!-- 穴位标记：百会 / 膻中 / 丹田 -->
+          <circle cx="180" cy="42"  r="2.2" fill="#8ecdf7" fill-opacity=".38"/>
+          <circle cx="180" cy="175" r="2.2" fill="#8ecdf7" fill-opacity=".30"/>
+          <circle cx="180" cy="280" r="3.0" fill="#a5d8ff" fill-opacity=".42"/>
+        </svg>
+
+        <!-- 打坐：盘腿座 + 腹前结禅定印 -->
+        <svg class="silhouette off" id="svgSitting" viewBox="0 0 360 480" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g stroke="url(#bodyGrad)" stroke-width="1.4" stroke-linecap="round" fill="none">
+            <circle cx="180" cy="92" r="27"/>
+            <path d="M169 118 L169 130 M191 118 L191 130"/>
+            <!-- 脊柱中正的躯干 -->
+            <path d="M153 132 C147 180, 149 240, 155 298"/>
+            <path d="M207 132 C213 180, 211 240, 205 298"/>
+            <!-- 双臂松垂，双手腹前结禅定印 -->
+            <path d="M153 134 C138 162, 112 196, 110 248 C110 296, 142 328, 168 336"/>
+            <path d="M207 134 C222 162, 248 196, 250 248 C250 296, 218 328, 192 336"/>
+            <ellipse cx="180" cy="338" rx="22" ry="8"/>
+            <!-- 盘腿座：下盘稳固三角 -->
+            <path d="M78 390 C90 344, 134 312, 180 310 C226 312, 270 344, 282 390"/>
+            <path d="M78 390 C130 404, 230 404, 282 390"/>
+            <!-- 交叠的小腿 -->
+            <path d="M98 382 C134 364, 176 356, 212 362"/>
+            <path d="M262 382 C226 364, 184 356, 148 362"/>
+          </g>
+          <!-- 蒲团 -->
+          <ellipse cx="180" cy="404" rx="136" ry="18"
+                   stroke="#ffffff" stroke-width="1" stroke-opacity=".10" fill="none"/>
+          <!-- 督脉（脊柱，吸气升清之路） -->
+          <path id="sitDu" d="M180 374 C167 322, 165 240, 172 162 C177 116, 178 88, 180 62"
+                stroke="#f0c674" stroke-width=".8" stroke-opacity=".09" fill="none"/>
+          <!-- 任脉（身前，呼气沉降之路） -->
+          <path id="sitRen" d="M180 62 C187 124, 189 186, 181 242 C176 286, 178 342, 180 402"
+                stroke="#f0c674" stroke-width=".8" stroke-opacity=".09" fill="none"/>
+          <!-- 穴位：百会 / 膻中 / 丹田 -->
+          <circle cx="180" cy="60"  r="2.2" fill="#ffd98a" fill-opacity=".40"/>
+          <circle cx="180" cy="205" r="2.2" fill="#ffd98a" fill-opacity=".28"/>
+          <circle cx="180" cy="300" r="3.0" fill="#ffd98a" fill-opacity=".42"/>
+        </svg>
+
+        <canvas id="qi"></canvas>
+      </div>
+
+      <svg class="ring" viewBox="0 0 300 300" aria-hidden="true">
+        <circle class="track" cx="150" cy="150" r="140"></circle>
+        <circle class="prog"  cx="150" cy="150" r="140" id="progRing"></circle>
+      </svg>
+    </div>
+
+    <div class="readout">
+      <div class="label" id="label">松静自然</div>
+      <div class="time" id="time">25:00</div>
+      <div class="sub" id="sub"></div>
+    </div>
+  </div>
+
+  <!-- 底部面板 -->
+  <div>
+    <!-- 空闲：预设 + 开始 -->
+    <div class="panel" id="panelIdle">
+      <div class="presets" id="presets"></div>
+      <div class="seg-row">
+        <span class="seg-cap">收尾音</span>
+        <div class="seg" id="segEnd">
+          <button data-end="bell" class="on">磬 声</button>
+          <button data-end="muyu">木 鱼</button>
+        </div>
+      </div>
+      <button class="start" id="btnStart">开 始</button>
+      <div class="stats" id="stats"></div>
+      <div class="hint" id="wakeHint" hidden>当前浏览器不支持屏幕常亮，请在系统设置中暂时关闭自动锁屏</div>
+    </div>
+
+    <!-- 计时中：暂停 / 结束 -->
+    <div class="panel" id="panelRun" hidden>
+      <div class="controls">
+        <button class="ctrl" id="btnPause">暂 停</button>
+        <button class="ctrl ghost" id="btnAbort">放弃</button>
+      </div>
+      <div class="hint" id="wakeHint2" hidden>当前浏览器不支持屏幕常亮，请在系统设置中暂时关闭自动锁屏</div>
+    </div>
+
+    <!-- 结束 -->
+    <div class="panel" id="panelDone" hidden>
+      <button class="start" id="btnAgain">再 次 开 始</button>
+      <div class="note" id="doneNote">桩功圆满</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ============================================================
+   *  常量与状态
+   * ============================================================ */
+  var PRESETS  = [5, 10, 15, 20, 25];   // 分钟；第 6 格改为手工输入
+  var CUSTOM_MIN = 1, CUSTOM_MAX = 180;  // 自定义时长范围（分钟）
+  var PREP_SEC = 5;                          // 准备缓冲（秒）
+  var C        = 2 * Math.PI * 140;          // 环形周长
+
+  var S = {
+    phase   : 'idle',   // idle | prep | run | paused | done
+    duration: 25 * 60,  // 正式时长（秒）
+    custom  : 30,       // 自定义分钟数（第 6 格输入框的值）
+    endTime : 0,        // 阶段截止时间戳（ms）
+    remain  : 0,        // 暂停时保存的剩余毫秒
+    lastSec : -1,
+    sound   : true,
+    ending  : 'bell',  // 'bell' 磬声 | 'muyu' 木鱼
+    mode    : 'standing'  // 'standing' 抱球桩 | 'sitting' 打坐
+  };
+
+  var el = {
+    body   : document.body,
+    label  : document.getElementById('label'),
+    time   : document.getElementById('time'),
+    sub    : document.getElementById('sub'),
+    ring   : document.getElementById('progRing'),
+    presets: document.getElementById('presets'),
+    pIdle  : document.getElementById('panelIdle'),
+    pRun   : document.getElementById('panelRun'),
+    pDone  : document.getElementById('panelDone'),
+    stats  : document.getElementById('stats'),
+    note   : document.getElementById('doneNote'),
+    btnStart: document.getElementById('btnStart'),
+    btnPause: document.getElementById('btnPause'),
+    btnAbort: document.getElementById('btnAbort'),
+    btnAgain: document.getElementById('btnAgain'),
+    btnSound: document.getElementById('btnSound'),
+    btnFull : document.getElementById('btnFull'),
+    btnBreath: document.getElementById('btnBreath'),
+    modeSel : document.getElementById('modeSel'),
+    figure  : document.getElementById('qiFigure')
+  };
+
+  var rafId = null, watchId = null, engineOn = false;
+
+  /* ============================================================
+   *  音频引擎（Web Audio 纯合成，无外部资源）
+   * ============================================================ */
+  var actx = null;
+
+  function ac(){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!actx) actx = new AC();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+
+  /**
+   * 磬 / 钟声：基频 + 非谐泛音，指数衰减
+   */
+  function bell(freq, dur, vol){
+    if (!S.sound) return;
+    var c = ac(); if (!c) return;
+    var t = c.currentTime;
+    var master = c.createGain();
+    master.gain.value = vol;
+    master.connect(c.destination);
+
+    // 磬体的非谐泛音列
+    var partials = [[1, 1], [2.76, .42], [5.40, .20], [8.93, .09], [13.3, .04]];
+    partials.forEach(function(p, i){
+      var o = c.createOscillator();
+      var g = c.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq * p[0], t);
+      var life = dur * (1 - i * 0.11);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(p[1], t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(life, 0.2));
+      o.connect(g); g.connect(master);
+      o.start(t);
+      o.stop(t + dur + 0.1);
+    });
+
+    // 起振瞬态：短促的木质敲击感
+    var n = c.createOscillator(), ng = c.createGain();
+    n.type = 'triangle';
+    n.frequency.setValueAtTime(freq * 3.2, t);
+    ng.gain.setValueAtTime(0.22 * vol, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    n.connect(ng); ng.connect(c.destination);
+    n.start(t); n.stop(t + 0.08);
+  }
+
+  /** 短促提示音（倒计时滴答） */
+  function tick(freq, dur, vol){
+    if (!S.sound) return;
+    var c = ac(); if (!c) return;
+    var t = c.currentTime;
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+
+  /**
+   * 木鱼单击：正弦波微降频（850 → 550Hz）+ 瞬态包络（3ms 起振 / 120ms 衰减）
+   * 关键：必须复用全局已解锁的 ctx，不能在结束时新建 AudioContext
+   */
+  function muyuStrike(c, time, vol){
+    var osc  = c.createOscillator();
+    var gain = c.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(850, time);
+    osc.frequency.exponentialRampToValueAtTime(550, time + 0.08);
+
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(vol, time + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
+
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(time);
+    osc.stop(time + 0.15);
+  }
+
+  var SFX = {
+    prepTick: function(){ tick(784, 0.10, 0.10); },   // 准备期每秒
+    prepGo  : function(){ bell(660, 3.2, 0.34); },    // 进入正式计时
+    lastTick: function(){ tick(988, 0.14, 0.13); },   // 最后 3 秒
+    finishBell: function(){                           // 结束：三声磬
+      bell(528, 5.0, 0.36);
+      setTimeout(function(){ bell(528, 5.0, 0.30); }, 1500);
+      setTimeout(function(){ bell(396, 7.0, 0.34); }, 3000);
+    },
+    finishMuyu: function(){                           // 结束：五声木鱼 咚咚—咚咚咚
+      var c = ac(); if (!c || !S.sound) return;
+      var t0 = c.currentTime;
+      // 前两声间隔 0.35s，空歇 0.65s，后三声连击
+      [0, 0.35, 1.00, 1.35, 1.70].forEach(function(d, i){
+        muyuStrike(c, t0 + d, i >= 2 ? 0.42 : 0.5);
+      });
+    },
+    pause   : function(){ tick(392, 0.12, 0.10); },
+    resume  : function(){ tick(523, 0.12, 0.10); },
+    preview : function(){                             // 切换收尾音时的单击试听
+      if (S.ending === 'muyu'){
+        var c = ac(); if (c) muyuStrike(c, c.currentTime, 0.5);
+      } else {
+        bell(528, 3.5, 0.32);
+      }
+    }
+  };
+
+  function buzz(ms){
+    if (navigator.vibrate) { try { navigator.vibrate(ms); } catch(e){} }
+  }
+
+  /* ============================================================
+   *  Screen Wake Lock
+   * ============================================================ */
+  var wakeLock = null;
+  var wakeSupported = ('wakeLock' in navigator);
+
+  async function requestWakeLock(){
+    if (!wakeSupported) return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', function(){
+        wakeLock = null;
+      });
+    } catch(err){
+      wakeLock = null;
+    }
+  }
+
+  function releaseWakeLock(){
+    if (wakeLock !== null){
+      try { wakeLock.release(); } catch(e){}
+      wakeLock = null;
+    }
+  }
+
+  function showWakeHint(show){
+    document.getElementById('wakeHint').hidden  = !show;
+    document.getElementById('wakeHint2').hidden = !show;
+  }
+  showWakeHint(!wakeSupported);
+
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible' &&
+        (S.phase === 'prep' || S.phase === 'run')){
+      requestWakeLock();
+    }
+  });
+
+  /* ============================================================
+   *  计时引擎（基于时间戳校准，250ms 高频检查 + rAF 平滑渲染）
+   * ============================================================ */
+  function fmt(sec){
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function setRing(p){
+    // p: 0 → 1（已完成比例）
+    el.ring.style.strokeDashoffset = C * (1 - Math.min(Math.max(p, 0), 1));
+  }
+
+  // 呼吸状态文字：只在相位翻转时改一次 DOM，避免每帧写入
+  var breathShown = null;
+  function setBreathLabel(inhaling){
+    if (breathShown === inhaling) return;
+    breathShown = inhaling;
+    var m = mode();
+    var s = inhaling ? m.inhale : m.exhale;
+    el.label.textContent = s.text;
+    el.label.style.color = s.color;
+  }
+
+  function render(){
+    var left = Math.max(0, S.endTime - Date.now());
+    var sec  = Math.ceil(left / 1000);
+
+    if (S.phase === 'prep'){
+      el.time.textContent = String(sec);
+      el.time.classList.add('prep');
+      el.time.classList.remove('long');
+      el.label.textContent = '准 备';
+      setRing((PREP_SEC - left / 1000) / PREP_SEC);
+      if (sec !== S.lastSec && sec > 0){
+        S.lastSec = sec;
+        SFX.prepTick();
+        buzz(12);
+      }
+      if (left <= 0) enterRun();
+      return;
+    }
+
+    if (S.phase === 'run'){
+      el.time.textContent = fmt(sec);
+      el.time.classList.remove('prep');
+      if (qi.on){
+        // 由画布主导节律：文字与粒子共用同一相位，保证 100% 同步
+        var b = breathNow();
+        setBreathLabel(b.inhaling);
+      } else {
+        el.label.textContent = mode().phaseLabel;
+        el.label.style.color = '';
+      }
+      setRing(1 - left / (S.duration * 1000));
+      if (sec !== S.lastSec){
+        S.lastSec = sec;
+        if (sec <= 3 && sec > 0){ SFX.lastTick(); buzz(25); }
+      }
+      if (left <= 0) finish();
+      return;
+    }
+  }
+
+  function loop(){
+    // engineOn 是唯一开关：否则 finish()/reset() 里调 stopEngine 后，
+    // 本次回调 return 前又会重新排一帧，rAF 会永远空转下去
+    if (!engineOn) return;
+    if (S.phase === 'prep' || S.phase === 'run') render();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function startEngine(){
+    stopEngine();
+    engineOn = true;
+    loop();
+    // 后台（页面不可见）时 rAF 会被节流，用定时器兜底保证准时结束
+    watchId = setInterval(function(){
+      if (S.phase === 'prep' || S.phase === 'run') render();
+    }, 250);
+  }
+
+  function stopEngine(){
+    engineOn = false;
+    if (rafId){ cancelAnimationFrame(rafId); rafId = null; }
+    if (watchId){ clearInterval(watchId); watchId = null; }
+  }
+
+  /* ============================================================
+   *  阶段流转
+   * ============================================================ */
+  // body 的 class 由三部分组成，任何一处直接覆写都会丢掉另外两个状态
+  function bodyClass(p){
+    return 'phase-' + p +
+           (qi.on ? ' qi-on' : '') +
+           (S.mode === 'sitting' ? ' mode-sitting' : '');
+  }
+
+  function setPhase(p){
+    S.phase = p;
+    el.body.className = bodyClass(p);
+    // 练习过程中锁定模式切换，结束后解锁
+    el.modeSel.classList.toggle('locked', !(p === 'idle' || p === 'done'));
+    el.pIdle.hidden = (p !== 'idle');
+    el.pRun.hidden  = !(p === 'prep' || p === 'run' || p === 'paused');
+    el.pDone.hidden = (p !== 'done');
+  }
+
+  function start(){
+    ac();                       // 用户手势内解锁音频
+    S.lastSec = -1;
+    S.endTime = Date.now() + PREP_SEC * 1000;
+    setPhase('prep');
+    requestWakeLock();
+    startEngine();
+    qiStart();
+    tipsStart();
+    render();
+  }
+
+  function enterRun(){
+    S.lastSec = -1;
+    S.endTime = Date.now() + S.duration * 1000;
+    setPhase('run');
+    el.btnPause.textContent = '暂 停';
+    SFX.prepGo();
+    buzz([30, 60, 30]);
+    render();
+  }
+
+  function pause(){
+    if (S.phase !== 'run') return;
+    S.remain = Math.max(0, S.endTime - Date.now());
+    S.phase  = 'paused';
+    el.body.className = bodyClass('paused');
+    stopEngine();
+    qiPause();
+    el.btnPause.textContent = '继 续';
+    el.label.textContent = '已 暂 停';
+    el.sub.textContent = '';
+    SFX.pause();
+  }
+
+  function resume(){
+    if (S.phase !== 'paused') return;
+    S.endTime = Date.now() + S.remain;
+    S.phase   = 'run';
+    el.body.className = bodyClass('run');
+    el.btnPause.textContent = '暂 停';
+    startEngine();
+    qiResume();
+    requestWakeLock();
+    SFX.resume();
+  }
+
+  function reset(){
+    stopEngine();
+    tipsStop();
+    qiStop();
+    releaseWakeLock();
+    S.lastSec = -1;
+    S.remain  = 0;
+    breathShown = null;
+    setPhase('idle');
+    el.time.classList.remove('prep');
+    showDuration();
+    el.label.textContent = '松静自然';
+    el.label.style.color = '';
+    el.sub.textContent   = '';
+    el.sub.style.opacity = 1;
+    setRing(0);
+    qiStart();                      // 回到待机的微弱呼吸
+  }
+
+  function finish(){
+    stopEngine();
+    tipsStop();
+    qiFinish();                     // 粒子收束归元（约 2.2s 后自行停止）
+    releaseWakeLock();
+    setPhase('done');
+    breathShown = null;
+    el.label.textContent = mode().doneLabel;
+    el.label.style.color = '';
+    el.time.textContent  = '00:00';
+    el.sub.textContent   = '';
+    el.sub.style.opacity = 1;
+    setRing(1);
+    if (S.ending === 'muyu') SFX.finishMuyu(); else SFX.finishBell();
+    buzz([60, 90, 60, 90, 120]);
+    bumpStats();
+    el.note.textContent = mode().doneLabel.replace(/ /g, '') + ' · ' +
+                        Math.round(S.duration / 60) + ' 分钟';
+  }
+
+  /* ============================================================
+   *  预设 / 统计 / UI 绑定
+   * ============================================================ */
+  // 选中态统一走这里：预设按钮与自定义输入框共用一套高亮
+  function markPreset(node){
+    Array.prototype.forEach.call(el.presets.children, function(x){
+      x.classList.toggle('on', x === node);
+    });
+  }
+
+  // 三位数时长（≥100 分）收紧字号，避免撑破环内空间
+  function showDuration(){
+    el.time.textContent = fmt(S.duration);
+    el.time.classList.toggle('long', S.duration >= 6000);
+  }
+
+  function setDuration(sec){
+    S.duration = Math.max(60, Math.round(sec));
+    showDuration();
+  }
+
+  function saveDuration(){
+    var d = loadData();
+    d.duration = S.duration;
+    d.custom   = S.custom;
+    saveData(d);
+  }
+
+  function buildPresets(){
+    PRESETS.forEach(function(m){
+      var b = document.createElement('button');
+      b.className = 'preset' + (m * 60 === S.duration ? ' on' : '');
+      b.dataset.sec = m * 60;
+      b.innerHTML = m + '<small>MIN</small>';
+      b.addEventListener('click', function(){
+        ac();
+        setDuration(m * 60);
+        markPreset(b);
+        saveDuration();
+        buzz(8);
+      });
+      el.presets.appendChild(b);
+    });
+
+    /* ---- 第 6 格：手工输入分钟数 ---- */
+    var box = document.createElement('div');
+    box.className = 'preset custom';
+
+    var inp = document.createElement('input');
+    inp.type = 'text';                 // 用 text + inputmode，避开 number 的步进器与 iOS 怪癖
+    inp.inputMode = 'numeric';
+    inp.pattern = '[0-9]*';
+    inp.maxLength = 3;
+    inp.value = String(S.custom);
+    inp.setAttribute('aria-label', '自定义分钟数');
+
+    var cap = document.createElement('small');
+    cap.textContent = 'MIN';
+
+    box.appendChild(inp);
+    box.appendChild(cap);
+    el.presets.appendChild(box);
+
+    // commit=false：输入过程中只过滤非法字符，不回填，避免打断连续输入
+    function apply(commit){
+      var raw = inp.value.replace(/[^0-9]/g, '');
+      var v = parseInt(raw, 10);
+      if (isNaN(v)){ if (commit) inp.value = String(S.custom); return; }
+      v = Math.min(CUSTOM_MAX, Math.max(CUSTOM_MIN, v));
+      S.custom = v;
+      if (commit) inp.value = String(v);
+      setDuration(v * 60);
+    }
+
+    inp.addEventListener('input',  function(){ markPreset(box); apply(false); });
+    inp.addEventListener('focus',  function(){ ac(); markPreset(box); });
+    inp.addEventListener('blur',   function(){ apply(true); saveDuration(); });
+    inp.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); inp.blur(); }
+    });
+    // 点卡片空白处也进入输入
+    box.addEventListener('click', function(e){ if (e.target !== inp) inp.focus(); });
+
+    if (S.custom * 60 === S.duration) markPreset(box);
+  }
+
+  var KEY = 'zz_zen_timer_v1';
+  function loadData(){
+    try {
+      var d = JSON.parse(localStorage.getItem(KEY) || '{}');
+      return {
+        sessions: d.sessions || 0,
+        minutes : d.minutes  || 0,
+        ending  : (d.ending === 'muyu') ? 'muyu' : 'bell',
+        breath  : d.breath !== false,
+        mode    : (d.mode === 'sitting') ? 'sitting' : 'standing',
+        duration: (d.duration >= 60 && d.duration <= 180 * 60) ? Math.round(d.duration) : 25 * 60,
+        custom  : (d.custom >= 1 && d.custom <= 180) ? Math.round(d.custom) : 30
+      };
+    } catch(e){
+      return { sessions: 0, minutes: 0, ending: 'bell', breath: true,
+               mode: 'standing', duration: 25 * 60, custom: 30 };
+    }
+  }
+  function saveData(d){
+    try { localStorage.setItem(KEY, JSON.stringify(d)); } catch(e){}
+  }
+  function bumpStats(){
+    var d = loadData();
+    d.sessions += 1;
+    d.minutes  += Math.round(S.duration / 60);
+    saveData(d);
+    paintStats(d);
+  }
+  function paintStats(d){
+    d = d || loadData();
+    el.stats.textContent = d.sessions
+      ? '累计 ' + d.sessions + ' 次 · ' + d.minutes + ' 分钟'
+      : '';
+  }
+
+  // 收尾音切换：磬声 / 木鱼
+  var segEnd = document.getElementById('segEnd');
+  function paintSeg(){
+    Array.prototype.forEach.call(segEnd.children, function(b){
+      b.classList.toggle('on', b.dataset.end === S.ending);
+    });
+  }
+  Array.prototype.forEach.call(segEnd.children, function(b){
+    b.addEventListener('click', function(){
+      ac();                                  // 点击时解锁音频，顺带试听
+      S.ending = b.dataset.end;
+      paintSeg();
+      var d = loadData(); d.ending = S.ending; saveData(d);
+      SFX.preview();
+      buzz(10);
+    });
+  });
+
+  el.btnStart.addEventListener('click', start);
+  el.btnAgain.addEventListener('click', function(){ reset(); start(); });
+  el.btnPause.addEventListener('click', function(){
+    (S.phase === 'paused') ? resume() : pause();
+  });
+  el.btnAbort.addEventListener('click', reset);
+
+  Array.prototype.forEach.call(el.modeSel.children, function(b){
+    b.addEventListener('click', function(){
+      if (S.phase !== 'idle' && S.phase !== 'done') return;   // 练习中锁定
+      ac();
+      setMode(b.dataset.mode);
+      buzz(8);
+    });
+  });
+
+  el.btnBreath.addEventListener('click', function(){
+    ac();
+    qiSetOn(!qi.on);
+    var d = loadData(); d.breath = qi.on; saveData(d);
+    buzz(8);
+  });
+
+  el.btnSound.addEventListener('click', function(){
+    S.sound = !S.sound;
+    el.btnSound.classList.toggle('off', !S.sound);
+    el.btnSound.textContent = S.sound ? '◍' : '◌';
+    if (S.sound) ac();
+  });
+
+  // 全屏
+  if (document.documentElement.requestFullscreen ||
+      document.documentElement.webkitRequestFullscreen){
+    el.btnFull.hidden = false;
+    el.btnFull.addEventListener('click', function(){
+      var d = document.documentElement;
+      if (!document.fullscreenElement && !document.webkitFullscreenElement){
+        (d.requestFullscreen || d.webkitRequestFullscreen).call(d);
+      } else {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      }
+    });
+  }
+
+  // 键盘：空格 开始/暂停，Esc 重置
+  document.addEventListener('keydown', function(e){
+    // 正在输入自定义时长时，空格/Esc 归输入框，不触发开始与重置
+    var act = document.activeElement;
+    if (act && (act.tagName === 'INPUT' || act.tagName === 'TEXTAREA')) return;
+
+    if (e.code === 'Space' || e.key === ' '){
+      e.preventDefault();
+      if (S.phase === 'idle') start();
+      else if (S.phase === 'run') pause();
+      else if (S.phase === 'paused') resume();
+      else if (S.phase === 'done') { reset(); start(); }
+    } else if (e.key === 'Escape'){
+      if (S.phase !== 'idle') reset();
+    }
+  });
+
+  // 阻止双击缩放 / 长按菜单
+  document.addEventListener('gesturestart', function(e){ e.preventDefault(); });
+
+  /* ============================================================
+   *  气机可视化：抱球桩 / 打坐 双模式
+   *  底层：两套 SVG 人形轮廓（静态，零开销，CSS 交叉淡入）
+   *  顶层：Canvas 粒子沿经络流动 + 丹田光晕
+   *
+   *  抱球桩 ─ 吸气：气自百会沿任脉下沉聚于丹田
+   *           呼气：气自丹田上行膻中，沿双臂环抱一周归元
+   *  打  坐 ─ 吸气：气自会阴沿督脉（脊柱）升腾至百会
+   *           呼气：气自百会沿任脉沉降，归丹田并下潜座底
+   * ============================================================ */
+
+  var BREATH = {
+    inhale   : 4500,              // 吸气（ms）
+    exhale   : 5500,              // 呼气（ms）
+    particles: 40,                // 粒子数量
+    tipsEvery: 8000               // 口诀轮换间隔（ms）
+  };
+
+  // 坐标系固定为 SVG 的 360 × 480
+  var VW = 360, VH = 480;
+
+  var MODES = {
+    standing: {
+      name  : '抱球桩',
+      phaseLabel: '站 桩',
+      doneLabel  : '桩 功 圆 满',
+      core  : [77, 171, 247],          // 冷调气脉
+      spark : [222, 245, 255],
+      inhale: { text: '吸气 · 气沉丹田', color: '#74c0fc' },
+      exhale: { text: '呼气 · 充盈环抱', color: '#63e6be' },
+      pt: {
+        BAIHUI  : { x: 180, y: 42  },
+        TANZHONG: { x: 180, y: 175 },
+        DANTIAN : { x: 180, y: 280 },
+        HUIYIN  : { x: 180, y: 352 }
+      },
+      tips: [
+        '两脚与肩同宽 · 舌抵上颚',
+        '虚灵顶劲 · 下颏微收',
+        '沉肩坠肘 · 含胸拔背',
+        '松腰敛臀 · 尾闾中正',
+        '双膝微屈 · 舒指坐腕',
+        '气沉丹田 · 心静体松'
+      ]
+    },
+
+    sitting: {
+      name  : '打坐',
+      phaseLabel: '静 坐',
+      doneLabel  : '静 坐 圆 满',
+      core  : [250, 176, 5],           // 暖金气脉
+      spark : [255, 242, 214],
+      inhale: { text: '吸气 · 督脉升清', color: '#a5d8ff' },
+      exhale: { text: '呼气 · 任脉沉潜', color: '#ffd43b' },
+      pt: {
+        BAIHUI  : { x: 180, y: 60  },
+        TANZHONG: { x: 180, y: 205 },
+        DANTIAN : { x: 180, y: 300 },
+        HUIYIN  : { x: 180, y: 374 }
+      },
+      tips: [
+        '七支坐法 · 舌抵上颚',
+        '脊柱中正 · 下颏微收',
+        '沉肩坠肘 · 手结定印',
+        '松腰舒腹 · 自然呼吸',
+        '意守丹田 · 不即不离',
+        '心息相依 · 绵绵若存'
+      ]
+    }
+  };
+
+  function mode(){ return MODES[S.mode] || MODES.standing; }
+
+  var qi = {
+    cv: null, ctx: null, figure: null,
+    W: 0, H: 0, dpr: 1,
+    on: true, running: false,
+    t0: Date.now(), last: 0, pausedAt: 0, raf: 0,
+    parts: [], mode: 'flow', retT: 0,
+    routes: {}, fade: 1
+  };
+
+  /* ---------- 经络路径：从 SVG 取点后按弧长重采样 ---------- */
+  function samplePath(id, n){
+    var p = document.getElementById(id);
+    if (!p || !p.getTotalLength) return null;
+    try {
+      var L = p.getTotalLength();
+      if (!L) return null;
+      var pts = [], i, q;
+      for (i = 0; i <= n; i++){
+        q = p.getPointAtLength(L * i / n);
+        pts.push([q.x, q.y]);
+      }
+      return pts;
+    } catch(e){ return null; }
+  }
+
+  // 折线按弧长均匀重采样为 n+1 个点，取点退化为一次数组索引
+  function resample(pts, n){
+    var seg = [], total = 0, i;
+    for (i = 1; i < pts.length; i++){
+      var dx = pts[i][0] - pts[i-1][0], dy = pts[i][1] - pts[i-1][1];
+      var d = Math.sqrt(dx*dx + dy*dy);
+      seg.push(d); total += d;
+    }
+    if (!total) return null;
+    var out = new Float32Array((n + 1) * 2);
+    var step = total / n, si = 0, acc = 0;
+    out[0] = pts[0][0]; out[1] = pts[0][1];
+    for (i = 1; i <= n; i++){
+      var target = step * i;
+      while (si < seg.length && acc + seg[si] < target){ acc += seg[si]; si++; }
+      if (si >= seg.length){
+        out[i*2] = pts[pts.length-1][0]; out[i*2+1] = pts[pts.length-1][1];
+        continue;
+      }
+      var k = (target - acc) / seg[si];
+      out[i*2]   = pts[si][0] + (pts[si+1][0] - pts[si][0]) * k;
+      out[i*2+1] = pts[si][1] + (pts[si+1][1] - pts[si][1]) * k;
+    }
+    return { pts: out, n: n };
+  }
+
+  function pointOn(route, u){
+    var f = Math.min(Math.max(u, 0), 1) * route.n;
+    var i = Math.floor(f), k = f - i;
+    if (i >= route.n) return { x: route.pts[route.n*2], y: route.pts[route.n*2+1] };
+    return {
+      x: route.pts[i*2]     + (route.pts[(i+1)*2]     - route.pts[i*2])     * k,
+      y: route.pts[i*2 + 1] + (route.pts[(i+1)*2 + 1] - route.pts[i*2 + 1]) * k
+    };
+  }
+
+  // 呼气环抱回路：丹田 → 膻中 → 肩 → 臂外展 → 手 → 归丹田
+  function buildLoop(arm, sx, sy, hx, hy, dantian){
+    var pts = [[dantian.x, dantian.y], [180, (dantian.y + 175) / 2], [sx, sy]];
+    if (arm){ for (var i = 0; i < arm.length; i++) pts.push(arm[i]); }
+    else { pts.push([sx - 76, 168], [sx - 96, 232], [hx, hy]); }
+    pts.push([hx, hy], [dantian.x, dantian.y + 12]);
+    return pts;
+  }
+
+  function buildRoutes(){
+    var N = 180;
+
+    // —— 抱球桩 ——
+    var ren = samplePath('renmai', 120) || [
+      [180, 42], [180, 175], [180, 280], [180, 352]
+    ];
+    var dS = MODES.standing.pt.DANTIAN;
+    qi.routes.standing = {
+      inhale : resample(ren, N),
+      exhaleL: resample(buildLoop(samplePath('armL', 120), 170, 106, 148, 286, dS), N),
+      exhaleR: resample(buildLoop(samplePath('armR', 120), 190, 106, 212, 286, dS), N)
+    };
+
+    // —— 打坐：督脉上升 / 任脉沉降 ——
+    var du  = samplePath('sitDu', 120)  || [[180, 374], [172, 240], [180, 62]];
+    var ren2= samplePath('sitRen', 120) || [[180, 62], [186, 240], [180, 402]];
+    var up = resample(du, N), down = resample(ren2, N);
+    qi.routes.sitting = { inhale: up, exhaleL: down, exhaleR: down };
+  }
+
+  /* ---------- 粒子精灵：按颜色量化缓存，避免每帧重建渐变 ---------- */
+  var spriteCache = {};
+  function sprite(col){
+    var k = (col[0] >> 4) + '_' + (col[1] >> 4) + '_' + (col[2] >> 4);
+    if (spriteCache[k]) return spriteCache[k];
+    var s = 64, c = document.createElement('canvas');
+    c.width = c.height = s;
+    var g = c.getContext('2d');
+    var rg = g.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+    rg.addColorStop(0,    'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',1)');
+    rg.addColorStop(0.35, 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',0.38)');
+    rg.addColorStop(1,    'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',0)');
+    g.fillStyle = rg;
+    g.fillRect(0, 0, s, s);
+    spriteCache[k] = c;
+    return c;
+  }
+
+  function rgba(c, a){
+    return 'rgba(' + (c[0]|0) + ',' + (c[1]|0) + ',' + (c[2]|0) + ',' + a + ')';
+  }
+
+  function ease(t){ return 0.5 - 0.5 * Math.cos(Math.PI * Math.min(Math.max(t, 0), 1)); }
+
+  /* ---------- 画布尺寸：与 SVG 的 360×480 坐标系对齐 ---------- */
+  function qiResize(){
+    if (!qi.cv) return;
+    var box = qi.figure.getBoundingClientRect();
+    qi.W = box.width || 270;
+    qi.H = box.height || 360;
+    qi.dpr = Math.min(window.devicePixelRatio || 1, 2);   // 上限 2，防高分屏发热
+    qi.cv.width  = Math.round(qi.W * qi.dpr);
+    qi.cv.height = Math.round(qi.H * qi.dpr);
+    var s = (qi.W / VW) * qi.dpr;                          // 之后一律用 360×480 作图
+    qi.ctx.setTransform(s, 0, 0, s, 0, 0);
+  }
+
+  function qiParts(){
+    var d = mode().pt.DANTIAN;
+    qi.parts = [];
+    for (var i = 0; i < BREATH.particles; i++){
+      qi.parts.push({
+        off : Math.random(),                       // 路径上的初始位置偏移
+        sp  : 0.85 + Math.random() * 0.9,          // 相对呼吸推进速度的倍率
+        lat : (Math.random() - 0.5) * 9,           // 横向气脉波动
+        ph  : Math.random() * Math.PI * 2,
+        sz  : 1.1 + Math.random() * 1.9,
+        px  : d.x, py : d.y,
+        px0 : d.x, py0: d.y
+      });
+    }
+  }
+
+  // 当前呼吸相位（倒计时文字与画布共用，保证 100% 同步）
+  function breathNow(){
+    var total = BREATH.inhale + BREATH.exhale;
+    var el = ((Date.now() - qi.t0) % total + total) % total;
+    var inhaling = el < BREATH.inhale;
+    return {
+      inhaling: inhaling,
+      p: inhaling ? el / BREATH.inhale : (el - BREATH.inhale) / BREATH.exhale
+    };
+  }
+
+  function qiFrame(){
+    if (!qi.running) return;
+    var now = Date.now();
+    var dt  = qi.last ? Math.min((now - qi.last) / 1000, 0.05) : 0.016;
+    qi.last = now;
+
+    var b = breathNow();
+    var br = b.inhaling ? ease(b.p) : 1 - ease(b.p);   // 充盈度：吸气末最盛
+    var ctx = qi.ctx;
+    var i, pt, pos, a;
+
+    // 模式切换后的整体淡入，盖住粒子换轨的瞬间
+    if (qi.fade < 1) qi.fade = Math.min(1, qi.fade + dt / 0.65);
+
+    var M = mode();
+    var P = M.pt;
+    var R = qi.routes[S.mode] || qi.routes.standing;
+
+    ctx.clearRect(0, 0, VW, VH);
+    ctx.globalCompositeOperation = 'lighter';
+
+    // 待机（未开始）压暗；叠加模式切换淡入
+    var dim = (S.phase === 'idle' ? 0.45 : 1) * qi.fade;
+
+    /* 1) 百会：吸气时引气自顶门而入 */
+    var baihui = 0.10 + 0.34 * (b.inhaling ? ease(b.p) : 0);
+    if (baihui > 0.02){
+      var gB = ctx.createRadialGradient(P.BAIHUI.x, P.BAIHUI.y, 0, P.BAIHUI.x, P.BAIHUI.y, 26);
+      gB.addColorStop(0,   'rgba(255,250,240,' + (0.30 * baihui * dim) + ')');
+      gB.addColorStop(0.5, rgba(M.core, 0.14 * baihui * dim));
+      gB.addColorStop(1,   rgba(M.core, 0));
+      ctx.fillStyle = gB;
+      ctx.beginPath();
+      ctx.arc(P.BAIHUI.x, P.BAIHUI.y, 26, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    /* 2) 下丹田气团：吸气凝聚收紧，呼气柔和充盈 */
+    var rD = b.inhaling ? 24 - b.p * 8 : 16 + b.p * 14;
+    var aD = (0.40 + br * 0.50) * dim;
+    var gD = ctx.createRadialGradient(P.DANTIAN.x, P.DANTIAN.y, 2, P.DANTIAN.x, P.DANTIAN.y, rD * 2);
+    gD.addColorStop(0,   'rgba(255,255,255,' + aD + ')');
+    gD.addColorStop(0.3, rgba(M.core, aD * 0.72));
+    gD.addColorStop(0.7, rgba(M.core, aD * 0.26));
+    gD.addColorStop(1,   rgba(M.core, 0));
+    ctx.fillStyle = gD;
+    ctx.beginPath();
+    ctx.arc(P.DANTIAN.x, P.DANTIAN.y, rD * 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    /* 3) 膻中（中丹田）共鸣微光 */
+    var aT = 0.30 * br * dim;
+    var gT = ctx.createRadialGradient(P.TANZHONG.x, P.TANZHONG.y, 1, P.TANZHONG.x, P.TANZHONG.y, 25);
+    gT.addColorStop(0,   'rgba(255,255,255,' + aT + ')');
+    gT.addColorStop(0.5, rgba(M.core, aT * 0.5));
+    gT.addColorStop(1,   rgba(M.core, 0));
+    ctx.fillStyle = gT;
+    ctx.beginPath();
+    ctx.arc(P.TANZHONG.x, P.TANZHONG.y, 25, 0, Math.PI * 2);
+    ctx.fill();
+
+    /* 4) 气场环：抱球桩为胸前抱圆，打坐为座底沉稳光环 */
+    var aRing = (0.14 + br * 0.26) * dim;
+    ctx.lineWidth = 1.8 + br * 1.8;
+    ctx.strokeStyle = rgba(M.core, aRing);
+    ctx.beginPath();
+    if (S.mode === 'sitting'){
+      ctx.ellipse(180, 396, 118, 26, 0, 0, Math.PI * 2);      // 气沉座底，稳如磐石
+    } else {
+      ctx.ellipse(180, 232, 106, 56, 0, 0, Math.PI * 2);      // 抱球气场
+    }
+    ctx.stroke();
+
+    /* 5) 经络气流粒子 */
+    var spr = sprite(M.spark);
+
+    if (qi.mode === 'return'){
+      // 收功归元：粒子缓缓收束回丹田
+      qi.retT += dt;
+      var k = Math.min(1, qi.retT / 2.2);
+      var ke = ease(k);
+      var fade = k < 0.65 ? 1 : 1 - (k - 0.65) / 0.35;
+      for (i = 0; i < qi.parts.length; i++){
+        pt = qi.parts[i];
+        pt.px = pt.px0 + (P.DANTIAN.x - pt.px0) * ke;
+        pt.py = pt.py0 + (P.DANTIAN.y - pt.py0) * ke;
+        var s2 = pt.sz * (1 - ke * 0.55) * 3.2;
+        ctx.globalAlpha = Math.max(0, 0.5 * fade);
+        ctx.drawImage(spr, pt.px - s2/2, pt.py - s2/2, s2, s2);
+      }
+      // 丹田余晖收拢
+      var rF = 30 * (1 - ke * 0.7);
+      var gF = ctx.createRadialGradient(P.DANTIAN.x, P.DANTIAN.y, 1, P.DANTIAN.x, P.DANTIAN.y, rF);
+      gF.addColorStop(0,   'rgba(255,255,255,' + (0.5 * fade) + ')');
+      gF.addColorStop(0.4, rgba(M.core, 0.30 * fade));
+      gF.addColorStop(1,   rgba(M.core, 0));
+      ctx.fillStyle = gF;
+      ctx.beginPath();
+      ctx.arc(P.DANTIAN.x, P.DANTIAN.y, rF, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      if (k >= 1){ qiStop(); return; }
+      qi.raf = requestAnimationFrame(qiFrame);
+      return;
+    }
+
+    // 首尾淡入淡出：遮住换轨瞬间，粒子不会瞬移
+    var vis = Math.pow(Math.sin(Math.PI * Math.min(Math.max(b.p, 0), 1)), 0.7);
+
+    for (i = 0; i < qi.parts.length; i++){
+      pt = qi.parts[i];
+      var route = b.inhaling ? R.inhale : (i % 2 ? R.exhaleR : R.exhaleL);
+      if (!route) continue;
+
+      var u = (b.p * pt.sp + pt.off) % 1;
+      pos = pointOn(route, u);
+
+      // 气道波动：抱球桩吸气末向丹田收束；打坐沿任督二脉贴身而行
+      var wob = Math.sin(u * Math.PI * 3 + pt.ph + now * 0.0012);
+      var lat = (S.mode === 'sitting')
+        ? pt.lat * 0.25
+        : pt.lat * (b.inhaling ? (1 - u) * (1 - u) : 0.55 + u * 0.45);
+      pt.px = pos.x + wob * lat;
+      pt.py = pos.y + wob * lat * 0.35;
+      pt.px0 = pt.px; pt.py0 = pt.py;      // 供收功归元时插值
+
+      a = (0.30 + br * 0.45) * vis * dim;
+      var s = pt.sz * (1.0 + br * 0.5) * 2.4;
+      ctx.globalAlpha = Math.min(1, Math.max(0, a));
+      ctx.drawImage(spr, pt.px - s/2, pt.py - s/2, s, s);
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    qi.raf = requestAnimationFrame(qiFrame);
+  }
+
+  function qiStart(){
+    if (!qi.on || !qi.ctx) return;
+    qi.mode  = 'flow';
+    qi.retT  = 0;
+    qi.t0    = Date.now();
+    qi.last  = 0;
+    if (!qi.parts.length) qiParts();
+    if (!qi.routes.standing) buildRoutes();
+    if (!qi.running){ qi.running = true; qi.raf = requestAnimationFrame(qiFrame); }
+  }
+
+  function qiPause(){
+    qi.running  = false;
+    qi.pausedAt = Date.now();
+    if (qi.raf){ cancelAnimationFrame(qi.raf); qi.raf = 0; }
+  }
+
+  function qiResume(){
+    if (!qi.on || !qi.ctx || qi.running) return;
+    qi.t0 += Date.now() - qi.pausedAt;    // 补上暂停时长，避免节奏跳变
+    qi.last = 0;
+    qi.running = true;
+    qi.raf = requestAnimationFrame(qiFrame);
+  }
+
+  // 收功：粒子归元后自行停止
+  function qiFinish(){
+    if (!qi.on || !qi.running){ qiStop(); return; }
+    qi.mode = 'return';
+    qi.retT = 0;
+    qi.last = 0;
+  }
+
+  function qiStop(){
+    qi.running = false;
+    if (qi.raf){ cancelAnimationFrame(qi.raf); qi.raf = 0; }
+    if (qi.ctx) qi.ctx.clearRect(0, 0, VW, VH);
+  }
+
+  function qiSetOn(v){
+    qi.on = !!v;
+    el.btnBreath.classList.toggle('off', !qi.on);
+    el.body.classList.toggle('qi-on', qi.on);
+    if (!qi.on){ qiStop(); }
+    else { qiStart(); }
+  }
+
+  /* ---------- 模式切换 ---------- */
+  function setMode(m){
+    if (!MODES[m]) return;
+    S.mode = m;
+    el.body.classList.toggle('mode-sitting', m === 'sitting');
+    Array.prototype.forEach.call(el.modeSel.children, function(b){
+      b.classList.toggle('on', b.dataset.mode === m);
+    });
+    document.getElementById('svgStanding').classList.toggle('off', m !== 'standing');
+    document.getElementById('svgSitting').classList.toggle('off', m !== 'sitting');
+
+    breathShown = null;
+    qi.fade = 0;                       // 换轨瞬间整体淡入，看不出跳变
+    if (tipId) tipsStart();            // 同步换一套口诀
+    var d = loadData(); d.mode = m; saveData(d);
+  }
+
+  /* ---------- 口诀轮换（按模式取不同的一套） ---------- */
+  var tipIdx = 0, tipId = null, tipGen = 0;
+
+  // tipGen 是写入凭据：淡出的 450ms 里若切了模式或停了计时，
+  // 这次延时写入必须作废，否则会把上一模式的口诀写进新模式
+  function tipShow(i){
+    var list = mode().tips, gen = ++tipGen;
+    el.sub.style.opacity = 0;
+    setTimeout(function(){
+      if (gen !== tipGen) return;
+      el.sub.textContent = list[i % list.length];
+      el.sub.style.opacity = 1;
+    }, 450);
+  }
+  function tipsStart(){
+    tipsStop();
+    tipIdx = 0;
+    tipShow(0);
+    tipId = setInterval(function(){ tipIdx++; tipShow(tipIdx); }, BREATH.tipsEvery);
+  }
+  function tipsStop(){
+    if (tipId) clearInterval(tipId);
+    tipId = null;
+    tipGen++;
+  }
+
+  window.addEventListener('resize', qiResize);
+  window.addEventListener('orientationchange', function(){ setTimeout(qiResize, 250); });
+  /* ============================================================
+   *  PWA：动态生成 manifest 与图标（保持单文件）
+   * ============================================================ */
+  function makeIcon(size){
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    var g = cv.getContext('2d');
+    g.fillStyle = '#0a0c0d';
+    g.fillRect(0, 0, size, size);
+    g.strokeStyle = '#e3c58a';
+    g.lineWidth = size * 0.035;
+    g.beginPath();
+    g.arc(size / 2, size / 2, size * 0.28, 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = '#e3c58a';
+    g.beginPath();
+    g.arc(size / 2, size / 2, size * 0.075, 0, Math.PI * 2);
+    g.fill();
+    return cv.toDataURL('image/png');
+  }
+
+  try {
+    var i192 = makeIcon(192), i512 = makeIcon(512);
+    var manifest = {
+      name: '站桩 · Zen Timer',
+      short_name: '站桩',
+      start_url: '.',
+      display: 'standalone',
+      background_color: '#0a0c0d',
+      theme_color: '#0a0c0d',
+      orientation: 'portrait',
+      icons: [
+        { src: i192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: i512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+      ]
+    };
+    var url = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }));
+    var link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = url;
+    document.head.appendChild(link);
+
+    var al = document.createElement('link');
+    al.rel = 'apple-touch-icon';
+    al.href = i192;
+    document.head.appendChild(al);
+  } catch(e){ /* 忽略：PWA 元信息失败不影响计时 */ }
+
+  /* ---------- 初始化 ---------- */
+  var saved = loadData();
+  S.ending   = saved.ending;
+  S.custom   = saved.custom;
+  S.duration = saved.duration;
+  setMode(saved.mode);
+
+  qi.figure = document.getElementById('qiFigure');
+  qi.cv     = document.getElementById('qi');
+  qi.ctx    = qi.cv.getContext('2d');
+  qiResize();
+  buildRoutes();
+  qiParts();
+  qiSetOn(saved.breath);
+
+  buildPresets();
+  paintSeg();
+  paintStats();
+  el.ring.style.strokeDasharray    = C;
+  el.ring.style.strokeDashoffset   = C;
+  showDuration();
+})();
+</script>
+</body>
+</html>
