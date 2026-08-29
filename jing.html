@@ -1,0 +1,2272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c0d">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="站桩">
+<meta name="description" content="专业站桩 / 冥想意念计时器，去秒表专注圆环进度，大字心法口诀导引与真人太极名师身法。">
+<title>站桩 · Zen Timer</title>
+<style>
+  :root{
+    --bg-0:#050607;
+    --bg-1:#0a0c0d;
+    --bg-2:#14181a;
+    --ink:#e9e5da;
+    --ink-dim:#8d918c;
+    --ink-faint:#4d514d;
+    --gold:#e3c58a;
+    --gold-soft:rgba(227,197,138,.14);
+    --gold-glow:rgba(240,198,116,.45);
+    --cyan-glow:rgba(100,200,255,.45);
+    --line:rgba(255,255,255,.08);
+    --card:rgba(255,255,255,.035);
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+    --safe-l:env(safe-area-inset-left,0px);
+    --safe-r:env(safe-area-inset-right,0px);
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+  html,body{height:100%;}
+
+  body{
+    background:
+      radial-gradient(125% 110% at 50% -10%, var(--bg-2) 0%, var(--bg-1) 55%, var(--bg-0) 100%);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    font-variant-numeric:tabular-nums;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:manipulation;
+  }
+
+  /* 呼吸光晕：仅在计时阶段出现 */
+  .aura{
+    position:fixed; left:50%; top:44%;
+    width:min(120vw,760px); aspect-ratio:1;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(circle, rgba(227,197,138,.10) 0%, rgba(227,197,138,.03) 38%, transparent 66%);
+    opacity:0; transition:opacity 1.2s ease;
+    pointer-events:none;
+  }
+  body.phase-run .aura{opacity:1; animation:breathe 8s ease-in-out infinite;}
+  @keyframes breathe{0%,100%{transform:translate(-50%,-50%) scale(.92);}50%{transform:translate(-50%,-50%) scale(1.06);}}
+
+  /* 气机可视化层：全屏 Canvas */
+  #qi{
+    position:fixed; inset:0;
+    width:100%; height:100%;
+    z-index:0; pointer-events:none;
+    opacity:0;
+    transition:opacity 1.4s ease;
+  }
+  body.qi-on.phase-prep   #qi,
+  body.qi-on.phase-run    #qi,
+  body.qi-on.phase-paused #qi{opacity:1;}
+  body.qi-on .aura{opacity:0 !important; animation:none;}
+
+  .app{
+    position:relative; z-index:1;
+    min-height:100dvh;
+    display:grid;
+    grid-template-rows:auto 1fr auto;
+    padding:calc(var(--safe-t) + 14px) calc(var(--safe-r) + 18px) calc(var(--safe-b) + 18px) calc(var(--safe-l) + 18px);
+  }
+
+  /* ---------- 顶栏 ---------- */
+  .topbar{
+    display:flex; flex-direction:column; gap:6px;
+    align-items:center;
+  }
+  .topbar-row{
+    width:100%; display:flex; align-items:center; justify-content:space-between;
+    height:36px;
+  }
+
+  /* 模式切换：抱球桩 / 打坐 */
+  .mode-sel{
+    display:flex; gap:2px; padding:3px;
+    border:1px solid var(--line); border-radius:999px;
+    background:var(--card);
+    transition:opacity .3s ease;
+  }
+  .mode-sel button{
+    padding:6px 13px; border:none; border-radius:999px;
+    background:transparent; color:var(--ink-faint);
+    font-size:12px; letter-spacing:.08em; cursor:pointer;
+    transition:color .25s ease, background .25s ease;
+  }
+  .mode-sel button.on{background:rgba(255,255,255,.13); color:var(--ink);}
+  .mode-sel.locked{opacity:.35; pointer-events:none;}
+
+  /* 意念模式选择器：丹田呼吸 / 小周天 */
+  .mind-sel{
+    display:flex; gap:3px; padding:2px 4px;
+    border:1px solid rgba(227,197,138,.16); border-radius:999px;
+    background:rgba(20,24,26,.65);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    transition:opacity .3s ease, transform .3s ease;
+  }
+  .mind-sel.hidden{opacity:0; pointer-events:none; transform:translateY(-4px);}
+  .mind-sel button{
+    padding:3px 10px; border:none; border-radius:999px;
+    background:transparent; color:var(--ink-dim);
+    font-size:11px; letter-spacing:.1em; cursor:pointer;
+    transition:all .25s ease;
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .mind-sel button::before{
+    content:""; display:inline-block; width:5px; height:5px; border-radius:50%;
+    background:currentColor; opacity:.4; transition:opacity .25s;
+  }
+  .mind-sel button.on{
+    background:var(--gold-soft);
+    color:var(--gold);
+    box-shadow:0 0 10px rgba(227,197,138,.15);
+  }
+  .mind-sel button.on::before{opacity:1;}
+  .mind-sel.locked{opacity:.4; pointer-events:none;}
+
+  .tools{display:flex; gap:6px;}
+  .icon-btn{
+    width:34px; height:34px; display:grid; place-items:center;
+    border:1px solid var(--line); border-radius:50%;
+    background:var(--card); color:var(--ink-dim);
+    font-size:14px; cursor:pointer;
+    transition:color .2s, border-color .2s, background .2s, opacity .25s;
+  }
+  .icon-btn:active{transform:scale(.94);}
+  .icon-btn.off{color:var(--ink-faint); opacity:.5;}
+  .icon-btn[hidden]{display:none;}
+
+  /* ---------- 舞台 ---------- */
+  .stage{
+    display:grid; place-items:center;
+    position:relative;
+    cursor:pointer;
+  }
+
+  .ring-wrap{
+    position:relative;
+    width:min(76vw,340px);
+    aspect-ratio:1;
+    display:grid; place-items:center;
+  }
+  .ring{position:absolute; inset:0; transform:rotate(-90deg);}
+  .ring circle{fill:none; stroke-linecap:round;}
+  .ring .track{stroke:rgba(255,255,255,.055); stroke-width:3.5;}
+  .ring .prog{
+    stroke:var(--gold); stroke-width:3.5;
+    stroke-dasharray:879.6; stroke-dashoffset:879.6;
+    filter:drop-shadow(0 0 8px rgba(227,197,138,.45));
+    transition:stroke-dashoffset .12s linear;
+  }
+  body.phase-prep .ring .prog{stroke:#a8b0a6; filter:none;}
+
+  /* 人形轮廓 + 气流画布 */
+  .qi-figure{
+    position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    width:78%; height:98%;
+    opacity:0;
+    transition:opacity 1.2s ease;
+  }
+  body.qi-on .qi-figure{opacity:1;}
+  .silhouette{
+    position:absolute; inset:0; width:100%; height:100%; display:block;
+    transition:opacity .9s ease, transform .9s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .silhouette.off{opacity:0; transform:scale(.94) translateY(4px); pointer-events:none;}
+  canvas#qi{position:absolute; inset:0; width:100%; height:100%; pointer-events:none;}
+
+  /* ---------- 核心读数与大字口诀导引层 ---------- */
+  .readout{
+    position:absolute; inset:0; z-index:2; pointer-events:none;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    text-align:center;
+    padding:0 12px;
+    transition:all .5s ease;
+  }
+  .label{
+    font-size:12px; letter-spacing:.36em; color:var(--ink-dim);
+    margin-bottom:8px; height:16px;
+    transition:color .9s ease, opacity .3s;
+  }
+
+  /* 核心展示区：在未开始时显示时间，在计时运行中蜕变为【大字心法口诀】 */
+  .time{
+    font-size:clamp(3.8rem,18vw,7.0rem);
+    font-weight:200; line-height:1.15;
+    letter-spacing:-.02em;
+    color:var(--ink);
+    transition:opacity .35s ease, transform .35s ease, font-size .45s ease, color .5s ease;
+  }
+
+  /* 计时运行阶段：去除秒表数字，大字呈现口诀，极致专注 */
+  body.phase-run .readout,
+  body.phase-prep .readout,
+  body.phase-paused .readout{
+    justify-content:flex-start;
+    padding-top:max(2px, 1.2vh);
+  }
+
+  body.phase-run .readout .time,
+  body.phase-paused .readout .time{
+    font-size:clamp(1.55rem, 5.8vw, 2.3rem);
+    font-weight:300;
+    line-height:1.35;
+    letter-spacing:.12em;
+    color:#f0ece1;
+    text-shadow:0 0 18px rgba(227,197,138,.4);
+    max-width:320px;
+    margin-top:2px;
+  }
+
+  body.phase-prep .readout .time{
+    font-size:clamp(2.4rem, 10vw, 3.6rem);
+    font-weight:200;
+    color:#cfe0d2;
+    letter-spacing:.1em;
+  }
+
+  body.phase-run .readout .label,
+  body.phase-paused .readout .label{
+    margin:4px 0 0;
+    font-size:11px;
+    letter-spacing:.28em;
+  }
+
+  body.qi-on .ring .prog{
+    stroke:#f3c87a;
+    filter:drop-shadow(0 0 8px rgba(243,200,122,.45));
+  }
+  body.qi-on.mind-microcosm .ring .prog{
+    stroke:#7fcdf0;
+    filter:drop-shadow(0 0 8px rgba(127,205,240,.45));
+  }
+  body.qi-on.phase-prep .ring .prog{stroke:#a8b0a6; filter:none;}
+
+  /* ---------- 底部面板 ---------- */
+  .bottom-area{
+    position:relative;
+    display:flex; flex-direction:column; align-items:center;
+    min-height:90px; justify-content:flex-end;
+  }
+
+  .panel{
+    display:flex; flex-direction:column; align-items:center; gap:16px;
+    width:100%;
+    transition:opacity .4s ease, transform .4s ease;
+  }
+  .panel[hidden]{display:none;}
+
+  .presets{
+    display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px; width:100%; max-width:380px;
+  }
+  .preset{
+    padding:14px 0 12px;
+    border:1px solid var(--line); border-radius:14px;
+    background:var(--card); color:var(--ink-dim);
+    font-size:16px; font-weight:400; letter-spacing:.02em;
+    cursor:pointer;
+    transition:border-color .22s, color .22s, background .22s, transform .12s;
+  }
+  .preset small{display:block; margin-top:3px; font-size:10px; letter-spacing:.24em; color:var(--ink-faint);}
+  .preset:active{transform:scale(.97);}
+  .preset.on{
+    border-color:rgba(227,197,138,.55);
+    background:var(--gold-soft);
+    color:var(--gold);
+  }
+  .preset.on small{color:rgba(227,197,138,.6);}
+
+  .preset.custom{
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    cursor:text;
+  }
+  .preset.custom input{
+    width:100%;
+    padding:0; margin:0;
+    border:none; outline:none; background:transparent;
+    color:inherit; font-family:inherit;
+    font-size:16px; font-weight:400; line-height:1.2;
+    text-align:center; font-variant-numeric:tabular-nums;
+    -moz-appearance:textfield; appearance:textfield;
+  }
+  .preset.custom input::-webkit-outer-spin-button,
+  .preset.custom input::-webkit-inner-spin-button{
+    -webkit-appearance:none; margin:0;
+  }
+  .preset.custom small{margin-top:3px;}
+  .preset.custom:focus-within{
+    border-color:rgba(227,197,138,.55);
+    background:var(--gold-soft);
+    color:var(--gold);
+  }
+  .preset.custom:focus-within small{color:rgba(227,197,138,.6);}
+
+  .start{
+    width:100%; max-width:380px;
+    padding:16px 0;
+    border:none; border-radius:16px;
+    background:linear-gradient(180deg,#efe0bb,#d8b877);
+    color:#1a1610; font-size:17px; font-weight:600; letter-spacing:.3em; text-indent:.3em;
+    cursor:pointer;
+    box-shadow:0 8px 26px -12px rgba(227,197,138,.5);
+    transition:transform .12s, box-shadow .22s;
+  }
+  .start:active{transform:scale(.985); box-shadow:0 4px 14px -8px rgba(227,197,138,.4);}
+
+  /* 控制按钮：沉浸式隐藏与唤出 */
+  .controls-wrap{
+    position:relative; width:100%; max-width:380px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .controls{
+    display:flex; gap:14px; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none;
+    transform:translateY(12px);
+    transition:opacity .45s cubic-bezier(0.2,0.8,0.2,1), transform .45s cubic-bezier(0.2,0.8,0.2,1);
+  }
+  .controls.active,
+  body.phase-paused .controls{
+    opacity:1; pointer-events:auto; transform:translateY(0);
+  }
+
+  .ctrl{
+    padding:12px 28px;
+    border:1px solid var(--line); border-radius:999px;
+    background:rgba(255,255,255,.07); color:var(--ink-dim);
+    font-size:14px; letter-spacing:.16em; cursor:pointer;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    transition:color .2s, border-color .2s, background .2s, transform .12s;
+  }
+  .ctrl:active{transform:scale(.96);}
+  .ctrl.ghost{color:var(--ink-faint); border-color:transparent; background:transparent;}
+
+  .seg-row{display:flex; align-items:center; gap:12px;}
+  .seg-cap{font-size:10px; letter-spacing:.3em; color:var(--ink-faint);}
+  .seg{
+    display:flex; gap:4px; padding:4px;
+    border:1px solid var(--line); border-radius:999px;
+    background:var(--card);
+  }
+  .seg button{
+    padding:7px 16px; border:none; border-radius:999px;
+    background:transparent; color:var(--ink-faint);
+    font-size:12px; letter-spacing:.18em; cursor:pointer;
+    transition:color .2s, background .2s;
+  }
+  .seg button.on{background:rgba(227,197,138,.16); color:var(--gold);}
+
+  .stats{
+    font-size:11px; letter-spacing:.22em; color:var(--ink-faint);
+    height:14px;
+  }
+
+  .hint{
+    margin-top:2px; font-size:11px; letter-spacing:.1em; color:#7a6a4a;
+    text-align:center; line-height:1.6;
+  }
+  .hint[hidden]{display:none;}
+
+  .note{
+    text-align:center; font-size:12px; letter-spacing:.24em; color:var(--ink-dim);
+    line-height:2;
+  }
+
+  @media (max-height:640px){
+    .ring-wrap{width:min(52vw,240px);}
+    .presets{gap:8px;}
+    .preset{padding:11px 0 9px;}
+    body.phase-run .readout .time{font-size:clamp(1.3rem, 5vw, 1.8rem);}
+  }
+</style>
+</head>
+<body class="phase-idle">
+
+<div class="aura"></div>
+
+<div class="app" id="appRoot">
+
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="mode-sel" id="modeSel">
+        <button data-mode="standing" class="on">抱球桩</button>
+        <button data-mode="sitting">打坐</button>
+      </div>
+      <div class="tools">
+        <button class="icon-btn" id="btnFull" title="全屏" hidden>⤢</button>
+        <button class="icon-btn" id="btnBreath" title="气机意念可视化">气</button>
+        <button class="icon-btn" id="btnSound" title="音效">◍</button>
+      </div>
+    </div>
+
+    <!-- 意念模式切换：丹田呼吸 / 小周天 -->
+    <div class="mind-sel" id="mindSel" title="意念运行导引模式">
+      <button data-mind="dantian" class="on">丹田呼吸</button>
+      <button data-mind="microcosm">小周天</button>
+    </div>
+  </div>
+
+  <!-- 主体舞台 -->
+  <div class="stage" id="stage">
+    <div class="ring-wrap">
+
+      <!-- 人形轮廓与气流画布 -->
+      <div class="qi-figure" id="qiFigure">
+        <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+          <defs>
+            <linearGradient id="bodyGradFront" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stop-color="#e2ecf5" stop-opacity=".48"/>
+              <stop offset="35%" stop-color="#ffffff" stop-opacity=".32"/>
+              <stop offset="85%" stop-color="#cad5e0" stop-opacity=".24"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity=".15"/>
+            </linearGradient>
+            <linearGradient id="bodyGradSide" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%"   stop-color="#e2ecf5" stop-opacity=".48"/>
+              <stop offset="60%" stop-color="#ffffff" stop-opacity=".30"/>
+              <stop offset="100%" stop-color="#cad5e0" stop-opacity=".18"/>
+            </linearGradient>
+            <linearGradient id="clothFold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity=".40"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity=".12"/>
+            </linearGradient>
+            <linearGradient id="spineGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stop-color="#74c0fc" stop-opacity=".60"/>
+              <stop offset="100%" stop-color="#a5d8ff" stop-opacity=".18"/>
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <!-- ==================== 1. 抱球桩 · 正面视角 (Front) ==================== -->
+        <svg class="silhouette" id="svgStandFront" viewBox="0 0 360 480" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g stroke="url(#bodyGradFront)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M165 42 C165 24, 195 24, 195 42 C195 48, 192 56, 192 60 C188 64, 172 64, 168 60 C168 56, 165 48, 165 42 Z"/>
+            <circle cx="180" cy="30" r="7" stroke-opacity=".45"/>
+            <path d="M169 56 C169 74, 173 84, 180 85 C187 84, 191 74, 191 56" stroke-opacity=".55"/>
+            <path d="M178 64 L180 66 L182 64" stroke="#ffffff" stroke-opacity=".7" stroke-width="1.1"/>
+
+            <path d="M174 85 L173 98 M186 85 L187 98" stroke-opacity=".5"/>
+            <path d="M168 98 C174 94, 186 94, 192 98 L192 108 C186 112, 174 112, 168 108 Z"/>
+            <circle cx="180" cy="103" r="2.2" fill="#e2ecf5" fill-opacity=".5"/>
+
+            <line x1="180" y1="108" x2="180" y2="280" stroke-opacity=".6" stroke-dasharray="8 6"/>
+            <path d="M174 135 L186 135 M177 132 L177 138 M183 132 L183 138" stroke-opacity=".65"/>
+            <path d="M174 165 L186 165 M177 162 L177 168 M183 162 L183 168" stroke-opacity=".65"/>
+            <path d="M174 195 L186 195 M177 192 L177 198 M183 192 L183 198" stroke-opacity=".65"/>
+            <path d="M174 228 L186 228 M177 225 L177 231 M183 225 L183 231" stroke-opacity=".65"/>
+            <path d="M174 262 L186 262 M177 259 L177 265 M183 259 L183 265" stroke-opacity=".65"/>
+
+            <path d="M168 108 C148 114, 138 126, 134 145 C130 175, 128 220, 132 284"/>
+            <path d="M192 108 C212 114, 222 126, 226 145 C230 175, 232 220, 228 284"/>
+            <path d="M132 284 C152 288, 172 290, 180 290 C188 290, 208 288, 228 284"/>
+            <path d="M178 282 L178 296 M182 282 L182 296" stroke-opacity=".4"/>
+
+            <path id="sf_armL" d="M148 114 C132 124, 102 145, 86 182 C74 208, 76 235, 95 248 C115 258, 132 245, 140 226"/>
+            <path d="M86 215 C88 238, 96 250, 106 250 C116 250, 124 235, 126 218" stroke="url(#clothFold)"/>
+
+            <path id="sf_armR" d="M212 114 C228 124, 258 145, 274 182 C286 208, 284 235, 265 248 C245 258, 228 245, 220 226"/>
+            <path d="M274 215 C272 238, 264 250, 254 250 C244 250, 236 235, 234 218" stroke="url(#clothFold)"/>
+          </g>
+
+          <g stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M126 220 C132 216, 140 216, 146 220 C146 228, 138 234, 132 234 Z" fill="#ffffff" fill-opacity=".06"/>
+            <path d="M144 214 C148 206, 154 204, 160 204" stroke="#f3c87a" stroke-opacity=".85"/>
+            <path d="M148 214 C155 214, 164 214, 168 214" stroke="#ffffff" stroke-opacity=".9"/>
+            <path d="M148 221 C156 221, 166 221, 171 221" stroke="#ffffff" stroke-opacity=".95"/>
+            <path d="M147 228 C154 228, 163 228, 167 228" stroke="#ffffff" stroke-opacity=".9"/>
+            <path d="M144 235 C150 236, 158 236, 162 236" stroke="#ffffff" stroke-opacity=".85"/>
+
+            <path d="M234 220 C228 216, 220 216, 214 220 C214 228, 222 234, 228 234 Z" fill="#ffffff" fill-opacity=".06"/>
+            <path d="M216 214 C212 206, 206 204, 200 204" stroke="#f3c87a" stroke-opacity=".85"/>
+            <path d="M212 214 C205 214, 196 214, 192 214" stroke="#ffffff" stroke-opacity=".9"/>
+            <path d="M212 221 C204 221, 194 221, 189 221" stroke="#ffffff" stroke-opacity=".95"/>
+            <path d="M213 228 C206 228, 197 228, 193 228" stroke="#ffffff" stroke-opacity=".9"/>
+            <path d="M216 235 C210 236, 202 236, 198 236" stroke="#ffffff" stroke-opacity=".85"/>
+
+            <line x1="160" y1="204" x2="200" y2="204" stroke="#f3c87a" stroke-width=".8" stroke-dasharray="2 3" stroke-opacity=".3"/>
+            <line x1="171" y1="221" x2="189" y2="221" stroke="#ffffff" stroke-width=".8" stroke-dasharray="2 2" stroke-opacity=".45"/>
+          </g>
+
+          <g stroke="url(#bodyGradFront)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M152 288 C168 316, 192 316, 208 288" stroke-opacity=".55"/>
+            <path d="M136 286 C122 325, 106 360, 102 380 C98 405, 96 438, 94 456"/>
+            <path d="M168 316 C162 350, 146 395, 142 456"/>
+            <path d="M104 382 C116 388, 134 388, 144 382" stroke="url(#clothFold)"/>
+            <path d="M94 456 C106 450, 130 450, 142 456" stroke-opacity=".5"/>
+
+            <path d="M224 286 C238 325, 254 360, 258 380 C262 405, 264 438, 266 456"/>
+            <path d="M192 316 C198 350, 214 395, 218 456"/>
+            <path d="M256 382 C244 388, 226 388, 216 382" stroke="url(#clothFold)"/>
+            <path d="M218 456 C230 450, 254 450, 266 456" stroke-opacity=".5"/>
+
+            <g stroke="#ffffff" stroke-opacity=".85" fill="#ffffff" fill-opacity=".09">
+              <path d="M100 458 C102 452, 134 452, 136 458 L136 470 C136 473, 100 473, 100 470 Z"/>
+              <line x1="102" y1="470" x2="134" y2="470" stroke="#f3c87a" stroke-width="1.2" stroke-opacity=".7"/>
+              <line x1="118" y1="454" x2="118" y2="469" stroke="#ffffff" stroke-width=".8" stroke-opacity=".4"/>
+            </g>
+            <g stroke="#ffffff" stroke-opacity=".85" fill="#ffffff" fill-opacity=".09">
+              <path d="M224 458 C226 452, 258 452, 260 458 L260 470 C260 473, 224 473, 224 470 Z"/>
+              <line x1="226" y1="470" x2="258" y2="470" stroke="#f3c87a" stroke-width="1.2" stroke-opacity=".7"/>
+              <line x1="242" y1="454" x2="242" y2="469" stroke="#ffffff" stroke-width=".8" stroke-opacity=".4"/>
+            </g>
+          </g>
+
+          <path id="sf_noseIn" d="M180 64 L180 100 C180 140, 180 190, 180 260"
+                stroke="#63e6be" stroke-width=".9" stroke-opacity=".15" fill="none"/>
+          <path id="sf_du" d="M180 345 C176 295, 176 195, 178 115 C179 88, 179 65, 180 38"
+                stroke="#4dabf7" stroke-width=".8" stroke-opacity=".1" stroke-dasharray="3 5" fill="none"/>
+          <path id="sf_ren" d="M180 64 C182 110, 182 190, 180 260 C180 300, 180 325, 180 345"
+                stroke="#ffd43b" stroke-width=".8" stroke-opacity=".1" fill="none"/>
+
+          <circle cx="180" cy="64"  r="2.0" fill="#63e6be" fill-opacity=".6"/>
+          <circle cx="180" cy="165" r="2.2" fill="#ffd98a" fill-opacity=".35"/>
+          <circle cx="180" cy="260" r="3.2" fill="#ffc078" fill-opacity=".55"/>
+          <circle cx="180" cy="345" r="2.0" fill="#a5d8ff" fill-opacity=".35"/>
+        </svg>
+
+        <!-- ==================== 2. 抱球桩 · 左斜45°视角 (Angle-L) ==================== -->
+        <svg class="silhouette off" id="svgStandAngleL" viewBox="0 0 360 480" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g stroke="url(#bodyGradSide)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M172 42 C170 24, 198 26, 198 44 C200 60, 194 72, 186 76 C178 74, 174 62, 172 42 Z"/>
+            <circle cx="188" cy="28" r="6.5" stroke-opacity=".45"/>
+            <path d="M174 58 L170 64 L173 66 L174 74" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.1"/>
+            <path d="M178 76 L176 96 M190 76 L194 96" stroke-opacity=".5"/>
+            <path d="M172 96 C180 92, 192 94, 198 98 L198 108 C192 112, 180 110, 172 106 Z"/>
+
+            <path d="M198 108 C208 145, 212 210, 204 284"/>
+            <path d="M172 108 C158 145, 154 210, 164 284"/>
+            <path d="M164 284 C178 290, 194 290, 204 284"/>
+            <path d="M176 135 L184 133 M174 165 L182 163 M172 195 L180 193 M170 228 L178 226" stroke-opacity=".5"/>
+
+            <path id="sal_armL" d="M168 114 C140 128, 96 155, 76 192 C60 220, 68 245, 92 254 C115 260, 138 240, 146 226"/>
+            <path d="M76 225 C80 246, 92 255, 104 254" stroke="url(#clothFold)"/>
+
+            <path id="sal_armR" d="M196 112 C214 126, 246 155, 252 188 C256 216, 242 245, 222 250 C202 252, 186 238, 180 222"/>
+          </g>
+
+          <g stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M136 222 C140 216, 148 216, 152 220 Z" fill="#ffffff" fill-opacity=".06"/>
+            <path d="M148 214 C152 206, 158 204, 164 204" stroke="#f3c87a" stroke-opacity=".85"/>
+            <path d="M152 214 C160 214, 168 214, 172 214" stroke-opacity=".9"/>
+            <path d="M152 221 C161 221, 170 221, 175 221" stroke-opacity=".95"/>
+            <path d="M150 228 C158 228, 166 228, 170 228" stroke-opacity=".9"/>
+            <path d="M146 235 C152 236, 160 236, 164 236" stroke-opacity=".85"/>
+
+            <path d="M198 214 C192 206, 188 204, 184 204" stroke="#f3c87a" stroke-opacity=".7"/>
+            <path d="M194 214 C188 214, 182 214, 180 214" stroke-opacity=".75"/>
+            <path d="M194 221 C188 221, 182 221, 179 221" stroke-opacity=".8"/>
+            <path d="M193 228 C188 228, 183 228, 180 228" stroke-opacity=".75"/>
+          </g>
+
+          <g stroke="url(#bodyGradSide)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M164 284 C150 325, 132 360, 126 380 C120 405, 114 438, 112 456"/>
+            <path d="M178 305 C174 350, 158 395, 150 456"/>
+            <path d="M128 382 C136 388, 146 388, 150 382" stroke="url(#clothFold)"/>
+            <path d="M112 456 C124 450, 140 450, 150 456"/>
+
+            <path d="M204 284 C216 325, 230 365, 234 382 C236 405, 238 438, 240 456"/>
+            <path d="M192 305 C198 350, 212 395, 216 456"/>
+            <path d="M216 456 C226 450, 236 450, 240 456"/>
+
+            <g stroke="#ffffff" stroke-opacity=".85" fill="#ffffff" fill-opacity=".09">
+              <path d="M114 458 C116 452, 146 452, 148 458 L148 470 C148 473, 114 473, 114 470 Z"/>
+              <line x1="116" y1="470" x2="146" y2="470" stroke="#f3c87a" stroke-width="1.2" stroke-opacity=".7"/>
+              <line x1="130" y1="454" x2="130" y2="469" stroke="#ffffff" stroke-width=".8" stroke-opacity=".4"/>
+            </g>
+            <g stroke="#ffffff" stroke-opacity=".85" fill="#ffffff" fill-opacity=".09">
+              <path d="M218 458 C220 452, 238 452, 240 458 L240 470 C240 473, 218 473, 218 470 Z"/>
+              <line x1="220" y1="470" x2="238" y2="470" stroke="#f3c87a" stroke-width="1.2" stroke-opacity=".7"/>
+            </g>
+          </g>
+
+          <path id="sal_noseIn" d="M170 64 C164 110, 166 185, 174 260"
+                stroke="#63e6be" stroke-width=".9" stroke-opacity=".15" fill="none"/>
+          <path id="sal_du" d="M196 345 C202 295, 204 195, 198 120 C194 90, 190 68, 188 38"
+                stroke="#4dabf7" stroke-width=".8" stroke-opacity=".1" stroke-dasharray="3 5" fill="none"/>
+          <path id="sal_ren" d="M170 64 C164 110, 166 185, 174 260 C176 300, 184 325, 190 345"
+                stroke="#ffd43b" stroke-width=".8" stroke-opacity=".1" fill="none"/>
+
+          <circle cx="170" cy="64"  r="2.0" fill="#63e6be" fill-opacity=".6"/>
+          <circle cx="168" cy="165" r="2.2" fill="#ffd98a" fill-opacity=".35"/>
+          <circle cx="176" cy="260" r="3.2" fill="#ffc078" fill-opacity=".55"/>
+          <circle cx="190" cy="345" r="2.0" fill="#a5d8ff" fill-opacity=".35"/>
+        </svg>
+
+        <!-- ==================== 3. 抱球桩 · 右斜45°视角 (Angle-R) ==================== -->
+        <svg class="silhouette off" id="svgStandAngleR" viewBox="0 0 360 480" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g stroke="url(#bodyGradSide)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M162 44 C162 26, 190 24, 188 42 C186 62, 182 74, 174 76 C166 72, 160 60, 162 44 Z"/>
+            <circle cx="172" cy="28" r="6.5" stroke-opacity=".45"/>
+            <path d="M186 58 L190 64 L187 66 L186 74" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.1"/>
+            <path d="M166 76 L162 96 M178 76 L182 96" stroke-opacity=".5"/>
+            <path d="M162 98 C168 94, 180 92, 188 96 L188 106 C180 110, 168 112, 162 108 Z"/>
+
+            <path d="M162 108 C152 145, 148 210, 156 284"/>
+            <path d="M188 108 C202 145, 206 210, 196 284"/>
+            <path d="M156 284 C166 290, 182 290, 196 284"/>
+            <path d="M184 135 L176 133 M186 165 L178 163 M188 195 L180 193 M190 228 L182 226" stroke-opacity=".5"/>
+
+            <path id="sar_armR" d="M192 114 C220 128, 264 155, 284 192 C300 220, 292 245, 268 254 C245 260, 222 240, 214 226"/>
+            <path d="M284 225 C280 246, 268 255, 256 254" stroke="url(#clothFold)"/>
+
+            <path id="sar_armL" d="M164 112 C146 126, 114 155, 108 188 C104 216, 118 245, 138 250 C158 252, 174 238, 180 222"/>
+          </g>
+
+          <g stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M224 222 C220 216, 212 216, 208 220 Z" fill="#ffffff" fill-opacity=".06"/>
+            <path d="M212 214 C208 206, 202 204, 196 204" stroke="#f3c87a" stroke-opacity=".85"/>
+            <path d="M208 214 C200 214, 192 214, 188 214" stroke-opacity=".9"/>
+            <path d="M208 221 C199 221, 190 221, 185 221" stroke-opacity=".95"/>
+            <path d="M210 228 C202 228, 194 228, 190 228" stroke-opacity=".9"/>
+            <path d="M214 235 C208 236, 200 236, 196 236" stroke-opacity=".85"/>
+
+            <path d="M162 214 C168 206, 172 204, 176 204" stroke="#f3c87a" stroke-opacity=".7"/>
+            <path d="M166 214 C172 214, 178 214, 180 214" stroke-opacity=".75"/>
+            <path d="M166 221 C172 221, 178 221, 181 221" stroke-opacity=".8"/>
+            <path d="M167 228 C172 228, 177 228, 180 228" stroke-opacity=".75"/>
+          </g>
+
+          <g stroke="url(#bodyGradSide)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M196 284 C210 325, 228 360, 234 380 C240 405, 246 438, 248 456"/>
+            <path d="M182 305 C186 350, 202 395, 210 456"/>
+            <path d="M232 382 C224 388, 214 388, 210 382" stroke="url(#clothFold)"/>
+            <path d="M210 456 C220 450, 236 450, 248 456"/>
+
+            <path d="M156 284 C144 325, 130 365, 126 380 C124 405, 122 438, 120 456"/>
+            <path d="M168 305 C162 350, 148 395, 144 456"/>
+            <path d="M120 456 C124 450, 134 450, 144 456"/>
+
+            <g stroke="#ffffff" stroke-opacity=".85" fill="#ffffff" fill-opacity=".09">
+              <path d="M212 458 C214 452, 244 452, 246 458 L246 470 C246 473, 212 473, 212 470 Z"/>
+              <line x1="214" y1="470" x2="244" y2="470" stroke="#f3c87a" stroke-width="1.2" stroke-opacity=".7"/>
+              <line x1="230" y1="454" x2="230" y2="469" stroke="#ffffff" stroke-width=".8" stroke-opacity=".4"/>
+            </g>
+            <g stroke="#ffffff" stroke-opacity=".85" fill="#ffffff" fill-opacity=".09">
+              <path d="M120 458 C122 452, 140 452, 142 458 L142 470 C142 473, 120 473, 120 470 Z"/>
+              <line x1="122" y1="470" x2="140" y2="470" stroke="#f3c87a" stroke-width="1.2" stroke-opacity=".7"/>
+            </g>
+          </g>
+
+          <path id="sar_noseIn" d="M190 64 C196 110, 194 185, 186 260"
+                stroke="#63e6be" stroke-width=".9" stroke-opacity=".15" fill="none"/>
+          <path id="sar_du" d="M164 345 C158 295, 156 195, 162 120 C166 90, 170 68, 172 38"
+                stroke="#4dabf7" stroke-width=".8" stroke-opacity=".1" stroke-dasharray="3 5" fill="none"/>
+          <path id="sar_ren" d="M190 64 C196 110, 194 185, 186 260 C184 300, 176 325, 170 345"
+                stroke="#ffd43b" stroke-width=".8" stroke-opacity=".1" fill="none"/>
+
+          <circle cx="190" cy="64"  r="2.0" fill="#63e6be" fill-opacity=".6"/>
+          <circle cx="192" cy="165" r="2.2" fill="#ffd98a" fill-opacity=".35"/>
+          <circle cx="184" cy="260" r="3.2" fill="#ffc078" fill-opacity=".55"/>
+          <circle cx="170" cy="345" r="2.0" fill="#a5d8ff" fill-opacity=".35"/>
+        </svg>
+
+        <!-- ==================== 4. 抱球桩 · 背面视角 (Back) ==================== -->
+        <svg class="silhouette off" id="svgStandBack" viewBox="0 0 360 480" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g stroke="url(#bodyGradFront)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M165 42 C165 24, 195 24, 195 42 C195 62, 190 74, 180 76 C170 74, 165 62, 165 42 Z"/>
+            <circle cx="180" cy="30" r="7" stroke-opacity=".5"/>
+            <path d="M174 76 L172 96 M186 76 L188 96" stroke-opacity=".5"/>
+            <path d="M168 96 C174 94, 186 94, 192 96 L192 106 C186 110, 174 110, 168 106 Z"/>
+
+            <path d="M180 106 L180 280" stroke="url(#spineGrad)" stroke-width="1.6" stroke-dasharray="2 4"/>
+            <path d="M152 118 C144 148, 148 185, 160 200" stroke-opacity=".3"/>
+            <path d="M208 118 C216 148, 212 185, 200 200" stroke-opacity=".3"/>
+
+            <path d="M168 106 C148 112, 138 126, 134 145 C130 175, 128 220, 132 284"/>
+            <path d="M192 106 C212 112, 222 126, 226 145 C230 175, 232 220, 228 284"/>
+            <path d="M132 284 C152 288, 172 290, 180 290 C188 290, 208 288, 228 284"/>
+
+            <path id="sb_armL" d="M148 114 C132 124, 102 145, 86 182 C74 208, 76 235, 95 248 C115 258, 130 245, 138 230"/>
+            <path d="M86 215 C88 238, 96 250, 106 250" stroke="url(#clothFold)"/>
+
+            <path id="sb_armR" d="M212 114 C228 124, 258 145, 274 182 C286 208, 284 235, 265 248 C245 258, 230 245, 222 230"/>
+            <path d="M274 215 C272 238, 264 250, 254 250" stroke="url(#clothFold)"/>
+
+            <path d="M136 286 C122 325, 106 360, 102 380 C98 405, 96 438, 94 456"/>
+            <path d="M168 316 C162 350, 146 395, 142 456"/>
+            <path d="M104 382 C116 388, 134 388, 144 382" stroke="url(#clothFold)"/>
+
+            <path d="M224 286 C238 325, 254 360, 258 380 C262 405, 264 438, 266 456"/>
+            <path d="M192 316 C198 350, 214 395, 218 456"/>
+            <path d="M256 382 C244 388, 226 388, 216 382" stroke="url(#clothFold)"/>
+
+            <g stroke="#ffffff" stroke-opacity=".85" fill="#ffffff" fill-opacity=".09">
+              <path d="M100 458 C102 452, 134 452, 136 458 L136 470 C136 473, 100 473, 100 470 Z"/>
+              <line x1="102" y1="470" x2="134" y2="470" stroke="#f3c87a" stroke-width="1.2" stroke-opacity=".7"/>
+            </g>
+            <g stroke="#ffffff" stroke-opacity=".85" fill="#ffffff" fill-opacity=".09">
+              <path d="M224 458 C226 452, 258 452, 260 458 L260 470 C260 473, 224 473, 224 470 Z"/>
+              <line x1="226" y1="470" x2="258" y2="470" stroke="#f3c87a" stroke-width="1.2" stroke-opacity=".7"/>
+            </g>
+          </g>
+
+          <path id="sb_du" d="M180 345 C180 295, 180 195, 180 115 C180 88, 180 65, 180 38"
+                stroke="#4dabf7" stroke-width="1.0" stroke-opacity=".15" fill="none"/>
+          <path id="sb_ren" d="M180 64 C180 110, 180 185, 180 260 C180 300, 180 325, 180 345"
+                stroke="#ffd43b" stroke-width=".8" stroke-opacity=".06" fill="none"/>
+
+          <circle cx="180" cy="38"  r="2.4" fill="#a5d8ff" fill-opacity=".5"/>
+          <circle cx="180" cy="94"  r="2.2" fill="#a5d8ff" fill-opacity=".4"/>
+          <circle cx="180" cy="260" r="3.2" fill="#ffc078" fill-opacity=".55"/>
+          <circle cx="180" cy="345" r="2.0" fill="#a5d8ff" fill-opacity=".35"/>
+        </svg>
+
+        <!-- ==================== 5. 打坐轮廓 (Sitting 基于传统修道大师打坐白描图精准复刻) ==================== -->
+        <svg class="silhouette off" id="svgSitting" viewBox="0 0 360 480" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g stroke="url(#bodyGradFront)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M152 70 C152 32, 208 32, 208 70 C208 85, 202 100, 180 102 C158 100, 152 85, 152 70 Z"/>
+            <path d="M164 68 C168 64, 174 64, 176 68" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.1"/>
+            <path d="M184 68 C186 64, 192 64, 196 68" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.1"/>
+            <path d="M178 74 L180 77 L182 74" stroke="#ffffff" stroke-opacity=".7" stroke-width="1.1"/>
+            <path d="M174 86 C178 88, 182 88, 186 86" stroke="#ffffff" stroke-opacity=".5"/>
+            <path d="M152 68 C148 72, 148 82, 152 86 M208 68 C212 72, 212 82, 208 86" stroke-opacity=".45"/>
+
+            <path d="M172 102 L170 116 M188 102 L190 116" stroke-opacity=".5"/>
+            <path d="M164 116 C172 110, 188 110, 196 116 L196 126 C188 130, 172 130, 164 126 Z"/>
+
+            <line x1="180" y1="126" x2="180" y2="310" stroke-opacity=".6" stroke-dasharray="8 6"/>
+            <path d="M172 145 L188 145 M175 142 L175 148 M185 142 L185 148" stroke-opacity=".65"/>
+            <path d="M172 175 L188 175 M175 172 L175 178 M185 172 L185 178" stroke-opacity=".65"/>
+            <path d="M172 205 L188 205 M175 202 L175 208 M185 202 L185 208" stroke-opacity=".65"/>
+            <path d="M172 238 L188 238 M175 235 L175 241 M185 235 L185 241" stroke-opacity=".65"/>
+            <path d="M172 270 L188 270 M175 267 L175 273 M185 267 L185 273" stroke-opacity=".65"/>
+            <path d="M172 302 L188 302 M175 299 L175 305 M185 299 L185 305" stroke-opacity=".65"/>
+
+            <path d="M164 126 C144 135, 134 165, 130 215 C126 260, 132 305, 142 328"/>
+            <path d="M196 126 C216 135, 226 165, 230 215 C234 260, 228 305, 218 328"/>
+
+            <path d="M144 135 C120 155, 96 205, 92 255 C88 295, 102 322, 136 332"/>
+            <path d="M216 135 C240 155, 264 205, 268 255 C272 295, 258 322, 224 332"/>
+            <path d="M110 300 C118 315, 130 326, 144 328" stroke="url(#clothFold)"/>
+            <path d="M250 300 C242 315, 230 326, 216 328" stroke="url(#clothFold)"/>
+          </g>
+
+          <g stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M144 328 C152 334, 164 340, 180 342 C196 340, 208 334, 216 328" fill="#ffffff" fill-opacity=".05"/>
+            <path d="M152 330 C162 334, 172 336, 182 336"/>
+            <path d="M154 335 C164 338, 174 340, 182 340"/>
+            <path d="M208 330 C198 334, 188 336, 180 336"/>
+            <path d="M162 320 C168 315, 174 315, 179 320" stroke="#f3c87a" stroke-opacity=".9"/>
+            <path d="M198 320 C192 315, 186 315, 181 320" stroke="#f3c87a" stroke-opacity=".9"/>
+            <circle cx="180" cy="320" r="1.8" fill="#f3c87a" fill-opacity=".8"/>
+          </g>
+
+          <g stroke="url(#bodyGradFront)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M142 328 C120 340, 80 370, 72 405 C100 418, 140 422, 180 422"/>
+            <path d="M218 328 C240 340, 280 370, 288 405 C260 418, 220 422, 180 422"/>
+
+            <path d="M124 358 C130 350, 150 350, 160 356 C166 360, 160 366, 148 368 C134 370, 122 366, 124 358 Z"
+                  stroke="#ffffff" stroke-opacity=".8" fill="#ffffff" fill-opacity=".08"/>
+            <circle cx="120" cy="358" r="1.8" stroke="#ffffff" stroke-opacity=".7"/>
+            <circle cx="122" cy="354" r="1.6" stroke="#ffffff" stroke-opacity=".7"/>
+            <circle cx="125" cy="351" r="1.5" stroke="#ffffff" stroke-opacity=".7"/>
+            <circle cx="129" cy="349" r="1.4" stroke="#ffffff" stroke-opacity=".7"/>
+            <circle cx="133" cy="348" r="1.3" stroke="#ffffff" stroke-opacity=".7"/>
+            <circle cx="144" cy="358" r="2.0" fill="#ffd43b" fill-opacity=".5"/>
+
+            <path d="M180 370 C210 365, 240 368, 260 380" stroke-opacity=".5"/>
+            <path d="M148 375 C162 390, 188 392, 206 375" stroke="url(#clothFold)"/>
+            <path d="M136 395 C160 405, 200 405, 224 395" stroke="url(#clothFold)"/>
+            <path d="M46 432 L314 432 L290 445 L70 445 Z" stroke="#ffffff" stroke-opacity=".3" fill="#ffffff" fill-opacity=".04"/>
+          </g>
+
+          <path id="sitNoseIn" d="M180 77 L180 120 C180 180, 180 260, 180 330"
+                stroke="#63e6be" stroke-width=".9" stroke-opacity=".15" fill="none"/>
+          <path id="sitDu" d="M180 410 C166 360, 164 260, 172 170 C176 120, 178 85, 180 38"
+                stroke="#4dabf7" stroke-width=".8" stroke-opacity=".1" stroke-dasharray="3 5" fill="none"/>
+          <path id="sitRen" d="M180 77 C184 135, 184 220, 180 330 C180 365, 180 395, 180 410"
+                stroke="#ffd43b" stroke-width=".8" stroke-opacity=".1" fill="none"/>
+
+          <circle cx="180" cy="38"  r="2.4" fill="#a5d8ff" fill-opacity=".45"/>
+          <circle cx="180" cy="77"  r="2.0" fill="#63e6be" fill-opacity=".6"/>
+          <circle cx="180" cy="205" r="2.2" fill="#ffd98a" fill-opacity=".35"/>
+          <circle cx="180" cy="330" r="3.2" fill="#ffc078" fill-opacity=".55"/>
+          <circle cx="180" cy="410" r="2.0" fill="#a5d8ff" fill-opacity=".35"/>
+        </svg>
+
+        <canvas id="qi"></canvas>
+      </div>
+
+      <!-- 环形时间进度指示条 -->
+      <svg class="ring" viewBox="0 0 300 300" aria-hidden="true">
+        <circle class="track" cx="150" cy="150" r="140"></circle>
+        <circle class="prog"  cx="150" cy="150" r="140" id="progRing"></circle>
+      </svg>
+    </div>
+
+    <!-- 核心读数区：未计时显示预设时长，计时中蜕变为【大字心法口诀】 -->
+    <div class="readout">
+      <div class="label" id="label">松静自然</div>
+      <div class="time" id="time">25:00</div>
+    </div>
+  </div>
+
+  <!-- 底部面板 -->
+  <div class="bottom-area" id="bottomArea">
+    <!-- 空闲设置面板 -->
+    <div class="panel" id="panelIdle">
+      <div class="presets" id="presets"></div>
+      <div class="seg-row">
+        <span class="seg-cap">收尾音</span>
+        <div class="seg" id="segEnd">
+          <button data-end="bell" class="on">磬 声</button>
+          <button data-end="muyu">木 鱼</button>
+        </div>
+      </div>
+      <button class="start" id="btnStart">开 始</button>
+      <div class="stats" id="stats"></div>
+      <div class="hint" id="wakeHint" hidden>当前浏览器不支持屏幕常亮，请在系统设置中暂时关闭自动锁屏</div>
+    </div>
+
+    <!-- 计时运行面板：沉浸式专注，点击屏幕任意区域即可唤起按钮 -->
+    <div class="panel" id="panelRun" hidden>
+      <div class="controls-wrap">
+        <div class="controls" id="runControls">
+          <button class="ctrl" id="btnPause">暂 停</button>
+          <button class="ctrl ghost" id="btnAbort">放弃</button>
+        </div>
+      </div>
+      <div class="hint" id="wakeHint2" hidden>当前浏览器不支持屏幕常亮，请在系统设置中暂时关闭自动锁屏</div>
+    </div>
+
+    <!-- 完成面板 -->
+    <div class="panel" id="panelDone" hidden>
+      <button class="start" id="btnAgain">再 次 开 始</button>
+      <div class="note" id="doneNote">桩功圆满</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ============================================================
+   *  状态与基础配置
+   * ============================================================ */
+  var PRESETS  = [5, 10, 15, 20, 25];
+  var CUSTOM_MIN = 1, CUSTOM_MAX = 180;
+  var PREP_SEC = 5;
+  var C        = 2 * Math.PI * 140;
+
+  var S = {
+    phase   : 'idle',
+    duration: 25 * 60,
+    custom  : 30,
+    endTime : 0,
+    remain  : 0,
+    lastSec : -1,
+    sound   : true,
+    ending  : 'bell',
+    mode    : 'standing',
+    view    : 'front',
+    mind    : 'dantian'
+  };
+
+  var el = {
+    body       : document.body,
+    appRoot    : document.getElementById('appRoot'),
+    stage      : document.getElementById('stage'),
+    label      : document.getElementById('label'),
+    time       : document.getElementById('time'),
+    ring       : document.getElementById('progRing'),
+    presets    : document.getElementById('presets'),
+    pIdle      : document.getElementById('panelIdle'),
+    pRun       : document.getElementById('panelRun'),
+    pDone      : document.getElementById('panelDone'),
+    runControls: document.getElementById('runControls'),
+    stats      : document.getElementById('stats'),
+    note       : document.getElementById('doneNote'),
+    btnStart   : document.getElementById('btnStart'),
+    btnPause   : document.getElementById('btnPause'),
+    btnAbort   : document.getElementById('btnAbort'),
+    btnAgain   : document.getElementById('btnAgain'),
+    btnSound   : document.getElementById('btnSound'),
+    btnFull    : document.getElementById('btnFull'),
+    btnBreath  : document.getElementById('btnBreath'),
+    modeSel    : document.getElementById('modeSel'),
+    mindSel    : document.getElementById('mindSel'),
+    figure     : document.getElementById('qiFigure')
+  };
+
+  var rafId = null, watchId = null, engineOn = false;
+
+  /* ============================================================
+   *  音频引擎
+   * ============================================================ */
+  var actx = null;
+  function ac(){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!actx) actx = new AC();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+
+  function bell(freq, dur, vol){
+    if (!S.sound) return;
+    var c = ac(); if (!c) return;
+    var t = c.currentTime;
+    var master = c.createGain();
+    master.gain.value = vol;
+    master.connect(c.destination);
+
+    var partials = [[1, 1], [2.76, .42], [5.40, .20], [8.93, .09], [13.3, .04]];
+    partials.forEach(function(p, i){
+      var o = c.createOscillator();
+      var g = c.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq * p[0], t);
+      var life = dur * (1 - i * 0.11);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(p[1], t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(life, 0.2));
+      o.connect(g); g.connect(master);
+      o.start(t);
+      o.stop(t + dur + 0.1);
+    });
+
+    var n = c.createOscillator(), ng = c.createGain();
+    n.type = 'triangle';
+    n.frequency.setValueAtTime(freq * 3.2, t);
+    ng.gain.setValueAtTime(0.22 * vol, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    n.connect(ng); ng.connect(c.destination);
+    n.start(t); n.stop(t + 0.08);
+  }
+
+  function tick(freq, dur, vol){
+    if (!S.sound) return;
+    var c = ac(); if (!c) return;
+    var t = c.currentTime;
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+
+  function muyuStrike(c, time, vol){
+    var osc  = c.createOscillator();
+    var gain = c.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(850, time);
+    osc.frequency.exponentialRampToValueAtTime(550, time + 0.08);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(vol, time + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
+    osc.connect(gain); gain.connect(c.destination);
+    osc.start(time); osc.stop(time + 0.15);
+  }
+
+  var SFX = {
+    prepTick: function(){ tick(784, 0.10, 0.10); },
+    prepGo  : function(){ bell(660, 3.2, 0.34); },
+    lastTick: function(){ tick(988, 0.14, 0.13); },
+    finishBell: function(){
+      bell(528, 5.0, 0.36);
+      setTimeout(function(){ bell(528, 5.0, 0.30); }, 1500);
+      setTimeout(function(){ bell(396, 7.0, 0.34); }, 3000);
+    },
+    finishMuyu: function(){
+      var c = ac(); if (!c || !S.sound) return;
+      var t0 = c.currentTime;
+      [0, 0.35, 1.00, 1.35, 1.70].forEach(function(d, i){
+        muyuStrike(c, t0 + d, i >= 2 ? 0.42 : 0.5);
+      });
+    },
+    pause   : function(){ tick(392, 0.12, 0.10); },
+    resume  : function(){ tick(523, 0.12, 0.10); },
+    preview : function(){
+      if (S.ending === 'muyu'){
+        var c = ac(); if (c) muyuStrike(c, c.currentTime, 0.5);
+      } else {
+        bell(528, 3.5, 0.32);
+      }
+    }
+  };
+
+  function buzz(ms){
+    if (navigator.vibrate) { try { navigator.vibrate(ms); } catch(e){} }
+  }
+
+  /* ============================================================
+   *  Screen Wake Lock
+   * ============================================================ */
+  var wakeLock = null;
+  var wakeSupported = ('wakeLock' in navigator);
+
+  async function requestWakeLock(){
+    if (!wakeSupported) return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', function(){ wakeLock = null; });
+    } catch(err){ wakeLock = null; }
+  }
+
+  function releaseWakeLock(){
+    if (wakeLock !== null){
+      try { wakeLock.release(); } catch(e){}
+      wakeLock = null;
+    }
+  }
+
+  function showWakeHint(show){
+    document.getElementById('wakeHint').hidden  = !show;
+    document.getElementById('wakeHint2').hidden = !show;
+  }
+  showWakeHint(!wakeSupported);
+
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible' &&
+        (S.phase === 'prep' || S.phase === 'run')){
+      requestWakeLock();
+    }
+  });
+
+  /* ============================================================
+   *  意念与多视角坐标核心模型
+   * ============================================================ */
+  var BREATH = {
+    inhale      : 4500,
+    exhale      : 5500,
+    particles   : 48,
+    tipsEvery   : 9000,
+    viewInterval: 2 * 60 * 1000
+  };
+
+  var VW = 360, VH = 480;
+
+  var VIEW_MODELS = {
+    front: {
+      svgId: 'svgStandFront',
+      pt: {
+        NOSE    : { x: 180, y: 64  },
+        BAIHUI  : { x: 180, y: 38  },
+        TANZHONG: { x: 180, y: 165 },
+        DANTIAN : { x: 180, y: 260 },
+        HUIYIN  : { x: 180, y: 345 }
+      },
+      ballCenter: { x: 180, y: 221, rx: 88, ry: 46 }
+    },
+    angleL: {
+      svgId: 'svgStandAngleL',
+      pt: {
+        NOSE    : { x: 170, y: 64  },
+        BAIHUI  : { x: 188, y: 38  },
+        TANZHONG: { x: 168, y: 165 },
+        DANTIAN : { x: 176, y: 260 },
+        HUIYIN  : { x: 190, y: 345 }
+      },
+      ballCenter: { x: 164, y: 221, rx: 82, ry: 45 }
+    },
+    angleR: {
+      svgId: 'svgStandAngleR',
+      pt: {
+        NOSE    : { x: 190, y: 64  },
+        BAIHUI  : { x: 172, y: 38  },
+        TANZHONG: { x: 192, y: 165 },
+        DANTIAN : { x: 184, y: 260 },
+        HUIYIN  : { x: 170, y: 345 }
+      },
+      ballCenter: { x: 196, y: 221, rx: 82, ry: 45 }
+    },
+    back: {
+      svgId: 'svgStandBack',
+      pt: {
+        NOSE    : { x: 180, y: 64  },
+        BAIHUI  : { x: 180, y: 38  },
+        TANZHONG: { x: 180, y: 165 },
+        DANTIAN : { x: 180, y: 260 },
+        HUIYIN  : { x: 180, y: 345 }
+      },
+      ballCenter: { x: 180, y: 221, rx: 86, ry: 44 }
+    }
+  };
+
+  var MODES = {
+    standing: {
+      name: '抱球桩',
+      phaseLabel: '站 桩',
+      doneLabel : '桩 功 圆 满',
+      tips: {
+        dantian: [
+          '虚灵顶劲 · 沉肩坠肘',
+          '五指微张 · 十指相对 · 劳宫虚抱',
+          '两脚平行脚尖朝前 · 涌泉贴地',
+          '双膝微屈圆裆 · 含胸拔背',
+          '吸气气敛丹田 · 呼气气遍周身',
+          '两脚与肩同宽 · 舌抵上颚',
+          '含胸拔背 · 怀中抱球',
+          '松腰敛臀 · 尾闾中正',
+          '虚灵顶劲 · 尾闾中正 · 松静自然',
+          '神注丹田 · 身如古松 · 浑圆一气'
+        ],
+        microcosm: [
+          '吸气督脉升百会 · 呼气任脉降丹田',
+          '尾闾提引 · 气贴脊梁 · 脊柱拔伸',
+          '大椎松沉 · 玉枕贯通 · 百会照顶',
+          '舌搭鹊桥 · 任督流转 · 阴阳循环',
+          '气行如带 · 绵绵若存 · 虚室生白',
+          '周天圆融 · 水火既济 · 天人相合'
+        ]
+      }
+    },
+    sitting: {
+      name: '打坐',
+      phaseLabel: '静 坐',
+      doneLabel : '静 坐 圆 满',
+      pt: {
+        NOSE    : { x: 180, y: 77  },
+        BAIHUI  : { x: 180, y: 38  },
+        TANZHONG: { x: 180, y: 205 },
+        DANTIAN : { x: 180, y: 330 },
+        HUIYIN  : { x: 180, y: 410 }
+      },
+      tips: {
+        dantian: [
+          '垂帘观鼻 · 舌抵上颚 · 手结定印',
+          '吸气鼻入敛丹田 · 呼气温养禅定印',
+          '双盘跏趺脚心朝天 · 涌泉通达',
+          '沉肩坠肘 · 脊柱中正 · 虚灵顶劲',
+          '松腰舒腹 · 观息守一 · 呼吸绵绵',
+          '万缘放下 · 虚室生白 · 恬淡虚无'
+        ],
+        microcosm: [
+          '吸气督脉升百会 · 呼气任脉降丹田',
+          '尾闾提引 · 督脉升清 · 气贯长虹',
+          '百会照顶 · 任脉降浊 · 金液还丹',
+          '舌搭鹊桥 · 归元下田 · 循环无端',
+          '水火既济 · 阴阳圆融 · 乾坤交泰',
+          '心息相依 · 神凝气聚 · 天人合一'
+        ]
+      }
+    }
+  };
+
+  var MIND_CONFIG = {
+    dantian: {
+      name: '丹田呼吸',
+      inhale: { text: '鼻吸 · 气敛丹田 (微合)', color: '#ffb347' },
+      exhale: { text: '鼻呼 · 抱球充盈 (微涨)', color: '#e8c288' }
+    },
+    microcosm: {
+      name: '小周天',
+      inhale: { text: '鼻吸 · 督脉升清', color: '#74c0fc' },
+      exhale: { text: '鼻呼 · 任脉降归', color: '#63e6be' }
+    }
+  };
+
+  function mode(){ return MODES[S.mode] || MODES.standing; }
+  function currentMind(){ return MIND_CONFIG[S.mind] || MIND_CONFIG.dantian; }
+  function currentPt(){
+    if (S.mode === 'sitting') return MODES.sitting.pt;
+    return VIEW_MODELS[S.view] ? VIEW_MODELS[S.view].pt : VIEW_MODELS.front.pt;
+  }
+
+  /* ============================================================
+   *  计时引擎（圆环专职进度，去除数字秒表焦虑）
+   * ============================================================ */
+  function fmt(sec){
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function setRing(p){
+    el.ring.style.strokeDashoffset = C * (1 - Math.min(Math.max(p, 0), 1));
+  }
+
+  var breathShown = null;
+  function setBreathLabel(inhaling){
+    var key = inhaling ? 'in' : 'out';
+    if (breathShown === key) return;
+    breathShown = key;
+    var mind = currentMind();
+    var s = inhaling ? mind.inhale : mind.exhale;
+    el.label.textContent = s.text;
+    el.label.style.color = s.color;
+  }
+
+  function render(){
+    var left = Math.max(0, S.endTime - Date.now());
+    var sec  = Math.ceil(left / 1000);
+
+    if (S.phase === 'prep'){
+      el.time.textContent = '入 静 · ' + sec;
+      el.label.textContent = '准 备';
+      el.label.style.color = '';
+      setRing((PREP_SEC - left / 1000) / PREP_SEC);
+      if (sec !== S.lastSec && sec > 0){
+        S.lastSec = sec;
+        SFX.prepTick();
+        buzz(12);
+      }
+      if (left <= 0) enterRun();
+      return;
+    }
+
+    if (S.phase === 'run'){
+      // 核心展示区由口诀接管，圆环指示进度
+      if (qi.on){
+        var b = breathNow();
+        setBreathLabel(b.inhaling);
+      } else {
+        el.label.textContent = mode().phaseLabel;
+        el.label.style.color = '';
+      }
+      setRing(1 - left / (S.duration * 1000));
+      if (sec !== S.lastSec){
+        S.lastSec = sec;
+        if (sec <= 3 && sec > 0){ SFX.lastTick(); buzz(25); }
+      }
+      if (left <= 0) finish();
+      return;
+    }
+  }
+
+  function loop(){
+    if (!engineOn) return;
+    if (S.phase === 'prep' || S.phase === 'run') render();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function startEngine(){
+    stopEngine();
+    engineOn = true;
+    loop();
+    watchId = setInterval(function(){
+      if (S.phase === 'prep' || S.phase === 'run') render();
+    }, 250);
+  }
+
+  function stopEngine(){
+    engineOn = false;
+    if (rafId){ cancelAnimationFrame(rafId); rafId = null; }
+    if (watchId){ clearInterval(watchId); watchId = null; }
+  }
+
+  /* ============================================================
+   *  控制按钮自动隐藏与点击唤起
+   * ============================================================ */
+  var hideCtrlTimer = null;
+
+  function showControlsTemporarily(){
+    if (S.phase !== 'run' && S.phase !== 'prep') return;
+    el.runControls.classList.add('active');
+    if (hideCtrlTimer) clearTimeout(hideCtrlTimer);
+    hideCtrlTimer = setTimeout(function(){
+      if (S.phase === 'run' || S.phase === 'prep'){
+        el.runControls.classList.remove('active');
+      }
+    }, 4000);
+  }
+
+  el.stage.addEventListener('click', function(){
+    if (S.phase === 'run' || S.phase === 'prep'){
+      showControlsTemporarily();
+    }
+  });
+
+  /* ============================================================
+   *  阶段流转
+   * ============================================================ */
+  function bodyClass(p){
+    return 'phase-' + p +
+           (qi.on ? ' qi-on' : '') +
+           (S.mode === 'sitting' ? ' mode-sitting' : '') +
+           (S.mind === 'microcosm' ? ' mind-microcosm' : ' mind-dantian');
+  }
+
+  function setPhase(p){
+    S.phase = p;
+    el.body.className = bodyClass(p);
+    el.modeSel.classList.toggle('locked', !(p === 'idle' || p === 'done'));
+    el.mindSel.classList.toggle('locked', !(p === 'idle' || p === 'done'));
+    el.pIdle.hidden = (p !== 'idle');
+    el.pRun.hidden  = !(p === 'prep' || p === 'run' || p === 'paused');
+    el.pDone.hidden = (p !== 'done');
+    if (p === 'paused'){
+      el.runControls.classList.add('active');
+    } else {
+      el.runControls.classList.remove('active');
+    }
+  }
+
+  function start(){
+    ac();
+    S.lastSec = -1;
+    S.endTime = Date.now() + PREP_SEC * 1000;
+    setPhase('prep');
+    requestWakeLock();
+    startEngine();
+    qiStart();
+    tipsStart();
+    startAutoViewRotation();
+    render();
+  }
+
+  function enterRun(){
+    S.lastSec = -1;
+    S.endTime = Date.now() + S.duration * 1000;
+    setPhase('run');
+    el.btnPause.textContent = '暂 停';
+    SFX.prepGo();
+    buzz([30, 60, 30]);
+    tipShow(tipIdx);
+    render();
+  }
+
+  function pause(){
+    if (S.phase !== 'run') return;
+    S.remain = Math.max(0, S.endTime - Date.now());
+    S.phase  = 'paused';
+    el.body.className = bodyClass('paused');
+    stopEngine();
+    qiPause();
+    stopAutoViewRotation();
+    el.btnPause.textContent = '继 续';
+    el.label.textContent = '已 暂 停';
+    el.runControls.classList.add('active');
+    if (hideCtrlTimer) clearTimeout(hideCtrlTimer);
+    SFX.pause();
+  }
+
+  function resume(){
+    if (S.phase !== 'paused') return;
+    S.endTime = Date.now() + S.remain;
+    S.phase   = 'run';
+    el.body.className = bodyClass('run');
+    el.btnPause.textContent = '暂 停';
+    startEngine();
+    qiResume();
+    startAutoViewRotation();
+    requestWakeLock();
+    showControlsTemporarily();
+    SFX.resume();
+  }
+
+  function reset(){
+    stopEngine();
+    tipsStop();
+    qiStop();
+    stopAutoViewRotation();
+    releaseWakeLock();
+    if (hideCtrlTimer) clearTimeout(hideCtrlTimer);
+    S.lastSec = -1;
+    S.remain  = 0;
+    breathShown = null;
+    setPhase('idle');
+    showDuration();
+    el.label.textContent = '松静自然';
+    el.label.style.color = '';
+    setRing(0);
+    qiStart();
+  }
+
+  function finish(){
+    stopEngine();
+    tipsStop();
+    qiFinish();
+    stopAutoViewRotation();
+    releaseWakeLock();
+    if (hideCtrlTimer) clearTimeout(hideCtrlTimer);
+    setPhase('done');
+    breathShown = null;
+    el.label.textContent = mode().doneLabel;
+    el.label.style.color = '';
+    el.time.textContent  = '圆 满';
+    setRing(1);
+    if (S.ending === 'muyu') SFX.finishMuyu(); else SFX.finishBell();
+    buzz([60, 90, 60, 90, 120]);
+    bumpStats();
+    el.note.textContent = mode().doneLabel.replace(/ /g, '') + ' · ' +
+                        Math.round(S.duration / 60) + ' 分钟';
+  }
+
+  /* ============================================================
+   *  UI 交互绑定
+   * ============================================================ */
+  function markPreset(node){
+    Array.prototype.forEach.call(el.presets.children, function(x){
+      x.classList.toggle('on', x === node);
+    });
+  }
+
+  function showDuration(){
+    if (S.phase === 'idle'){
+      el.time.textContent = fmt(S.duration);
+    }
+  }
+
+  function setDuration(sec){
+    S.duration = Math.max(60, Math.round(sec));
+    showDuration();
+  }
+
+  function saveDuration(){
+    var d = loadData();
+    d.duration = S.duration;
+    d.custom   = S.custom;
+    saveData(d);
+  }
+
+  function buildPresets(){
+    PRESETS.forEach(function(m){
+      var b = document.createElement('button');
+      b.className = 'preset' + (m * 60 === S.duration ? ' on' : '');
+      b.dataset.sec = m * 60;
+      b.innerHTML = m + '<small>MIN</small>';
+      b.addEventListener('click', function(){
+        ac();
+        setDuration(m * 60);
+        markPreset(b);
+        saveDuration();
+        buzz(8);
+      });
+      el.presets.appendChild(b);
+    });
+
+    var box = document.createElement('div');
+    box.className = 'preset custom';
+
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.inputMode = 'numeric';
+    inp.pattern = '[0-9]*';
+    inp.maxLength = 3;
+    inp.value = String(S.custom);
+    inp.setAttribute('aria-label', '自定义分钟数');
+
+    var cap = document.createElement('small');
+    cap.textContent = 'MIN';
+
+    box.appendChild(inp);
+    box.appendChild(cap);
+    el.presets.appendChild(box);
+
+    function apply(commit){
+      var raw = inp.value.replace(/[^0-9]/g, '');
+      var v = parseInt(raw, 10);
+      if (isNaN(v)){ if (commit) inp.value = String(S.custom); return; }
+      v = Math.min(CUSTOM_MAX, Math.max(CUSTOM_MIN, v));
+      S.custom = v;
+      if (commit) inp.value = String(v);
+      setDuration(v * 60);
+    }
+
+    inp.addEventListener('input',  function(){ markPreset(box); apply(false); });
+    inp.addEventListener('focus',  function(){ ac(); markPreset(box); });
+    inp.addEventListener('blur',   function(){ apply(true); saveDuration(); });
+    inp.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); inp.blur(); }
+    });
+    box.addEventListener('click', function(e){ if (e.target !== inp) inp.focus(); });
+
+    if (S.custom * 60 === S.duration) markPreset(box);
+  }
+
+  var KEY = 'zz_zen_timer_v9';
+  function loadData(){
+    try {
+      var d = JSON.parse(localStorage.getItem(KEY) || '{}');
+      return {
+        sessions: d.sessions || 0,
+        minutes : d.minutes  || 0,
+        ending  : (d.ending === 'muyu') ? 'muyu' : 'bell',
+        breath  : d.breath !== false,
+        mode    : (d.mode === 'sitting') ? 'sitting' : 'standing',
+        view    : d.view || 'front',
+        mind    : (d.mind === 'microcosm') ? 'microcosm' : 'dantian',
+        duration: (d.duration >= 60 && d.duration <= 180 * 60) ? Math.round(d.duration) : 25 * 60,
+        custom  : (d.custom >= 1 && d.custom <= 180) ? Math.round(d.custom) : 30
+      };
+    } catch(e){
+      return { sessions: 0, minutes: 0, ending: 'bell', breath: true,
+               mode: 'standing', view: 'front', mind: 'dantian', duration: 25 * 60, custom: 30 };
+    }
+  }
+  function saveData(d){
+    try { localStorage.setItem(KEY, JSON.stringify(d)); } catch(e){}
+  }
+  function bumpStats(){
+    var d = loadData();
+    d.sessions += 1;
+    d.minutes  += Math.round(S.duration / 60);
+    saveData(d);
+    paintStats(d);
+  }
+  function paintStats(d){
+    d = d || loadData();
+    el.stats.textContent = d.sessions
+      ? '累计 ' + d.sessions + ' 次 · ' + d.minutes + ' 分钟'
+      : '';
+  }
+
+  var segEnd = document.getElementById('segEnd');
+  function paintSeg(){
+    Array.prototype.forEach.call(segEnd.children, function(b){
+      b.classList.toggle('on', b.dataset.end === S.ending);
+    });
+  }
+  Array.prototype.forEach.call(segEnd.children, function(b){
+    b.addEventListener('click', function(){
+      ac();
+      S.ending = b.dataset.end;
+      paintSeg();
+      var d = loadData(); d.ending = S.ending; saveData(d);
+      SFX.preview();
+      buzz(10);
+    });
+  });
+
+  el.btnStart.addEventListener('click', start);
+  el.btnAgain.addEventListener('click', function(){ reset(); start(); });
+  el.btnPause.addEventListener('click', function(e){
+    e.stopPropagation();
+    (S.phase === 'paused') ? resume() : pause();
+  });
+  el.btnAbort.addEventListener('click', function(e){
+    e.stopPropagation();
+    reset();
+  });
+
+  Array.prototype.forEach.call(el.modeSel.children, function(b){
+    b.addEventListener('click', function(){
+      if (S.phase !== 'idle' && S.phase !== 'done') return;
+      ac();
+      setMode(b.dataset.mode);
+      buzz(8);
+    });
+  });
+
+  Array.prototype.forEach.call(el.mindSel.children, function(b){
+    b.addEventListener('click', function(){
+      if (S.phase !== 'idle' && S.phase !== 'done') return;
+      ac();
+      setMind(b.dataset.mind);
+      buzz(8);
+    });
+  });
+
+  el.btnBreath.addEventListener('click', function(){
+    ac();
+    qiSetOn(!qi.on);
+    var d = loadData(); d.breath = qi.on; saveData(d);
+    buzz(8);
+  });
+
+  el.btnSound.addEventListener('click', function(){
+    S.sound = !S.sound;
+    el.btnSound.classList.toggle('off', !S.sound);
+    el.btnSound.textContent = S.sound ? '◍' : '◌';
+    if (S.sound) ac();
+  });
+
+  if (document.documentElement.requestFullscreen ||
+      document.documentElement.webkitRequestFullscreen){
+    el.btnFull.hidden = false;
+    el.btnFull.addEventListener('click', function(){
+      var d = document.documentElement;
+      if (!document.fullscreenElement && !document.webkitFullscreenElement){
+        (d.requestFullscreen || d.webkitRequestFullscreen).call(d);
+      } else {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      }
+    });
+  }
+
+  document.addEventListener('keydown', function(e){
+    var act = document.activeElement;
+    if (act && (act.tagName === 'INPUT' || act.tagName === 'TEXTAREA')) return;
+    if (e.code === 'Space' || e.key === ' '){
+      e.preventDefault();
+      if (S.phase === 'idle') start();
+      else if (S.phase === 'run') pause();
+      else if (S.phase === 'paused') resume();
+      else if (S.phase === 'done') { reset(); start(); }
+    } else if (e.key === 'Escape'){
+      if (S.phase !== 'idle') reset();
+    }
+  });
+
+  document.addEventListener('gesturestart', function(e){ e.preventDefault(); });
+
+  /* ============================================================
+   *  2 分钟自动平滑视角轮换机制
+   * ============================================================ */
+  var VIEW_ORDER = ['front', 'angleL', 'back', 'angleR'];
+  var autoViewTimer = null;
+
+  function rotateNextView(){
+    if (S.mode !== 'standing') return;
+    var idx = VIEW_ORDER.indexOf(S.view);
+    var nextIdx = (idx + 1) % VIEW_ORDER.length;
+    setView(VIEW_ORDER[nextIdx]);
+  }
+
+  function startAutoViewRotation(){
+    stopAutoViewRotation();
+    if (S.mode === 'standing'){
+      autoViewTimer = setInterval(rotateNextView, BREATH.viewInterval);
+    }
+  }
+
+  function stopAutoViewRotation(){
+    if (autoViewTimer){ clearInterval(autoViewTimer); autoViewTimer = null; }
+  }
+
+  /* ============================================================
+   *  气机可视化渲染引擎
+   * ============================================================ */
+  var qi = {
+    cv: null, ctx: null, figure: null,
+    W: 0, H: 0, dpr: 1,
+    on: true, running: false,
+    t0: Date.now(), last: 0, pausedAt: 0, raf: 0,
+    parts: [], mode: 'flow', retT: 0,
+    routes: {}, fade: 1
+  };
+
+  function samplePath(id, n){
+    var p = document.getElementById(id);
+    if (!p || !p.getTotalLength) return null;
+    try {
+      var L = p.getTotalLength();
+      if (!L) return null;
+      var pts = [], i, q;
+      for (i = 0; i <= n; i++){
+        q = p.getPointAtLength(L * i / n);
+        pts.push([q.x, q.y]);
+      }
+      return pts;
+    } catch(e){ return null; }
+  }
+
+  function resample(pts, n){
+    if (!pts || pts.length < 2) return null;
+    var seg = [], total = 0, i;
+    for (i = 1; i < pts.length; i++){
+      var dx = pts[i][0] - pts[i-1][0], dy = pts[i][1] - pts[i-1][1];
+      var d = Math.sqrt(dx*dx + dy*dy);
+      seg.push(d); total += d;
+    }
+    if (!total) return null;
+    var out = new Float32Array((n + 1) * 2);
+    var step = total / n, si = 0, acc = 0;
+    out[0] = pts[0][0]; out[1] = pts[0][1];
+    for (i = 1; i <= n; i++){
+      var target = step * i;
+      while (si < seg.length && acc + seg[si] < target){ acc += seg[si]; si++; }
+      if (si >= seg.length){
+        out[i*2] = pts[pts.length-1][0]; out[i*2+1] = pts[pts.length-1][1];
+        continue;
+      }
+      var k = (target - acc) / seg[si];
+      out[i*2]   = pts[si][0] + (pts[si+1][0] - pts[si][0]) * k;
+      out[i*2+1] = pts[si][1] + (pts[si+1][1] - pts[si][1]) * k;
+    }
+    return { pts: out, n: n };
+  }
+
+  function pointOn(route, u){
+    if (!route) return { x: 180, y: 260 };
+    var f = Math.min(Math.max(u, 0), 1) * route.n;
+    var i = Math.floor(f), k = f - i;
+    if (i >= route.n) return { x: route.pts[route.n*2], y: route.pts[route.n*2+1] };
+    return {
+      x: route.pts[i*2]     + (route.pts[(i+1)*2]     - route.pts[i*2])     * k,
+      y: route.pts[i*2 + 1] + (route.pts[(i+1)*2 + 1] - route.pts[i*2 + 1]) * k
+    };
+  }
+
+  function buildRoutes(){
+    var N = 160;
+
+    qi.routes.front = {
+      noseIn     : resample(samplePath('sf_noseIn', 100), N),
+      microInhale: resample(samplePath('sf_du', 100), N),
+      microExhale: resample(samplePath('sf_ren', 100), N),
+      armL       : resample(samplePath('sf_armL', 100), N),
+      armR       : resample(samplePath('sf_armR', 100), N)
+    };
+
+    qi.routes.angleL = {
+      noseIn     : resample(samplePath('sal_noseIn', 100), N),
+      microInhale: resample(samplePath('sal_du', 100), N),
+      microExhale: resample(samplePath('sal_ren', 100), N),
+      armL       : resample(samplePath('sal_armL', 100), N),
+      armR       : resample(samplePath('sal_armR', 100), N)
+    };
+
+    qi.routes.angleR = {
+      noseIn     : resample(samplePath('sar_noseIn', 100), N),
+      microInhale: resample(samplePath('sar_du', 100), N),
+      microExhale: resample(samplePath('sar_ren', 100), N),
+      armL       : resample(samplePath('sar_armL', 100), N),
+      armR       : resample(samplePath('sar_armR', 100), N)
+    };
+
+    qi.routes.back = {
+      noseIn     : resample(samplePath('sb_ren', 100), N),
+      microInhale: resample(samplePath('sb_du', 100), N),
+      microExhale: resample(samplePath('sb_ren', 100), N),
+      armL       : resample(samplePath('sb_armL', 100), N),
+      armR       : resample(samplePath('sb_armR', 100), N)
+    };
+
+    qi.routes.sitting = {
+      noseIn     : resample(samplePath('sitNoseIn', 100), N),
+      microInhale: resample(samplePath('sitDu', 100), N),
+      microExhale: resample(samplePath('sitRen', 100), N),
+      armL       : resample(samplePath('sitRen', 100), N),
+      armR       : resample(samplePath('sitRen', 100), N)
+    };
+  }
+
+  var spriteCache = {};
+  function sprite(r, g, b){
+    var k = (r >> 3) + '_' + (g >> 3) + '_' + (b >> 3);
+    if (spriteCache[k]) return spriteCache[k];
+    var s = 64, c = document.createElement('canvas');
+    c.width = c.height = s;
+    var ctx = c.getContext('2d');
+    var rg = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+    rg.addColorStop(0,    'rgba(' + r + ',' + g + ',' + b + ',1)');
+    rg.addColorStop(0.35, 'rgba(' + r + ',' + g + ',' + b + ',0.45)');
+    rg.addColorStop(1,    'rgba(' + r + ',' + g + ',' + b + ',0)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, s, s);
+    spriteCache[k] = c;
+    return c;
+  }
+
+  function qiResize(){
+    if (!qi.cv) return;
+    var box = qi.figure.getBoundingClientRect();
+    qi.W = box.width || 270;
+    qi.H = box.height || 360;
+    qi.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    qi.cv.width  = Math.round(qi.W * qi.dpr);
+    qi.cv.height = Math.round(qi.H * qi.dpr);
+    var s = (qi.W / VW) * qi.dpr;
+    qi.ctx.setTransform(s, 0, 0, s, 0, 0);
+  }
+
+  function qiParts(){
+    var d = currentPt().DANTIAN;
+    qi.parts = [];
+    for (var i = 0; i < BREATH.particles; i++){
+      qi.parts.push({
+        off : Math.random(),
+        sp  : 0.82 + Math.random() * 0.45,
+        lat : (Math.random() - 0.5) * 8,
+        ang : Math.random() * Math.PI * 2,
+        rad : 12 + Math.random() * 80,
+        ph  : Math.random() * Math.PI * 2,
+        sz  : 1.2 + Math.random() * 2.0,
+        px  : d.x, py : d.y,
+        px0 : d.x, py0: d.y
+      });
+    }
+  }
+
+  function breathNow(){
+    var total = BREATH.inhale + BREATH.exhale;
+    var el = ((Date.now() - qi.t0) % total + total) % total;
+    var inhaling = el < BREATH.inhale;
+    return {
+      inhaling: inhaling,
+      p: inhaling ? el / BREATH.inhale : (el - BREATH.inhale) / BREATH.exhale
+    };
+  }
+
+  function ease(t){ return 0.5 - 0.5 * Math.cos(Math.PI * Math.min(Math.max(t, 0), 1)); }
+
+  /* ============================================================
+   *  Canvas 实时渲染
+   * ============================================================ */
+  function qiFrame(){
+    if (!qi.running) return;
+    var now = Date.now();
+    var dt  = qi.last ? Math.min((now - qi.last) / 1000, 0.05) : 0.016;
+    qi.last = now;
+
+    var b = breathNow();
+    var pEase = ease(b.p);
+    var ctx = qi.ctx;
+    var i, pt, a;
+
+    if (qi.fade < 1) qi.fade = Math.min(1, qi.fade + dt / 0.4);
+
+    var P = currentPt();
+    var currentRoutes = (S.mode === 'sitting')
+      ? qi.routes.sitting
+      : (qi.routes[S.view] || qi.routes.front);
+
+    var dim = (S.phase === 'idle' ? 0.45 : 1.0) * qi.fade;
+
+    ctx.clearRect(0, 0, VW, VH);
+    ctx.globalCompositeOperation = 'lighter';
+
+    /* 模式 A：丹田呼吸 (鼻吸微合，鼻呼微涨) */
+    if (S.mind === 'dantian'){
+      var radius, dtAlpha, coreColor;
+      if (b.inhaling){
+        radius = 38 - pEase * 20;
+        dtAlpha = (0.55 + pEase * 0.45) * dim;
+        coreColor = '255, 175, 75';
+      } else {
+        radius = 18 + pEase * 42;
+        dtAlpha = (0.95 - pEase * 0.45) * dim;
+        coreColor = '245, 198, 110';
+      }
+
+      var gOuter = ctx.createRadialGradient(P.DANTIAN.x, P.DANTIAN.y, 2, P.DANTIAN.x, P.DANTIAN.y, radius * 2.0);
+      gOuter.addColorStop(0,   'rgba(255,255,255,' + (dtAlpha * 0.9) + ')');
+      gOuter.addColorStop(0.25, 'rgba(' + coreColor + ',' + (dtAlpha * 0.75) + ')');
+      gOuter.addColorStop(0.65, 'rgba(230,160,50,' + (dtAlpha * 0.25) + ')');
+      gOuter.addColorStop(1,   'rgba(230,160,50,0)');
+      ctx.fillStyle = gOuter;
+      ctx.beginPath();
+      ctx.arc(P.DANTIAN.x, P.DANTIAN.y, radius * 2.0, 0, Math.PI * 2);
+      ctx.fill();
+
+      var coreR = b.inhaling ? (8 - pEase * 2.5) : (5.5 + pEase * 3.0);
+      var gCore = ctx.createRadialGradient(P.DANTIAN.x, P.DANTIAN.y, 0, P.DANTIAN.x, P.DANTIAN.y, coreR);
+      gCore.addColorStop(0,   'rgba(255,255,255,' + (0.95 * dim) + ')');
+      gCore.addColorStop(0.4, 'rgba(255,220,130,' + (0.85 * dim) + ')');
+      gCore.addColorStop(1,   'rgba(255,140,30,0)');
+      ctx.fillStyle = gCore;
+      ctx.beginPath();
+      ctx.arc(P.DANTIAN.x, P.DANTIAN.y, coreR, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (S.mode === 'standing'){
+        var viewInfo = VIEW_MODELS[S.view] || VIEW_MODELS.front;
+        var bc = viewInfo.ballCenter;
+
+        var ballScale = b.inhaling ? (1.06 - pEase * 0.18) : (0.88 + pEase * 0.24);
+        var curBallR = 38 * ballScale;
+
+        var ballAlpha = b.inhaling ? (0.22 - pEase * 0.08) : (0.14 + pEase * 0.30);
+        var gBall = ctx.createRadialGradient(bc.x, bc.y, 2, bc.x, bc.y, curBallR * 1.5);
+        gBall.addColorStop(0,   'rgba(255,245,215,' + (ballAlpha * 1.2 * dim) + ')');
+        gBall.addColorStop(0.35,'rgba(240,198,116,' + (ballAlpha * 0.8 * dim) + ')');
+        gBall.addColorStop(0.7, 'rgba(227,185,100,' + (ballAlpha * 0.25 * dim) + ')');
+        gBall.addColorStop(1,   'rgba(240,198,116,0)');
+        ctx.fillStyle = gBall;
+        ctx.beginPath();
+        ctx.arc(bc.x, bc.y, curBallR * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        var aRing = (0.12 + (b.inhaling ? (1-pEase)*0.1 : pEase*0.28)) * dim;
+        ctx.lineWidth = 1.8 + (b.inhaling ? 0 : pEase * 2.2);
+        ctx.strokeStyle = 'rgba(240,198,116,' + aRing + ')';
+        ctx.beginPath();
+        ctx.ellipse(bc.x, bc.y, (bc.rx + (b.inhaling ? -pEase*4 : pEase*12)), (bc.ry + (b.inhaling ? -pEase*2 : pEase*8)), 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        var aSitRing = (0.14 + (b.inhaling ? (1-pEase)*0.1 : pEase*0.3)) * dim;
+        ctx.lineWidth = 2.0 + (b.inhaling ? 0 : pEase * 2.0);
+        ctx.strokeStyle = 'rgba(240,198,116,' + aSitRing + ')';
+        ctx.beginPath();
+        ctx.ellipse(180, 420, 126 + (b.inhaling ? 0 : pEase * 12), 26 + (b.inhaling ? 0 : pEase * 4), 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        var gSeal = ctx.createRadialGradient(180, 326, 1, 180, 326, 30);
+        gSeal.addColorStop(0, 'rgba(255,245,215,' + (0.35 * (b.inhaling ? (1-pEase) : pEase) * dim) + ')');
+        gSeal.addColorStop(1, 'rgba(240,198,116,0)');
+        ctx.fillStyle = gSeal;
+        ctx.beginPath();
+        ctx.arc(180, 326, 30, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      var sprWarm = sprite(255, 215, 130);
+      var sprBright = sprite(255, 245, 220);
+      var sprCyanBreath = sprite(130, 230, 200);
+
+      var noseRoute = currentRoutes ? currentRoutes.noseIn : null;
+
+      for (i = 0; i < qi.parts.length; i++){
+        pt = qi.parts[i];
+
+        if (b.inhaling){
+          if (i % 2 === 0 && noseRoute){
+            var uNose = (pEase * pt.sp + pt.off * 0.3) % 1;
+            var posN = pointOn(noseRoute, uNose);
+            pt.px = posN.x + Math.sin(now * 0.003 + pt.ph) * 1.5;
+            pt.py = posN.y;
+            a = (0.45 + pEase * 0.5) * dim;
+          } else {
+            var curRad = pt.rad * (1 - pEase * 0.85);
+            var ang = pt.ang + (1 - pEase) * 1.2;
+            pt.px = P.DANTIAN.x + Math.cos(ang) * curRad;
+            pt.py = P.DANTIAN.y + Math.sin(ang) * (curRad * 0.65);
+            a = (0.35 + pEase * 0.55) * dim;
+          }
+        } else {
+          if (i % 2 === 0 && S.mode === 'standing' && currentRoutes){
+            var rArm = (i % 4 === 0) ? currentRoutes.armL : currentRoutes.armR;
+            if (rArm){
+              var uArm = (pEase * pt.sp + pt.off * 0.3) % 1;
+              var posA = pointOn(rArm, uArm);
+              pt.px = posA.x + Math.sin(now * 0.003 + pt.ph) * pt.lat * 0.35;
+              pt.py = posA.y;
+            }
+          } else {
+            var outRad = 15 + pEase * (pt.rad * 1.3);
+            pt.px = P.DANTIAN.x + Math.cos(pt.ang) * outRad;
+            pt.py = P.DANTIAN.y + Math.sin(pt.ang) * (outRad * 0.75);
+          }
+          a = (0.85 - pEase * 0.55) * dim;
+        }
+        pt.px0 = pt.px; pt.py0 = pt.py;
+
+        var sz = pt.sz * (1.2 + (b.inhaling ? (1-pEase)*0.4 : pEase*0.6));
+        ctx.globalAlpha = Math.min(1, Math.max(0, a));
+        ctx.drawImage((b.inhaling && i % 2 === 0 ? sprCyanBreath : (i % 3 === 0 ? sprBright : sprWarm)), pt.px - sz/2, pt.py - sz/2, sz, sz);
+      }
+
+    /* 模式 B：小周天流转 */
+    } else {
+      var isUp = b.inhaling;
+      var sprCyan = sprite(130, 215, 255);
+      var sprGold = sprite(255, 210, 110);
+      var activeSpr = isUp ? sprCyan : sprGold;
+
+      var baihuiGlow = isUp ? pEase : (1 - pEase * 0.7);
+      if (baihuiGlow > 0.05){
+        var gB = ctx.createRadialGradient(P.BAIHUI.x, P.BAIHUI.y, 0, P.BAIHUI.x, P.BAIHUI.y, 24);
+        gB.addColorStop(0,   'rgba(255,255,255,' + (0.45 * baihuiGlow * dim) + ')');
+        gB.addColorStop(0.5, 'rgba(120,210,255,' + (0.25 * baihuiGlow * dim) + ')');
+        gB.addColorStop(1,   'rgba(120,210,255,0)');
+        ctx.fillStyle = gB;
+        ctx.beginPath();
+        ctx.arc(P.BAIHUI.x, P.BAIHUI.y, 24, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      var dtGlow = isUp ? (1 - pEase * 0.6) : (0.35 + pEase * 0.65);
+      var gDT = ctx.createRadialGradient(P.DANTIAN.x, P.DANTIAN.y, 1, P.DANTIAN.x, P.DANTIAN.y, 28);
+      gDT.addColorStop(0,   'rgba(255,255,255,' + (0.50 * dtGlow * dim) + ')');
+      gDT.addColorStop(0.4, 'rgba(255,200,90,' + (0.35 * dtGlow * dim) + ')');
+      gDT.addColorStop(1,   'rgba(255,200,90,0)');
+      ctx.fillStyle = gDT;
+      ctx.beginPath();
+      ctx.arc(P.DANTIAN.x, P.DANTIAN.y, 28, 0, Math.PI * 2);
+      ctx.fill();
+
+      var aTanzhong = (0.2 + 0.3 * Math.sin(pEase * Math.PI)) * dim;
+      var gT = ctx.createRadialGradient(P.TANZHONG.x, P.TANZHONG.y, 1, P.TANZHONG.x, P.TANZHONG.y, 20);
+      gT.addColorStop(0,   'rgba(255,255,255,' + (0.35 * aTanzhong) + ')');
+      gT.addColorStop(0.6, 'rgba(150,220,255,' + (0.20 * aTanzhong) + ')');
+      gT.addColorStop(1,   'rgba(150,220,255,0)');
+      ctx.fillStyle = gT;
+      ctx.beginPath();
+      ctx.arc(P.TANZHONG.x, P.TANZHONG.y, 20, 0, Math.PI * 2);
+      ctx.fill();
+
+      var activeRoute = isUp ? (currentRoutes ? currentRoutes.microInhale : null) : (currentRoutes ? currentRoutes.microExhale : null);
+      var trailVis = Math.pow(Math.sin(Math.PI * Math.min(Math.max(b.p, 0), 1)), 0.65);
+
+      if (activeRoute){
+        for (i = 0; i < qi.parts.length; i++){
+          pt = qi.parts[i];
+          var u = (pEase * pt.sp + pt.off * 0.45) % 1;
+          var pos = pointOn(activeRoute, u);
+
+          var wob = Math.sin(u * Math.PI * 4 + pt.ph + now * 0.002) * (pt.lat * 0.28);
+          pt.px = pos.x + wob;
+          pt.py = pos.y;
+          pt.px0 = pt.px; pt.py0 = pt.py;
+
+          var pAlpha = (0.35 + trailVis * 0.6) * dim;
+          var pSize  = pt.sz * (1.1 + trailVis * 0.6) * 2.2;
+          ctx.globalAlpha = Math.min(1, Math.max(0, pAlpha));
+          ctx.drawImage(activeSpr, pt.px - pSize/2, pt.py - pSize/2, pSize, pSize);
+        }
+      }
+    }
+
+    if (qi.mode === 'return'){
+      qi.retT += dt;
+      var k = Math.min(1, qi.retT / 2.2);
+      var ke = ease(k);
+      var fade = k < 0.65 ? 1 : 1 - (k - 0.65) / 0.35;
+      var sprRet = sprite(255, 235, 180);
+      for (i = 0; i < qi.parts.length; i++){
+        pt = qi.parts[i];
+        pt.px = pt.px0 + (P.DANTIAN.x - pt.px0) * ke;
+        pt.py = pt.py0 + (P.DANTIAN.y - pt.py0) * ke;
+        var s2 = pt.sz * (1 - ke * 0.5) * 3.0;
+        ctx.globalAlpha = Math.max(0, 0.6 * fade);
+        ctx.drawImage(sprRet, pt.px - s2/2, pt.py - s2/2, s2, s2);
+      }
+      var rRet = 32 * (1 - ke * 0.75);
+      var gRet = ctx.createRadialGradient(P.DANTIAN.x, P.DANTIAN.y, 1, P.DANTIAN.x, P.DANTIAN.y, rRet);
+      gRet.addColorStop(0,   'rgba(255,255,255,' + (0.6 * fade) + ')');
+      gRet.addColorStop(0.4, 'rgba(255,200,100,' + (0.35 * fade) + ')');
+      gRet.addColorStop(1,   'rgba(255,200,100,0)');
+      ctx.fillStyle = gRet;
+      ctx.beginPath();
+      ctx.arc(P.DANTIAN.x, P.DANTIAN.y, rRet, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      if (k >= 1){ qiStop(); return; }
+      qi.raf = requestAnimationFrame(qiFrame);
+      return;
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    qi.raf = requestAnimationFrame(qiFrame);
+  }
+
+  function qiStart(){
+    if (!qi.on || !qi.ctx) return;
+    qi.mode  = 'flow';
+    qi.retT  = 0;
+    qi.t0    = Date.now();
+    qi.last  = 0;
+    if (!qi.parts.length) qiParts();
+    if (!qi.routes.front) buildRoutes();
+    if (!qi.running){ qi.running = true; qi.raf = requestAnimationFrame(qiFrame); }
+  }
+
+  function qiPause(){
+    qi.running  = false;
+    qi.pausedAt = Date.now();
+    if (qi.raf){ cancelAnimationFrame(qi.raf); qi.raf = 0; }
+  }
+
+  function qiResume(){
+    if (!qi.on || !qi.ctx || qi.running) return;
+    qi.t0 += Date.now() - qi.pausedAt;
+    qi.last = 0;
+    qi.running = true;
+    qi.raf = requestAnimationFrame(qiFrame);
+  }
+
+  function qiFinish(){
+    if (!qi.on || !qi.running){ qiStop(); return; }
+    qi.mode = 'return';
+    qi.retT = 0;
+    qi.last = 0;
+  }
+
+  function qiStop(){
+    qi.running = false;
+    if (qi.raf){ cancelAnimationFrame(qi.raf); qi.raf = 0; }
+    if (qi.ctx) qi.ctx.clearRect(0, 0, VW, VH);
+  }
+
+  function qiSetOn(v){
+    qi.on = !!v;
+    el.btnBreath.classList.toggle('off', !qi.on);
+    el.body.classList.toggle('qi-on', qi.on);
+    el.mindSel.classList.toggle('hidden', !qi.on);
+    if (!qi.on){ qiStop(); stopAutoViewRotation(); }
+    else { qiStart(); if (S.phase === 'prep' || S.phase === 'run') startAutoViewRotation(); }
+  }
+
+  /* ---------- 切换视角 / 模式 / 意念 ---------- */
+  function updateFigureDisplay(){
+    var isSitting = (S.mode === 'sitting');
+    document.getElementById('svgSitting').classList.toggle('off', !isSitting);
+
+    var standSvgs = {
+      front : document.getElementById('svgStandFront'),
+      angleL: document.getElementById('svgStandAngleL'),
+      angleR: document.getElementById('svgStandAngleR'),
+      back  : document.getElementById('svgStandBack')
+    };
+
+    for (var k in standSvgs){
+      if (standSvgs[k]){
+        standSvgs[k].classList.toggle('off', isSitting || S.view !== k);
+      }
+    }
+  }
+
+  function setView(vKey){
+    if (!VIEW_MODELS[vKey]) return;
+    S.view = vKey;
+    updateFigureDisplay();
+    qi.fade = 0;
+    var d = loadData(); d.view = vKey; saveData(d);
+  }
+
+  function setMode(m){
+    if (!MODES[m]) return;
+    S.mode = m;
+    el.body.classList.toggle('mode-sitting', m === 'sitting');
+    Array.prototype.forEach.call(el.modeSel.children, function(b){
+      b.classList.toggle('on', b.dataset.mode === m);
+    });
+
+    updateFigureDisplay();
+    breathShown = null;
+    qi.fade = 0;
+    if (tipId) tipsStart();
+    if (m === 'standing' && (S.phase === 'prep' || S.phase === 'run')){
+      startAutoViewRotation();
+    } else {
+      stopAutoViewRotation();
+    }
+    var d = loadData(); d.mode = m; saveData(d);
+  }
+
+  function setMind(mindKey){
+    if (!MIND_CONFIG[mindKey]) return;
+    S.mind = mindKey;
+    el.body.classList.toggle('mind-microcosm', mindKey === 'microcosm');
+    el.body.classList.toggle('mind-dantian', mindKey === 'dantian');
+    Array.prototype.forEach.call(el.mindSel.children, function(b){
+      b.classList.toggle('on', b.dataset.mind === mindKey);
+    });
+
+    breathShown = null;
+    qi.fade = 0;
+    if (tipId) tipsStart();
+    var d = loadData(); d.mind = mindKey; saveData(d);
+  }
+
+  /* ---------- 大字体核心口诀轮换 ---------- */
+  var tipIdx = 0, tipId = null, tipGen = 0;
+
+  function tipShow(i){
+    if (S.phase !== 'run' && S.phase !== 'paused') return;
+    var m = mode();
+    var list = (m.tips && m.tips[S.mind]) ? m.tips[S.mind] : (m.tips.dantian || []);
+    var gen = ++tipGen;
+    el.time.style.opacity = 0;
+    el.time.style.transform = 'translateY(6px)';
+    setTimeout(function(){
+      if (gen !== tipGen || (S.phase !== 'run' && S.phase !== 'paused')) return;
+      el.time.textContent = list[i % list.length];
+      el.time.style.opacity = 1;
+      el.time.style.transform = 'translateY(0)';
+    }, 400);
+  }
+
+  function tipsStart(){
+    tipsStop();
+    tipIdx = 0;
+    if (S.phase === 'run') tipShow(0);
+    tipId = setInterval(function(){
+      tipIdx++;
+      if (S.phase === 'run') tipShow(tipIdx);
+    }, BREATH.tipsEvery);
+  }
+
+  function tipsStop(){
+    if (tipId) clearInterval(tipId);
+    tipId = null;
+    tipGen++;
+  }
+
+  window.addEventListener('resize', qiResize);
+  window.addEventListener('orientationchange', function(){ setTimeout(qiResize, 250); });
+
+  /* ============================================================
+   *  PWA 配置
+   * ============================================================ */
+  function makeIcon(size){
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    var g = cv.getContext('2d');
+    g.fillStyle = '#0a0c0d';
+    g.fillRect(0, 0, size, size);
+    g.strokeStyle = '#e3c58a';
+    g.lineWidth = size * 0.035;
+    g.beginPath();
+    g.arc(size / 2, size / 2, size * 0.28, 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = '#e3c58a';
+    g.beginPath();
+    g.arc(size / 2, size / 2, size * 0.075, 0, Math.PI * 2);
+    g.fill();
+    return cv.toDataURL('image/png');
+  }
+
+  try {
+    var i192 = makeIcon(192), i512 = makeIcon(512);
+    var manifest = {
+      name: '站桩 · Zen Timer',
+      short_name: '站桩',
+      start_url: '.',
+      display: 'standalone',
+      background_color: '#0a0c0d',
+      theme_color: '#0a0c0d',
+      orientation: 'portrait',
+      icons: [
+        { src: i192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: i512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+      ]
+    };
+    var url = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }));
+    var link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = url;
+    document.head.appendChild(link);
+
+    var al = document.createElement('link');
+    al.rel = 'apple-touch-icon';
+    al.href = i192;
+    document.head.appendChild(al);
+  } catch(e){}
+
+  /* ---------- 启动初始化 ---------- */
+  var saved = loadData();
+  S.ending   = saved.ending;
+  S.custom   = saved.custom;
+  S.duration = saved.duration;
+  S.view     = saved.view || 'front';
+  setMode(saved.mode);
+  setMind(saved.mind);
+  setView(S.view);
+
+  qi.figure = document.getElementById('qiFigure');
+  qi.cv     = document.getElementById('qi');
+  qi.ctx    = qi.cv.getContext('2d');
+  qiResize();
+  buildRoutes();
+  qiParts();
+  qiSetOn(saved.breath);
+
+  buildPresets();
+  paintSeg();
+  paintStats();
+  el.ring.style.strokeDasharray    = C;
+  el.ring.style.strokeDashoffset   = C;
+  showDuration();
+})();
+</script>
+</body>
+</html>
